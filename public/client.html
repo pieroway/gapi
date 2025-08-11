@@ -117,11 +117,61 @@
         #detail-content {
              padding: 20px;
         }
+        #qr-code-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 10;
+            cursor: pointer;
+        }
+        #qr-code-container img {
+            width: 50px;
+            height: 50px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        #qr-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 11;
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #qr-modal img {
+            width: 250px;
+            height: 250px;
+        }
+        #qr-modal p {
+            color: white;
+            font-size: 1.2rem;
+            margin-top: 20px;
+        }
+        /* Hide on mobile */
+        @media (max-width: 768px) {
+            #qr-code-container {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
+
+    <div id="qr-code-container">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://gapi-3iew.onrender.com" alt="QR Code for mobile access">
+    </div>
+
+    <div id="qr-modal">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https://gapi-3iew.onrender.com" alt="QR Code">
+        <p>Scan with your mobile device to open.</p>
+    </div>
 
     <div id="list-panel" class="panel">
         <div class="panel-header">
@@ -150,6 +200,8 @@
             const detailTitle = document.getElementById('detail-title');
             const detailContent = document.getElementById('detail-content');
             const eventsContainer = document.getElementById('events-container');
+            const qrContainer = document.getElementById('qr-code-container');
+            const qrModal = document.getElementById('qr-modal');
             
             let isListPanelOpen = false;
             let allEvents = [];
@@ -158,6 +210,14 @@
             listPanelHeader.addEventListener('click', () => {
                 isListPanelOpen = !isListPanelOpen;
                 listPanel.classList.toggle('open', isListPanelOpen);
+            });
+
+            qrContainer.addEventListener('click', () => {
+                qrModal.style.display = 'flex';
+            });
+
+            qrModal.addEventListener('click', () => {
+                qrModal.style.display = 'none';
             });
 
             detailPanelHeader.addEventListener('click', closeDetailPanel);
