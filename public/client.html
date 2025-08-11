@@ -189,13 +189,16 @@
         #detail-panel {
             height: 80vh; /* Changed from 100vh */
             z-index: 3;
-            transform: translateY(102%); /* Move further down to hide shadow */
+            transform: translateY(100%); /* Move completely out of view */
+            visibility: hidden; /* Hide when closed */
             border-top-left-radius: 16px;
             border-top-right-radius: 16px;
             box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
         }
         #detail-panel.open {
             transform: translateY(0);
+            visibility: visible; /* Show when open */
         }
         #detail-content {
              padding: 20px;
@@ -275,9 +278,6 @@
             }
             #detail-panel.open {
                 transform: translateX(0);
-            }
-            #events-container {
-                /* Desktop uses the same single-column list, flexbox handles it */
             }
             .panel-header {
                 cursor: default; /* No dragging on desktop */
