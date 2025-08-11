@@ -417,7 +417,7 @@
             // --- Panel Interactions ---
             centerLocationButton.addEventListener('click', () => {
                 if (userLocationMarker) {
-                    map.panTo(userLocationMarker.position);
+                    smoothPanTo(userLocationMarker.position, 1000);
                 }
             });
 
@@ -445,7 +445,7 @@
                 if (event.latitude && event.longitude) {
                     
                     lastSelectedPosition = new google.maps.LatLng(event.latitude, event.longitude);
-                    map.panTo(lastSelectedPosition);
+                    smoothPanTo(lastSelectedPosition, 1000);
                     
                     if (isDesktop()) {
                         // Pan map right to center marker in visible area next to panel
@@ -491,7 +491,7 @@
 
                 // Pan back to the actual center of the last selected marker
                 if (lastSelectedPosition) {
-                    map.panTo(lastSelectedPosition);
+                    smoothPanTo(lastSelectedPosition, 1000);
                     lastSelectedPosition = null; // Clear after use
                 }
             }
@@ -591,7 +591,7 @@
                     }
                 });
 
-                map.panTo(allMarkers[0].position);
+                smoothPanTo(allMarkers[0].position, 1000);
                 map.fitBounds(bounds, 350); // 250px padding
                 // if (allMarkers.length === 1) {
                 //     map.fitBounds(bounds, 250); // 250px padding
@@ -637,7 +637,7 @@
                                 content: dot,
                                 title: 'Your Location'
                             });
-                            map.panTo(pos);
+                            smoothPanTo(pos, 1000);
                         }
                     }, () => {
                         // Handle location error
@@ -717,6 +717,39 @@
                     console.error('Error fetching data:', error);
                     eventsContainer.innerHTML = `<p class="error-message">Could not load events.</p>`;
                 });
+            }
+
+            function smoothPanTo(position, duration) {
+                const start = {
+                    lat: map.getCenter().lat(),
+                    lng: map.getCenter().lng()
+                };
+                const end = {
+                    lat: position.lat,
+                    lng: position.lng
+                };
+
+                let startTime = null;
+
+                function animate(currentTime) {
+                    if (startTime === null) {
+                        startTime = currentTime;
+                    }
+
+                    const timeElapsed = currentTime - startTime;
+                    const progress = Math.min(timeElapsed / duration, 1);
+
+                    const lat = start.lat + (end.lat - start.lat) * progress;
+                    const lng = start.lng + (end.lng - start.lng) * progress;
+
+                    map.setCenter({ lat, lng });
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                }
+
+                requestAnimationFrame(animate);
             }
             function createEventCard(event) {
                 const card = document.createElement('div');
