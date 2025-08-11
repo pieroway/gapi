@@ -231,9 +231,10 @@
                 if (event.latitude && event.longitude) {
                     const newCenter = new google.maps.LatLng(event.latitude, event.longitude);
                     map.panTo(newCenter);
-                    // Adjust for the panel height. This is an approximation.
-                    // A more precise calculation would involve converting vh to pixels.
-                    map.panBy(0, -window.innerHeight * 0.20); 
+                    
+                    // Precisely adjust map center to account for the detail panel
+                    const panelHeight = detailPanel.clientHeight;
+                    map.panBy(0, -panelHeight / 2);
                 }
 
                 detailTitle.textContent = event.title;
