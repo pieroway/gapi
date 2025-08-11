@@ -104,9 +104,12 @@
             color: #666;
         }
         #detail-panel {
-            height: 100vh;
+            height: 80vh; /* Changed from 100vh */
             z-index: 3;
             transform: translateY(100%);
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
         }
         #detail-panel.open {
             transform: translateY(0);
@@ -162,6 +165,15 @@
             function openDetailPanel(eventId) {
                 const event = allEvents.find(e => e.id === eventId);
                 if (!event) return;
+
+                // Pan map to center the marker in the visible area
+                if (event.latitude && event.longitude) {
+                    const newCenter = new google.maps.LatLng(event.latitude, event.longitude);
+                    map.panTo(newCenter);
+                    // Adjust for the panel height. This is an approximation.
+                    // A more precise calculation would involve converting vh to pixels.
+                    map.panBy(0, -window.innerHeight * 0.20); 
+                }
 
                 detailTitle.textContent = event.title;
                 const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/400x200?text=No+Image';
