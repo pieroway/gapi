@@ -539,7 +539,7 @@
                 });
 
                 if (allMarkers.length > 1) {
-                    map.fitBounds(bounds);
+                    map.fitBounds(bounds, 50); // 50px padding
                 } else if (allMarkers.length === 1) {
                     map.setCenter(allMarkers[0].position);
                     map.setZoom(15); // A reasonable zoom level for a single marker
