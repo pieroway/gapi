@@ -188,7 +188,7 @@
 
             // Load the Google Maps script
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBA5gWJDCdQIvqWXdtMN6aWJg2h5rLiikU&callback=initMap`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBA5gWJDCdQIvqWXdtMN6aWJg2h5rLiikU&callback=initMap&loading=async`;
             script.async = true;
             script.defer = true;
             window.initMap = initMap; // Make initMap globally available
