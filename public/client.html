@@ -417,8 +417,7 @@
             // --- Panel Interactions ---
             centerLocationButton.addEventListener('click', () => {
                 if (userLocationMarker) {
-                    map.setCenter(userLocationMarker.position);
-              //      map.setZoom(15);
+                    map.panTo(userLocationMarker.position);
                 }
             });
 
@@ -592,7 +591,7 @@
                     }
                 });
 
-                map.setCenter(allMarkers[0].position);
+                map.panTo(allMarkers[0].position);
                 map.fitBounds(bounds, 350); // 250px padding
                 // if (allMarkers.length === 1) {
                 //     map.fitBounds(bounds, 250); // 250px padding
@@ -638,7 +637,7 @@
                                 content: dot,
                                 title: 'Your Location'
                             });
-                            map.setCenter(pos);
+                            map.panTo(pos);
                         }
                     }, () => {
                         // Handle location error
