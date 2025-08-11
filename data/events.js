@@ -33,7 +33,7 @@ const events = [
     start_datetime: `${todayStr}T09:00:00Z`,
     end_datetime: `${todayStr}T17:00:00Z`,
     photos: [`https://picsum.photos/seed/today/200/300`],
-    item_categories: [6, 7, 8],
+    item_categories: [1, 2, 3, 4, 5, 6, 7, 8],
     is_deleted: false,
     to_be_deleted: false,
     ended_early_flags: 0,

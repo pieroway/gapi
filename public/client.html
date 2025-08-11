@@ -81,7 +81,11 @@
             scrollbar-width: none; /* Hide scrollbar for Firefox */
         }
         #category-pills-container::-webkit-scrollbar {
-            display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
+            height: 8px;
+        }
+        #category-pills-container::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
         }
         .category-pill {
             display: inline-block;
@@ -140,6 +144,21 @@
         .card-description {
             font-size: 0.9rem;
             color: #666;
+            margin-bottom: 10px; /* Add space before pills */
+        }
+        .mini-pills-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .mini-pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background-color: #e0e0e0;
+            color: #333;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
         #detail-panel {
             height: 80vh; /* Changed from 100vh */
@@ -297,6 +316,7 @@
             let isListPanelOpen = false;
             let allEvents = [];
             let allMarkers = [];
+            let allCategories = [];
             let lastSelectedPosition = null;
 
             // --- Panel Interactions ---
@@ -341,11 +361,18 @@
 
                 detailTitle.textContent = event.title;
                 const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/400x200?text=No+Image';
+                const categoryPills = (event.item_category_details || []).map(category => {
+                    return category ? `<span class="mini-pill">${category.name}</span>` : '';
+                }).join('');
+
                 detailContent.innerHTML = `
                     <img src="${photoUrl}" alt="${event.title}" style="width: 100%; border-radius: 8px;">
-                    <p><strong>When:</strong> ${formatEventDate(event.start_datetime, event.end_datetime)}</p>
-                    <p><strong>Where:</strong> ${event.address}</p>
-                    <p>${event.description}</p>
+                    <div style="padding: 0 5px;">
+                        <p><strong>When:</strong> ${formatEventDate(event.start_datetime, event.end_datetime)}</p>
+                        <p><strong>Where:</strong> ${event.address}</p>
+                        <p>${event.description}</p>
+                        <div class="mini-pills-container" style="margin-top: 15px;">${categoryPills}</div>
+                    </div>
                 `;
                 
                 if (!isDesktop()) {
@@ -460,7 +487,7 @@
 
             // --- API and Map Logic ---
             const eventsApiUrl = '/api/events';
-            const categoriesApiUrl = '/api/categories';
+            const categoriesApiUrl = '/api/item_categories';
             let map;
 
             async function initMap() {
@@ -477,6 +504,7 @@
                 fetch(categoriesApiUrl)
                     .then(res => res.json())
                     .then(categories => {
+                        allCategories = categories;
                         // "All" pill
                         const allPill = document.createElement('div');
                         allPill.className = 'category-pill active';
@@ -514,11 +542,17 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/300x150?text=No+Image';
+
+                const categoryPills = (event.item_category_details || []).map(category => {
+                    return category ? `<span class="mini-pill">${category.name}</span>` : '';
+                }).join('');
+
                 card.innerHTML = `
                     <img src="${photoUrl}" alt="${event.title}" class="card-img">
                     <div class="card-content">
                         <h2 class="card-title">${event.title}</h2>
                         <p class="card-description">${event.description.substring(0, 100)}...</p>
+                        <div class="mini-pills-container">${categoryPills}</div>
                     </div>
                 `;
                 return card;

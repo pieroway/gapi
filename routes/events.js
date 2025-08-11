@@ -35,7 +35,7 @@ function checkFileType(file, cb){
 
 // --- Public Routes ---
 
-const categories = require('../data/categories');
+const item_categories = require('../data/item_categories');
 
 const getAverageRating = (ratings) => {
   if (!ratings || ratings.length === 0) {
@@ -48,8 +48,8 @@ const getAverageRating = (ratings) => {
 const populateCategories = (event) => {
   const populatedEvent = { ...event };
   if (populatedEvent.item_categories) {
-    populatedEvent.item_categories = populatedEvent.item_categories.map(categoryId => {
-      return categories.find(category => category.id === categoryId);
+    populatedEvent.item_category_details = populatedEvent.item_categories.map(categoryId => {
+      return item_categories.find(category => category.id === categoryId);
     });
   }
   return populatedEvent;

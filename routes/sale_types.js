@@ -1,11 +1,11 @@
-// routes/categories.js
+// routes/sale_types.js
 const express = require('express');
 const router = express.Router();
-const categories = require('../data/categories');
+const sale_types = require('../data/sale_types');
 
-// GET all categories
+// GET all sale types
 router.get('/', (req, res) => {
-    res.json(categories);
+    res.json(sale_types);
 });
 
 module.exports = router;
