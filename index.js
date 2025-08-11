@@ -1,9 +1,15 @@
 const express = require('express');
+const path = require('path');
 const app = express();
-const port = 61571;
+const port = process.env.PORT || 61571;
 
 app.use(express.json());
 app.use(express.static('public'));
+
+// Serve client.html for the root route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'client.html'));
+});
 
 // API Routes
 app.use('/api/categories', require('./routes/categories'));
