@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upcoming Events</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #1c1e21;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #events-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        .card-content {
+            padding: 15px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 10px;
+        }
+        .card-description {
+            font-size: 0.9rem;
+            color: #606770;
+            margin-bottom: 15px;
+            flex-grow: 1;
+        }
+        .card-address {
+            font-size: 0.85rem;
+            color: #606770;
+            margin-bottom: 10px;
+        }
+        .card-date {
+            font-size: 0.8rem;
+            color: #8a8d91;
+            margin-bottom: 15px;
+        }
+        .card-categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .category-tag {
+            background-color: #e7f3ff;
+            color: #1877f2;
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .error-message {
+            color: #d93025;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Upcoming Events</h1>
+    <div id="events-container"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const eventsContainer = document.getElementById('events-container');
+
+            // NOTE: You may need to update the port number to match your running server.
+            const apiUrl = 'http://localhost:61571/api/events';
+
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(events => {
+                    if (events.length === 0) {
+                        eventsContainer.innerHTML = '<p>No upcoming events found.</p>';
+                        return;
+                    }
+                    events.forEach(event => {
+                        const card = createEventCard(event);
+                        eventsContainer.appendChild(card);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching events:', error);
+                    eventsContainer.innerHTML = `<p class="error-message">Could not load events. Is the server running?</p>`;
+                });
+
+            function createEventCard(event) {
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/300x180?text=No+Image';
+
+                const categoriesHtml = event.item_categories
+                    .map(cat => `<span class="category-tag">${cat.name}</span>`)
+                    .join('');
+
+                const startDate = new Date(event.start_datetime).toLocaleString();
+                const endDate = new Date(event.end_datetime).toLocaleString();
+
+                card.innerHTML = `
+                    <img src="${photoUrl}" alt="${event.title}" class="card-img">
+                    <div class="card-content">
+                        <h2 class="card-title">${event.title}</h2>
+                        <p class="card-description">${event.description}</p>
+                        <p class="card-address">${event.address || 'No address provided'}</p>
+                        <p class="card-date"><strong>Starts:</strong> ${startDate}<br><strong>Ends:</strong> ${endDate}</p>
+                        <div class="card-categories">
+                            ${categoriesHtml}
+                        </div>
+                    </div>
+                `;
+                return card;
+            }
+        });
+    </script>
+
+</body>
+</html>

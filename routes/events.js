@@ -1,0 +1,257 @@
+const express = require('express');
+const router = express.Router();
+const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+const path = require('path');
+const events = require('../data/events');
+
+// --- Multer Configuration ---
+const storage = multer.diskStorage({
+  destination: './public/uploads/',
+  filename: function(req, file, cb){
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits:{fileSize: 10000000}, // 10MB limit
+  fileFilter: function(req, file, cb){
+    checkFileType(file, cb);
+  }
+}).single('eventImage'); // 'eventImage' is the field name for the file in the form
+
+function checkFileType(file, cb){
+  const filetypes = /jpeg|jpg|png|gif/;
+  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = filetypes.test(file.mimetype);
+
+  if(mimetype && extname){
+    return cb(null,true);
+  } else {
+    cb('Error: Images Only!');
+  }
+}
+
+// --- Public Routes ---
+
+const categories = require('../data/categories');
+
+const getAverageRating = (ratings) => {
+  if (!ratings || ratings.length === 0) {
+    return 0;
+  }
+  const sum = ratings.reduce((acc, rating) => acc + rating.value, 0);
+  return sum / ratings.length;
+};
+
+const populateCategories = (event) => {
+  const populatedEvent = { ...event };
+  if (populatedEvent.item_categories) {
+    populatedEvent.item_categories = populatedEvent.item_categories.map(categoryId => {
+      return categories.find(category => category.id === categoryId);
+    });
+  }
+  return populatedEvent;
+};
+
+// Get all active events
+router.get('/', (req, res) => {
+  const activeEvents = events
+    .filter(event => !event.is_deleted && !event.to_be_deleted)
+    .map(event => {
+      const { ratings, ...eventData } = event;
+      const populatedEvent = populateCategories(eventData);
+      return {
+        ...populatedEvent,
+        average_rating: getAverageRating(ratings),
+      };
+    });
+  res.json(activeEvents);
+});
+
+// --- Creator/Admin Routes ---
+
+// Create a new event
+router.post('/', (req, res) => {
+  const { title, description, address, latitude, longitude, start_datetime, end_datetime, photos, item_categories } = req.body;
+  if (!title || !description || !start_datetime || !end_datetime) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  let eventPhotos = photos || [];
+  if (eventPhotos.length === 0) {
+    eventPhotos.push(`https://picsum.photos/200/300`);
+  }
+
+  const newEvent = {
+    id: uuidv4(),
+    guid: uuidv4(),
+    title,
+    description,
+    address,
+    latitude,
+    longitude,
+    start_datetime,
+    end_datetime,
+    photos: eventPhotos,
+    item_categories: item_categories || [],
+    is_deleted: false,
+    to_be_deleted: false,
+    ended_early_flags: 0,
+    ratings: [],
+    comments: [],
+  };
+  events.push(newEvent);
+  res.status(201).json(newEvent);
+});
+
+// Get event data for editing
+router.get('/edit/:guid', (req, res) => {
+  const { guid } = req.params;
+  const event = events.find(event => event.guid === guid);
+  if (!event) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+  res.json(event);
+});
+
+// Update an event
+router.put('/edit/:guid', (req, res) => {
+  const { guid } = req.params;
+  const eventIndex = events.findIndex(event => event.guid === guid);
+  if (eventIndex === -1) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+  const updatedEvent = { ...events[eventIndex], ...req.body };
+  events[eventIndex] = updatedEvent;
+  res.json(updatedEvent);
+});
+
+// Soft delete an event
+router.delete('/edit/:guid', (req, res) => {
+  const { guid } = req.params;
+  const eventIndex = events.findIndex(event => event.guid === guid);
+  if (eventIndex === -1) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+  events[eventIndex].is_deleted = true;
+  res.status(204).send();
+});
+
+// Undelete an event
+router.post('/edit/:guid/undelete', (req, res) => {
+  const { guid } = req.params;
+  const eventIndex = events.findIndex(event => event.guid === guid);
+  if (eventIndex === -1) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+  events[eventIndex].is_deleted = false;
+  res.json(events[eventIndex]);
+});
+
+// Add a photo to an event
+router.post('/edit/:guid/photos', (req, res) => {
+  const { guid } = req.params;
+  const eventIndex = events.findIndex(event => event.guid === guid);
+  if (eventIndex === -1) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+
+  upload(req, res, (err) => {
+    if(err){
+      return res.status(400).json({ message: err });
+    }
+    if(req.file == undefined){
+      return res.status(400).json({ message: 'Error: No File Selected!' });
+    }
+    
+    const photoPath = `/uploads/${req.file.filename}`;
+    events[eventIndex].photos.push(photoPath);
+    res.status(200).json({
+      message: 'File uploaded successfully',
+      filePath: photoPath,
+      event: events[eventIndex]
+    });
+  });
+});
+
+
+// --- Public Routes with Dynamic IDs ---
+
+// Get a single event by ID
+router.get('/:id', (req, res) => {
+  const { id } = req.params;
+  const event = events.find(event => event.id === id);
+  if (!event || event.is_deleted || event.to_be_deleted) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+  const { ratings, ...eventData } = event;
+  const populatedEvent = populateCategories(eventData);
+  res.json({
+    ...populatedEvent,
+    average_rating: getAverageRating(ratings),
+  });
+});
+
+// Flag an event as ended
+router.post('/:id/flag-ended', (req, res) => {
+  const { id } = req.params;
+  const eventIndex = events.findIndex(event => event.id === id);
+  if (eventIndex === -1) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+  events[eventIndex].ended_early_flags++;
+  if (events[eventIndex].ended_early_flags >= 3) {
+    events[eventIndex].to_be_deleted = true;
+  }
+  res.json(events[eventIndex]);
+});
+
+// Add a rating to an event
+router.post('/:id/ratings', (req, res) => {
+  const { id } = req.params;
+  const { rating } = req.body;
+
+  if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+    return res.status(400).json({ message: 'Rating must be a number between 1 and 5' });
+  }
+
+  const eventIndex = events.findIndex(event => event.id === id);
+  if (eventIndex === -1) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+
+  const newRating = {
+    value: rating,
+    timestamp: new Date().toISOString(),
+  };
+
+  events[eventIndex].ratings.push(newRating);
+  res.status(201).json(events[eventIndex]);
+});
+
+// Add a comment to an event
+router.post('/:id/comments', (req, res) => {
+  const { id } = req.params;
+  const { comment } = req.body;
+
+  if (!comment || typeof comment !== 'string') {
+    return res.status(400).json({ message: 'Comment must be a non-empty string' });
+  }
+
+  const eventIndex = events.findIndex(event => event.id === id);
+  if (eventIndex === -1) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+
+  const newComment = {
+    text: comment,
+    timestamp: new Date().toISOString(),
+  };
+
+  events[eventIndex].comments.push(newComment);
+  res.status(201).json(events[eventIndex]);
+});
+
+module.exports = router;
