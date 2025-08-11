@@ -65,27 +65,24 @@
             font-weight: 600;
         }
         .panel-content {
-            overflow-y: auto;
-            flex-grow: 1;
-            /* padding is removed to allow pills to be flush */
+            flex: 1; /* Allow content to grow and fill space */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Prevents content from overflowing the panel */
         }
         #sale-type-pills-container,
         #category-pills-container {
-            position: sticky;
             background-color: #ffffff;
-            padding: 15px 20px;
-            z-index: 1;
+            padding: 5px 20px; /* Reduced vertical padding */
+            flex-shrink: 0; /* Prevent pill containers from shrinking */
             white-space: nowrap;
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-            scrollbar-width: none; /* Hide scrollbar for Firefox */
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; 
         }
-        #sale-type-pills-container {
-            top: 0;
-            padding-bottom: 0;
-        }
-        #category-pills-container {
-            top: 60px; /* Adjust based on sale type pills container height */
+        #sale-type-pills-container::-webkit-scrollbar,
+        #category-pills-container::-webkit-scrollbar {
+            display: none; /* Hide scrollbar */
         }
         #sale-type-pills-container::-webkit-scrollbar,
         #category-pills-container::-webkit-scrollbar {
@@ -99,13 +96,14 @@
         .sale-type-pill,
         .category-pill {
             display: inline-block;
-            padding: 8px 16px;
-            margin-right: 10px;
-            border-radius: 20px;
+            padding: 6px 14px; /* Reduced padding */
+            margin-right: 8px; /* Reduced margin */
+            border-radius: 18px; /* Slightly smaller radius */
             background-color: #e9ecef;
             color: #495057;
             cursor: pointer;
             font-weight: 500;
+            font-size: 0.9rem; /* Slightly smaller font */
             transition: background-color 0.2s, color 0.2s;
         }
         .sale-type-pill:hover,
@@ -118,15 +116,24 @@
             color: #ffffff;
         }
         #events-container {
-            padding: 0 20px 20px; /* Add padding here instead */
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 0 20px 20px;
+            margin-top: 20px;
         }
-        #events-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+        /* Custom Scrollbar for Webkit browsers */
+        #events-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #events-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        #events-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        #events-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
         .card {
             background-color: #f9f9f9;
@@ -134,11 +141,14 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             overflow: hidden;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: background-color 0.2s ease;
+            margin-bottom: 15px; /* Space between cards */
         }
         .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            background-color: #f0f0f0; /* A subtle background color change */
+        }
+        .card:last-child {
+            margin-bottom: 0;
         }
         .card-img {
             width: 100%;
@@ -267,7 +277,7 @@
                 transform: translateX(0);
             }
             #events-container {
-                grid-template-columns: 1fr; /* Single column list */
+                /* Desktop uses the same single-column list, flexbox handles it */
             }
             .panel-header {
                 cursor: default; /* No dragging on desktop */
