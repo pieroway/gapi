@@ -159,6 +159,53 @@
                 display: none;
             }
         }
+
+        /* Desktop Layout */
+        @media (min-width: 769px) {
+            .panel {
+                top: 20px;
+                bottom: 20px;
+                left: 20px;
+                right: auto;
+                width: 400px;
+                height: auto;
+                border-radius: 16px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            #list-panel {
+                transform: translateX(0);
+                transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease;
+            }
+            #list-panel.closed {
+                 transform: translateX(calc(-100% - 20px));
+                 opacity: 0;
+            }
+            #list-panel.detail-open {
+                transform: translateX(0); /* Stays visible */
+            }
+            #detail-panel {
+                width: 400px;
+                transform: translateX(calc(-100% - 20px));
+                z-index: 4; /* Ensure detail is on top */
+            }
+            #detail-panel.open {
+                transform: translateX(0);
+            }
+            #events-container {
+                grid-template-columns: 1fr; /* Single column list */
+            }
+            .panel-header {
+                cursor: default; /* No dragging on desktop */
+            }
+            .panel-handle {
+                display: none; /* Hide mobile handle */
+            }
+            #qr-code-container {
+                bottom: 20px;
+                left: auto;
+                right: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -204,12 +251,14 @@
             const qrContainer = document.getElementById('qr-code-container');
             const qrModal = document.getElementById('qr-modal');
             
+            const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
             let isListPanelOpen = false;
             let allEvents = [];
             let lastSelectedPosition = null;
 
             // --- Panel Interactions ---
             listPanelHeader.addEventListener('click', () => {
+                if (isDesktop()) return; // No click-to-toggle on desktop
                 isListPanelOpen = !isListPanelOpen;
                 listPanel.classList.toggle('open', isListPanelOpen);
             });
@@ -233,9 +282,17 @@
                     lastSelectedPosition = new google.maps.LatLng(event.latitude, event.longitude);
                     map.panTo(lastSelectedPosition);
                     
-                    // Pan marker to the top 15% of the screen
-                    const offset = window.innerHeight * 0.35; // (50% - 15%)
-                    map.panBy(0, -offset);
+                    if (isDesktop()) {
+                        // Pan map right to center marker in visible area next to panel
+                        const panelWidth = 400; // As defined in CSS
+                        const panelMargin = 20;
+                        const offset = (panelWidth + panelMargin) / 2;
+                        map.panBy(offset, 0);
+                    } else {
+                        // Pan marker to the top 15% of the screen on mobile
+                        const offset = window.innerHeight * 0.35; // (50% - 15%)
+                        map.panBy(0, -offset);
+                    }
                 }
 
                 detailTitle.textContent = event.title;
@@ -247,12 +304,16 @@
                     <p>${event.description}</p>
                 `;
                 
-                listPanel.classList.add('detail-open');
+                if (!isDesktop()) {
+                    listPanel.classList.add('detail-open');
+                }
                 detailPanel.classList.add('open');
             }
 
             function closeDetailPanel() {
-                listPanel.classList.remove('detail-open');
+                if (!isDesktop()) {
+                    listPanel.classList.remove('detail-open');
+                }
                 detailPanel.classList.remove('open');
 
                 // Pan back to the actual center of the last selected marker
