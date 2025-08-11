@@ -10,7 +10,7 @@
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; /* Prevents scrolling of the body */
+            overflow: hidden;
         }
         #map {
             height: 100%;
@@ -20,42 +20,54 @@
             left: 0;
             z-index: 1;
         }
-        #panel {
+        .panel {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 75vh; /* Max height */
             background-color: #ffffff;
-            border-top-left-radius: 16px;
-            border-top-right-radius: 16px;
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
             z-index: 2;
             display: flex;
             flex-direction: column;
-            transform: translateY(calc(100% - 60px)); /* Start mostly hidden */
-            transition: transform 0.3s ease-in-out;
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
-        #panel.open {
+        #list-panel {
+            height: 75vh;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(calc(100% - 80px)); /* Start mostly hidden, showing header */
+        }
+        #list-panel.open {
             transform: translateY(0);
         }
-        #panel-header {
-            padding: 10px;
-            text-align: center;
-            cursor: grab;
-            border-bottom: 1px solid #e0e0e0;
+        #list-panel.detail-open {
+            transform: scale(0.95) translateY(0);
+            border-radius: 16px;
         }
-        #panel-handle {
+        .panel-header {
+            padding: 10px 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+        #list-panel .panel-header {
+            cursor: grab;
+        }
+        .panel-handle {
             width: 40px;
             height: 5px;
             background-color: #c0c0c0;
             border-radius: 2.5px;
-            margin: 0 auto;
+            margin: 0 auto 10px;
         }
-        #panel-content {
+        .panel-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .panel-content {
             overflow-y: auto;
             flex-grow: 1;
-            padding: 20px;
+            padding: 0 20px 20px;
         }
         #events-container {
             display: grid;
@@ -67,8 +79,12 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
         }
         .card-img {
             width: 100%;
@@ -81,10 +97,22 @@
         .card-title {
             font-size: 1.1rem;
             font-weight: 600;
+            margin: 0 0 5px;
         }
-        .error-message {
-            color: #d93025;
-            text-align: center;
+        .card-description {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        #detail-panel {
+            height: 100vh;
+            z-index: 3;
+            transform: translateY(100%);
+        }
+        #detail-panel.open {
+            transform: translateY(0);
+        }
+        #detail-content {
+             padding: 20px;
         }
     </style>
 </head>
@@ -92,89 +120,118 @@
 
     <div id="map"></div>
 
-    <div id="panel">
-        <div id="panel-header">
-            <div id="panel-handle"></div>
+    <div id="list-panel" class="panel">
+        <div class="panel-header">
+            <div class="panel-handle"></div>
+            <h1 class="panel-title">Upcoming Events</h1>
         </div>
-        <div id="panel-content">
-            <h1>Upcoming Events</h1>
+        <div class="panel-content">
             <div id="events-container"></div>
         </div>
     </div>
 
+    <div id="detail-panel" class="panel">
+        <div class="panel-header">
+            <div class="panel-handle"></div>
+            <h1 id="detail-title" class="panel-title"></h1>
+        </div>
+        <div id="detail-content" class="panel-content"></div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const panel = document.getElementById('panel');
-            const panelHeader = document.getElementById('panel-header');
-            let isPanelOpen = false;
+            const listPanel = document.getElementById('list-panel');
+            const listPanelHeader = listPanel.querySelector('.panel-header');
+            const detailPanel = document.getElementById('detail-panel');
+            const detailPanelHeader = detailPanel.querySelector('.panel-header');
+            const detailTitle = document.getElementById('detail-title');
+            const detailContent = document.getElementById('detail-content');
+            const eventsContainer = document.getElementById('events-container');
+            
+            let isListPanelOpen = false;
+            let allEvents = [];
 
-            panelHeader.addEventListener('click', () => {
-                isPanelOpen = !isPanelOpen;
-                panel.classList.toggle('open', isPanelOpen);
+            // --- Panel Interactions ---
+            listPanelHeader.addEventListener('click', () => {
+                isListPanelOpen = !isListPanelOpen;
+                listPanel.classList.toggle('open', isListPanelOpen);
             });
 
-            const eventsContainer = document.getElementById('events-container');
+            detailPanelHeader.addEventListener('click', closeDetailPanel);
+
+            function openDetailPanel(eventId) {
+                const event = allEvents.find(e => e.id === eventId);
+                if (!event) return;
+
+                detailTitle.textContent = event.title;
+                const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/400x200?text=No+Image';
+                detailContent.innerHTML = `
+                    <img src="${photoUrl}" alt="${event.title}" style="width: 100%; border-radius: 8px;">
+                    <p><strong>When:</strong> ${new Date(event.start_datetime).toLocaleString()}</p>
+                    <p><strong>Where:</strong> ${event.address}</p>
+                    <p>${event.description}</p>
+                `;
+                
+                listPanel.classList.add('detail-open');
+                detailPanel.classList.add('open');
+            }
+
+            function closeDetailPanel() {
+                listPanel.classList.remove('detail-open');
+                detailPanel.classList.remove('open');
+            }
+
+            // --- API and Map Logic ---
             const apiUrl = '/api/events';
             let map;
-            let markers = [];
 
             async function initMap() {
                 const { Map } = await google.maps.importLibrary("maps");
                 const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
 
                 map = new Map(document.getElementById('map'), {
-                    center: { lat: 40.7128, lng: -74.0060 }, // Default to NYC
-                    zoom: 10,
-                    mapId: 'GAPI_MAP_ID' // A Map ID is required for Advanced Markers
+                    center: { lat: 45.345, lng: -75.760 }, // Default to Ottawa
+                    zoom: 12,
+                    mapId: 'GAPI_MAP_ID'
                 });
-            }
 
-            fetch(apiUrl)
-                .then(response => response.json())
-                .then(events => {
-                    if (events.length === 0) {
-                        eventsContainer.innerHTML = '<p>No upcoming events found.</p>';
-                        return;
-                    }
-                    
-                    const bounds = new google.maps.LatLngBounds();
-
-                    events.forEach(event => {
-                        const card = createEventCard(event);
-                        eventsContainer.appendChild(card);
-
-                        if (event.latitude && event.longitude) {
-                            const position = { lat: event.latitude, lng: event.longitude };
-                            const marker = new google.maps.marker.AdvancedMarkerElement({
-                                map: map,
-                                position: position,
-                                title: event.title,
-                            });
-
-                            const infowindow = new google.maps.InfoWindow({
-                                content: `<strong>${event.title}</strong><br>${event.address}`
-                            });
-
-                            marker.addListener('click', () => {
-                                infowindow.open({
-                                    anchor: marker,
-                                    map,
-                                });
-                            });
-                            
-                            markers.push(marker);
-                            bounds.extend(position);
+                fetch(apiUrl)
+                    .then(response => response.json())
+                    .then(events => {
+                        allEvents = events;
+                        if (events.length === 0) {
+                            eventsContainer.innerHTML = '<p>No upcoming events found.</p>';
+                            return;
                         }
-                    });
+                        
+                        const bounds = new google.maps.LatLngBounds();
+                        eventsContainer.innerHTML = ''; // Clear loading state
 
-                    if (markers.length > 0) {
-                        map.fitBounds(bounds);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching events:', error);
-                    eventsContainer.innerHTML = `<p class="error-message">Could not load events.</p>`;
-                });
+                        events.forEach(event => {
+                            const card = createEventCard(event);
+                            card.addEventListener('click', () => openDetailPanel(event.id));
+                            eventsContainer.appendChild(card);
+
+                            if (event.latitude && event.longitude) {
+                                const position = { lat: event.latitude, lng: event.longitude };
+                                const marker = new AdvancedMarkerElement({
+                                    map: map,
+                                    position: position,
+                                    title: event.title,
+                                });
+                                bounds.extend(position);
+                            }
+                        });
+
+                        if (allEvents.length > 0) {
+                            map.fitBounds(bounds);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching events:', error);
+                        eventsContainer.innerHTML = `<p class="error-message">Could not load events.</p>`;
+                    });
+            }
 
             function createEventCard(event) {
                 const card = document.createElement('div');
@@ -184,18 +241,17 @@
                     <img src="${photoUrl}" alt="${event.title}" class="card-img">
                     <div class="card-content">
                         <h2 class="card-title">${event.title}</h2>
-                        <p>${new Date(event.start_datetime).toLocaleString()}</p>
+                        <p class="card-description">${event.description.substring(0, 100)}...</p>
                     </div>
                 `;
                 return card;
             }
 
-            // Load the Google Maps script
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBA5gWJDCdQIvqWXdtMN6aWJg2h5rLiikU&callback=initMap&libraries=marker&loading=async`;
             script.async = true;
             script.defer = true;
-            window.initMap = initMap; // Make initMap globally available
+            window.initMap = initMap;
             document.head.appendChild(script);
         });
     </script>
