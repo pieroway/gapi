@@ -69,9 +69,9 @@
             flex-grow: 1;
             /* padding is removed to allow pills to be flush */
         }
+        #sale-type-pills-container,
         #category-pills-container {
             position: sticky;
-            top: 0;
             background-color: #ffffff;
             padding: 15px 20px;
             z-index: 1;
@@ -80,13 +80,23 @@
             -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
             scrollbar-width: none; /* Hide scrollbar for Firefox */
         }
+        #sale-type-pills-container {
+            top: 0;
+            padding-bottom: 0;
+        }
+        #category-pills-container {
+            top: 60px; /* Adjust based on sale type pills container height */
+        }
+        #sale-type-pills-container::-webkit-scrollbar,
         #category-pills-container::-webkit-scrollbar {
             height: 8px;
         }
+        #sale-type-pills-container::-webkit-scrollbar-thumb,
         #category-pills-container::-webkit-scrollbar-thumb {
             background: #ccc;
             border-radius: 4px;
         }
+        .sale-type-pill,
         .category-pill {
             display: inline-block;
             padding: 8px 16px;
@@ -98,9 +108,11 @@
             font-weight: 500;
             transition: background-color 0.2s, color 0.2s;
         }
+        .sale-type-pill:hover,
         .category-pill:hover {
             background-color: #dee2e6;
         }
+        .sale-type-pill.active,
         .category-pill.active {
             background-color: #007bff;
             color: #ffffff;
@@ -159,6 +171,10 @@
             color: #333;
             font-size: 0.75rem;
             font-weight: 500;
+        }
+        .sale-type-pill-mini {
+            background-color: #28a745; /* A green color for sale type */
+            color: white;
         }
         #detail-panel {
             height: 80vh; /* Changed from 100vh */
@@ -286,6 +302,7 @@
             <h1 class="panel-title">Upcoming Events</h1>
         </div>
         <div class="panel-content">
+            <div id="sale-type-pills-container"></div>
             <div id="category-pills-container"></div>
             <div id="events-container"></div>
         </div>
@@ -308,6 +325,7 @@
             const detailTitle = document.getElementById('detail-title');
             const detailContent = document.getElementById('detail-content');
             const eventsContainer = document.getElementById('events-container');
+            const saleTypePillsContainer = document.getElementById('sale-type-pills-container');
             const categoryPillsContainer = document.getElementById('category-pills-container');
             const qrContainer = document.getElementById('qr-code-container');
             const qrModal = document.getElementById('qr-modal');
@@ -317,6 +335,7 @@
             let allEvents = [];
             let allMarkers = [];
             let allCategories = [];
+            let allSaleTypes = [];
             let lastSelectedPosition = null;
 
             // --- Panel Interactions ---
@@ -361,6 +380,7 @@
 
                 detailTitle.textContent = event.title;
                 const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/400x200?text=No+Image';
+                const saleTypePill = event.sale_type_details ? `<span class="mini-pill sale-type-pill-mini">${event.sale_type_details.name}</span>` : '';
                 const categoryPills = (event.item_category_details || []).map(category => {
                     return category ? `<span class="mini-pill">${category.name}</span>` : '';
                 }).join('');
@@ -371,7 +391,7 @@
                         <p><strong>When:</strong> ${formatEventDate(event.start_datetime, event.end_datetime)}</p>
                         <p><strong>Where:</strong> ${event.address}</p>
                         <p>${event.description}</p>
-                        <div class="mini-pills-container" style="margin-top: 15px;">${categoryPills}</div>
+                        <div class="mini-pills-container" style="margin-top: 15px;">${saleTypePill}${categoryPills}</div>
                     </div>
                 `;
                 
@@ -435,10 +455,16 @@
                 return `${weekday} ${month} ${day}${suffix}`;
             }
 
-            function filterAndDisplayEvents(category = 'all') {
-                // Update active pill
+            function filterAndDisplayEvents() {
+                const selectedSaleType = document.querySelector('.sale-type-pill.active')?.dataset.saleType || 'all';
+                const selectedCategory = document.querySelector('.category-pill.active')?.dataset.category || 'all';
+
+                // Update active pills
+                document.querySelectorAll('.sale-type-pill').forEach(pill => {
+                    pill.classList.toggle('active', pill.dataset.saleType === selectedSaleType);
+                });
                 document.querySelectorAll('.category-pill').forEach(pill => {
-                    pill.classList.toggle('active', pill.dataset.category === category);
+                    pill.classList.toggle('active', pill.dataset.category === selectedCategory);
                 });
 
                 // Clear existing markers from the map
@@ -446,9 +472,13 @@
                 allMarkers = [];
 
                 // Filter events
-                const filteredEvents = category === 'all'
-                    ? allEvents
-                    : allEvents.filter(event => event.item_categories && event.item_categories.includes(parseInt(category)));
+                let filteredEvents = allEvents;
+                if (selectedSaleType !== 'all') {
+                    filteredEvents = filteredEvents.filter(event => event.sale_type_id === parseInt(selectedSaleType));
+                }
+                if (selectedCategory !== 'all') {
+                    filteredEvents = filteredEvents.filter(event => event.item_categories && event.item_categories.includes(parseInt(selectedCategory)));
+                }
 
                 // Clear and re-populate list
                 eventsContainer.innerHTML = '';
@@ -488,6 +518,7 @@
             // --- API and Map Logic ---
             const eventsApiUrl = '/api/events';
             const categoriesApiUrl = '/api/item_categories';
+            const saleTypesApiUrl = '/api/sale_types';
             let map;
 
             async function initMap() {
@@ -500,49 +531,82 @@
                     mapId: 'GAPI_MAP_ID'
                 });
 
-                // Fetch categories first, then events
-                fetch(categoriesApiUrl)
-                    .then(res => res.json())
-                    .then(categories => {
-                        allCategories = categories;
-                        // "All" pill
-                        const allPill = document.createElement('div');
-                        allPill.className = 'category-pill active';
-                        allPill.textContent = 'All';
-                        allPill.dataset.category = 'all';
-                        allPill.addEventListener('click', () => filterAndDisplayEvents('all'));
-                        categoryPillsContainer.appendChild(allPill);
+                // Fetch categories and sale types, then events
+                Promise.all([
+                    fetch(saleTypesApiUrl).then(res => res.json()),
+                    fetch(categoriesApiUrl).then(res => res.json()),
+                    fetch(eventsApiUrl).then(res => res.json())
+                ]).then(([saleTypes, categories, events]) => {
+                    allSaleTypes = saleTypes;
+                    allCategories = categories;
+                    allEvents = events;
 
-                        // Category pills
-                        categories.forEach(category => {
-                            const pill = document.createElement('div');
-                            pill.className = 'category-pill';
-                            pill.textContent = category.name;
-                            pill.dataset.category = category.id;
-                            pill.addEventListener('click', () => filterAndDisplayEvents(String(category.id)));
-                            categoryPillsContainer.appendChild(pill);
-                        });
-                    })
-                    .catch(error => console.error('Error fetching categories:', error));
-
-                fetch(eventsApiUrl)
-                    .then(response => response.json())
-                    .then(events => {
-                        events.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
-                        allEvents = events;
-                        filterAndDisplayEvents('all'); // Display all events initially
-                    })
-                    .catch(error => {
-                        console.error('Error fetching events:', error);
-                        eventsContainer.innerHTML = `<p class="error-message">Could not load events.</p>`;
+                    // "All" sale type pill
+                    const allSaleTypePill = document.createElement('div');
+                    allSaleTypePill.className = 'sale-type-pill active';
+                    allSaleTypePill.textContent = 'All Sale Types';
+                    allSaleTypePill.dataset.saleType = 'all';
+                    allSaleTypePill.addEventListener('click', () => {
+                        document.querySelectorAll('.sale-type-pill').forEach(p => p.classList.remove('active'));
+                        allSaleTypePill.classList.add('active');
+                        filterAndDisplayEvents();
                     });
-            }
+                    saleTypePillsContainer.appendChild(allSaleTypePill);
 
+                    // Sale type pills
+                    saleTypes.forEach(saleType => {
+                        const pill = document.createElement('div');
+                        pill.className = 'sale-type-pill';
+                        pill.textContent = saleType.name;
+                        pill.dataset.saleType = saleType.id;
+                        pill.addEventListener('click', () => {
+                            document.querySelectorAll('.sale-type-pill').forEach(p => p.classList.remove('active'));
+                            pill.classList.add('active');
+                            filterAndDisplayEvents();
+                        });
+                        saleTypePillsContainer.appendChild(pill);
+                    });
+
+                    // "All" category pill
+                    const allCategoryPill = document.createElement('div');
+                    allCategoryPill.className = 'category-pill active';
+                    allCategoryPill.textContent = 'All Categories';
+                    allCategoryPill.dataset.category = 'all';
+                    allCategoryPill.addEventListener('click', () => {
+                        document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+                        allCategoryPill.classList.add('active');
+                        filterAndDisplayEvents();
+                    });
+                    categoryPillsContainer.appendChild(allCategoryPill);
+
+                    // Category pills
+                    categories.forEach(category => {
+                        const pill = document.createElement('div');
+                        pill.className = 'category-pill';
+                        pill.textContent = category.name;
+                        pill.dataset.category = category.id;
+                        pill.addEventListener('click', () => {
+                            document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+                            pill.classList.add('active');
+                            filterAndDisplayEvents();
+                        });
+                        categoryPillsContainer.appendChild(pill);
+                    });
+
+                    events.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
+                    filterAndDisplayEvents(); // Display all events initially
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    eventsContainer.innerHTML = `<p class="error-message">Could not load events.</p>`;
+                });
+            }
             function createEventCard(event) {
                 const card = document.createElement('div');
                 card.className = 'card';
                 const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/300x150?text=No+Image';
 
+                const saleTypePill = event.sale_type_details ? `<span class="mini-pill sale-type-pill-mini">${event.sale_type_details.name}</span>` : '';
                 const categoryPills = (event.item_category_details || []).map(category => {
                     return category ? `<span class="mini-pill">${category.name}</span>` : '';
                 }).join('');
@@ -552,7 +616,7 @@
                     <div class="card-content">
                         <h2 class="card-title">${event.title}</h2>
                         <p class="card-description">${event.description.substring(0, 100)}...</p>
-                        <div class="mini-pills-container">${categoryPills}</div>
+                        <div class="mini-pills-container">${saleTypePill}${categoryPills}</div>
                     </div>
                 `;
                 return card;

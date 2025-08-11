@@ -36,6 +36,7 @@ function checkFileType(file, cb){
 // --- Public Routes ---
 
 const item_categories = require('../data/item_categories');
+const sale_types = require('../data/sale_types');
 
 const getAverageRating = (ratings) => {
   if (!ratings || ratings.length === 0) {
@@ -45,12 +46,17 @@ const getAverageRating = (ratings) => {
   return sum / ratings.length;
 };
 
-const populateCategories = (event) => {
+const populateEventDetails = (event) => {
   const populatedEvent = { ...event };
+  // Populate item categories
   if (populatedEvent.item_categories) {
     populatedEvent.item_category_details = populatedEvent.item_categories.map(categoryId => {
       return item_categories.find(category => category.id === categoryId);
     });
+  }
+  // Populate sale type
+  if (populatedEvent.sale_type_id) {
+    populatedEvent.sale_type_details = sale_types.find(st => st.id === populatedEvent.sale_type_id);
   }
   return populatedEvent;
 };
@@ -61,7 +67,7 @@ router.get('/', (req, res) => {
     .filter(event => !event.is_deleted && !event.to_be_deleted)
     .map(event => {
       const { ratings, ...eventData } = event;
-      const populatedEvent = populateCategories(eventData);
+      const populatedEvent = populateEventDetails(eventData);
       return {
         ...populatedEvent,
         average_rating: getAverageRating(ratings),
@@ -74,7 +80,7 @@ router.get('/', (req, res) => {
 
 // Create a new event
 router.post('/', (req, res) => {
-  const { title, description, address, latitude, longitude, start_datetime, end_datetime, photos, item_categories } = req.body;
+  const { title, description, address, latitude, longitude, start_datetime, end_datetime, photos, item_categories, sale_type_id } = req.body;
   if (!title || !description || !start_datetime || !end_datetime) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
@@ -96,6 +102,7 @@ router.post('/', (req, res) => {
     end_datetime,
     photos: eventPhotos,
     item_categories: item_categories || [],
+    sale_type_id: sale_type_id || null,
     is_deleted: false,
     to_be_deleted: false,
     ended_early_flags: 0,
@@ -187,7 +194,7 @@ router.get('/:id', (req, res) => {
     return res.status(404).json({ message: 'Event not found' });
   }
   const { ratings, ...eventData } = event;
-  const populatedEvent = populateCategories(eventData);
+  const populatedEvent = populateEventDetails(eventData);
   res.json({
     ...populatedEvent,
     average_rating: getAverageRating(ratings),
