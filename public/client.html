@@ -312,6 +312,8 @@
                 fetch(apiUrl)
                     .then(response => response.json())
                     .then(events => {
+                        // Sort events by start date, earliest first
+                        events.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
                         allEvents = events;
                         if (events.length === 0) {
                             eventsContainer.innerHTML = '<p>No upcoming events found.</p>';
