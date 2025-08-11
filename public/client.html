@@ -67,7 +67,45 @@
         .panel-content {
             overflow-y: auto;
             flex-grow: 1;
-            padding: 0 20px 20px;
+            /* padding is removed to allow pills to be flush */
+        }
+        #category-pills-container {
+            position: sticky;
+            top: 0;
+            background-color: #ffffff;
+            padding: 15px 20px;
+            z-index: 1;
+            white-space: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            scrollbar-width: none; /* Hide scrollbar for Firefox */
+        }
+        #category-pills-container::-webkit-scrollbar {
+            display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
+        }
+        .category-pill {
+            display: inline-block;
+            padding: 8px 16px;
+            margin-right: 10px;
+            border-radius: 20px;
+            background-color: #e9ecef;
+            color: #495057;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .category-pill:hover {
+            background-color: #dee2e6;
+        }
+        .category-pill.active {
+            background-color: #007bff;
+            color: #ffffff;
+        }
+        #events-container {
+            padding: 0 20px 20px; /* Add padding here instead */
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
         }
         #events-container {
             display: grid;
@@ -173,6 +211,7 @@
                 box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             }
             #list-panel {
+                height: auto;
                 transform: translateX(0);
                 transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease;
             }
@@ -184,6 +223,7 @@
                 transform: translateX(0); /* Stays visible */
             }
             #detail-panel {
+                height: auto;
                 width: 400px;
                 transform: translateX(calc(-100% - 20px));
                 z-index: 4; /* Ensure detail is on top */
@@ -227,6 +267,7 @@
             <h1 class="panel-title">Upcoming Events</h1>
         </div>
         <div class="panel-content">
+            <div id="category-pills-container"></div>
             <div id="events-container"></div>
         </div>
     </div>
@@ -248,12 +289,14 @@
             const detailTitle = document.getElementById('detail-title');
             const detailContent = document.getElementById('detail-content');
             const eventsContainer = document.getElementById('events-container');
+            const categoryPillsContainer = document.getElementById('category-pills-container');
             const qrContainer = document.getElementById('qr-code-container');
             const qrModal = document.getElementById('qr-modal');
             
             const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
             let isListPanelOpen = false;
             let allEvents = [];
+            let allMarkers = [];
             let lastSelectedPosition = null;
 
             // --- Panel Interactions ---
@@ -279,6 +322,7 @@
 
                 // Pan map to center the marker in the visible area
                 if (event.latitude && event.longitude) {
+                    
                     lastSelectedPosition = new google.maps.LatLng(event.latitude, event.longitude);
                     map.panTo(lastSelectedPosition);
                     
@@ -287,11 +331,11 @@
                         const panelWidth = 400; // As defined in CSS
                         const panelMargin = 20;
                         const offset = (panelWidth + panelMargin) / 2;
-                        map.panBy(offset, 0);
+                        map.panBy(-offset, 0);
                     } else {
                         // Pan marker to the top 15% of the screen on mobile
                         const offset = window.innerHeight * 0.35; // (50% - 15%)
-                        map.panBy(0, -offset);
+                        map.panBy(0, offset);
                     }
                 }
 
@@ -364,8 +408,59 @@
                 return `${weekday} ${month} ${day}${suffix}`;
             }
 
+            function filterAndDisplayEvents(category = 'all') {
+                // Update active pill
+                document.querySelectorAll('.category-pill').forEach(pill => {
+                    pill.classList.toggle('active', pill.dataset.category === category);
+                });
+
+                // Clear existing markers from the map
+                allMarkers.forEach(marker => marker.setMap(null));
+                allMarkers = [];
+
+                // Filter events
+                const filteredEvents = category === 'all'
+                    ? allEvents
+                    : allEvents.filter(event => event.item_categories && event.item_categories.includes(parseInt(category)));
+
+                // Clear and re-populate list
+                eventsContainer.innerHTML = '';
+                if (filteredEvents.length === 0) {
+                    eventsContainer.innerHTML = '<p>No upcoming events found for this category.</p>';
+                    return;
+                }
+
+                const bounds = new google.maps.LatLngBounds();
+                const { AdvancedMarkerElement } = google.maps.marker;
+
+                filteredEvents.forEach(event => {
+                    // Add event card to list
+                    const card = createEventCard(event);
+                    card.addEventListener('click', () => openDetailPanel(event.id));
+                    eventsContainer.appendChild(card);
+
+                    // Add marker to map
+                    if (event.latitude && event.longitude) {
+                        const position = { lat: event.latitude, lng: event.longitude };
+                        const marker = new AdvancedMarkerElement({
+                            map: map,
+                            position: position,
+                            title: event.title,
+                        });
+                        allMarkers.push(marker);
+                        bounds.extend(position);
+                    }
+                });
+
+                if (allMarkers.length > 0) {
+                    map.fitBounds(bounds);
+                }
+            }
+
+
             // --- API and Map Logic ---
-            const apiUrl = '/api/events';
+            const eventsApiUrl = '/api/events';
+            const categoriesApiUrl = '/api/categories';
             let map;
 
             async function initMap() {
@@ -378,39 +473,36 @@
                     mapId: 'GAPI_MAP_ID'
                 });
 
-                fetch(apiUrl)
+                // Fetch categories first, then events
+                fetch(categoriesApiUrl)
+                    .then(res => res.json())
+                    .then(categories => {
+                        // "All" pill
+                        const allPill = document.createElement('div');
+                        allPill.className = 'category-pill active';
+                        allPill.textContent = 'All';
+                        allPill.dataset.category = 'all';
+                        allPill.addEventListener('click', () => filterAndDisplayEvents('all'));
+                        categoryPillsContainer.appendChild(allPill);
+
+                        // Category pills
+                        categories.forEach(category => {
+                            const pill = document.createElement('div');
+                            pill.className = 'category-pill';
+                            pill.textContent = category.name;
+                            pill.dataset.category = category.id;
+                            pill.addEventListener('click', () => filterAndDisplayEvents(String(category.id)));
+                            categoryPillsContainer.appendChild(pill);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching categories:', error));
+
+                fetch(eventsApiUrl)
                     .then(response => response.json())
                     .then(events => {
-                        // Sort events by start date, earliest first
                         events.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
                         allEvents = events;
-                        if (events.length === 0) {
-                            eventsContainer.innerHTML = '<p>No upcoming events found.</p>';
-                            return;
-                        }
-                        
-                        const bounds = new google.maps.LatLngBounds();
-                        eventsContainer.innerHTML = ''; // Clear loading state
-
-                        events.forEach(event => {
-                            const card = createEventCard(event);
-                            card.addEventListener('click', () => openDetailPanel(event.id));
-                            eventsContainer.appendChild(card);
-
-                            if (event.latitude && event.longitude) {
-                                const position = { lat: event.latitude, lng: event.longitude };
-                                const marker = new AdvancedMarkerElement({
-                                    map: map,
-                                    position: position,
-                                    title: event.title,
-                                });
-                                bounds.extend(position);
-                            }
-                        });
-
-                        if (allEvents.length > 0) {
-                            map.fitBounds(bounds);
-                        }
+                        filterAndDisplayEvents('all'); // Display all events initially
                     })
                     .catch(error => {
                         console.error('Error fetching events:', error);
