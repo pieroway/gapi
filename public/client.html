@@ -118,10 +118,14 @@
             let map;
             let markers = [];
 
-            function initMap() {
-                map = new google.maps.Map(document.getElementById('map'), {
+            async function initMap() {
+                const { Map } = await google.maps.importLibrary("maps");
+                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+                map = new Map(document.getElementById('map'), {
                     center: { lat: 40.7128, lng: -74.0060 }, // Default to NYC
                     zoom: 10,
+                    mapId: 'GAPI_MAP_ID' // A Map ID is required for Advanced Markers
                 });
             }
 
@@ -141,9 +145,9 @@
 
                         if (event.latitude && event.longitude) {
                             const position = { lat: event.latitude, lng: event.longitude };
-                            const marker = new google.maps.Marker({
-                                position: position,
+                            const marker = new google.maps.marker.AdvancedMarkerElement({
                                 map: map,
+                                position: position,
                                 title: event.title,
                             });
 
@@ -188,7 +192,7 @@
 
             // Load the Google Maps script
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBA5gWJDCdQIvqWXdtMN6aWJg2h5rLiikU&callback=initMap&loading=async`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBA5gWJDCdQIvqWXdtMN6aWJg2h5rLiikU&callback=initMap&libraries=marker&loading=async`;
             script.async = true;
             script.defer = true;
             window.initMap = initMap; // Make initMap globally available
