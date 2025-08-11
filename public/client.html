@@ -206,6 +206,7 @@
             
             let isListPanelOpen = false;
             let allEvents = [];
+            let lastSelectedPosition = null;
 
             // --- Panel Interactions ---
             listPanelHeader.addEventListener('click', () => {
@@ -229,12 +230,12 @@
 
                 // Pan map to center the marker in the visible area
                 if (event.latitude && event.longitude) {
-                    const newCenter = new google.maps.LatLng(event.latitude, event.longitude);
-                    map.panTo(newCenter);
+                    lastSelectedPosition = new google.maps.LatLng(event.latitude, event.longitude);
+                    map.panTo(lastSelectedPosition);
                     
-                    // Precisely adjust map center to account for the detail panel
-                    const panelHeight = detailPanel.clientHeight;
-                    map.panBy(0, -panelHeight / 2);
+                    // Pan marker to the top 15% of the screen
+                    const offset = window.innerHeight * 0.35; // (50% - 15%)
+                    map.panBy(0, -offset);
                 }
 
                 detailTitle.textContent = event.title;
@@ -253,6 +254,12 @@
             function closeDetailPanel() {
                 listPanel.classList.remove('detail-open');
                 detailPanel.classList.remove('open');
+
+                // Pan back to the actual center of the last selected marker
+                if (lastSelectedPosition) {
+                    map.panTo(lastSelectedPosition);
+                    lastSelectedPosition = null; // Clear after use
+                }
             }
 
             function formatEventDate(startStr, endStr) {
