@@ -15,6 +15,11 @@ app.get('/', (req, res) => {
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/events', require('./routes/events'));
 
+// Catch-all route to serve the client.html for any other request
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'client.html'));
+});
+
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
