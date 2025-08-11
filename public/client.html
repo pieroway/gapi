@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upcoming Events Map</title>
+    <title>Upcoming Garage Sales Map</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#007bff">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="EventsMap">
+    <meta name="mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-title" content="Events Map">
     <style>
         html, body {
             height: 100%;
@@ -538,12 +537,14 @@
                     }
                 });
 
-                if (allMarkers.length > 1) {
-                    map.fitBounds(bounds, 50); // 50px padding
-                } else if (allMarkers.length === 1) {
-                    map.setCenter(allMarkers[0].position);
-                    map.setZoom(15); // A reasonable zoom level for a single marker
-                }
+                map.setCenter(allMarkers[0].position);
+                map.fitBounds(bounds, 350); // 250px padding
+                // if (allMarkers.length === 1) {
+                //     map.fitBounds(bounds, 250); // 250px padding
+                // } else if (allMarkers.length > 1) {
+                //     map.setCenter(allMarkers[0].position);
+                //     map.setZoom(15); // A reasonable zoom level for a single marker 
+                // }
             }
 
 
