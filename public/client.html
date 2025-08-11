@@ -96,8 +96,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const eventsContainer = document.getElementById('events-container');
 
-            // NOTE: You may need to update the port number to match your running server.
-            const apiUrl = 'http://localhost:61571/api/events';
+            const apiUrl = '/api/events';
 
             fetch(apiUrl)
                 .then(response => {
