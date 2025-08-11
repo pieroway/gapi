@@ -51,11 +51,15 @@
             transform: scale(0.95) translateY(0);
             border-radius: 16px;
         }
+        #list-panel.open .panel-header {
+            margin-bottom: 0;
+        }
         .panel-header {
             padding: 10px 20px;
             text-align: center;
             cursor: pointer;
             margin-bottom: 45px;
+            transition: margin-bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
         #list-panel .panel-header {
             cursor: grab;
