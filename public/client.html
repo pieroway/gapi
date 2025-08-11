@@ -261,6 +261,49 @@
             }
         }
 
+        .user-location-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background-color: #007aff;
+            border: 3px solid #fff;
+            box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
+            transform: translate(-50%, -50%);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 20px rgba(0, 122, 255, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 122, 255, 0);
+            }
+        }
+
+#center-location-button {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    z-index: 10;
+    background-color: #fff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+        #center-location-button svg {
+            stroke: #555;
+        }
+
         /* Desktop Layout */
         @media (min-width: 769px) {
             .panel {
@@ -314,6 +357,9 @@
 <body>
 
     <div id="map"></div>
+    <div id="center-location-button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+    </div>
 
     <div id="qr-code-container">
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://gapi-3iew.onrender.com" alt="QR Code for mobile access">
@@ -357,6 +403,7 @@
             const categoryPillsContainer = document.getElementById('category-pills-container');
             const qrContainer = document.getElementById('qr-code-container');
             const qrModal = document.getElementById('qr-modal');
+            const centerLocationButton = document.getElementById('center-location-button');
             
             const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
             let isListPanelOpen = false;
@@ -365,8 +412,16 @@
             let allCategories = [];
             let allSaleTypes = [];
             let lastSelectedPosition = null;
+            let userLocationMarker = null;
 
             // --- Panel Interactions ---
+            centerLocationButton.addEventListener('click', () => {
+                if (userLocationMarker) {
+                    map.setCenter(userLocationMarker.position);
+              //      map.setZoom(15);
+                }
+            });
+
             listPanelHeader.addEventListener('click', () => {
                 if (isDesktop()) return; // No click-to-toggle on desktop
                 isListPanelOpen = !isListPanelOpen;
@@ -563,6 +618,36 @@
                     zoom: 12,
                     mapId: 'GAPI_MAP_ID'
                 });
+
+                // Add user location tracking
+                if (navigator.geolocation) {
+                    navigator.geolocation.watchPosition(position => {
+                        const pos = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+
+                        if (userLocationMarker) {
+                            userLocationMarker.position = pos;
+                        } else {
+                            const dot = document.createElement('div');
+                            dot.className = 'user-location-dot';
+                            userLocationMarker = new AdvancedMarkerElement({
+                                map: map,
+                                position: pos,
+                                content: dot,
+                                title: 'Your Location'
+                            });
+                            map.setCenter(pos);
+                        }
+                    }, () => {
+                        // Handle location error
+                        console.log("Error: The Geolocation service failed.");
+                    });
+                } else {
+                    // Browser doesn't support Geolocation
+                    console.log("Error: Your browser doesn't support geolocation.");
+                }
 
                 // Fetch categories and sale types, then events
                 Promise.all([
