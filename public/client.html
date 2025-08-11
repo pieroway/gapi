@@ -255,10 +255,18 @@
             }
 
             function formatEventDate(startStr, endStr) {
+                if (!startStr || !endStr) {
+                    return 'Date not available';
+                }
+
                 const startDate = new Date(startStr);
                 const endDate = new Date(endStr);
-                const now = new Date();
 
+                if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                    return 'Invalid date format';
+                }
+
+                const now = new Date();
                 const isToday = startDate.getFullYear() === now.getFullYear() &&
                               startDate.getMonth() === now.getMonth() &&
                               startDate.getDate() === now.getDate();
@@ -278,8 +286,13 @@
                 if (day % 10 === 2 && day % 100 !== 12) suffix = 'nd';
                 if (day % 10 === 3 && day % 100 !== 13) suffix = 'rd';
                 
-                const formattedDate = startDate.toLocaleDateString('en-US', dayOptions);
-                return formattedDate.replace(`, ${day}`, ` ${day}${suffix}`);
+                // Intl.DateTimeFormat is more robust for this
+                const formatter = new Intl.DateTimeFormat('en-US', dayOptions);
+                const parts = formatter.formatToParts(startDate);
+                const weekday = parts.find(p => p.type === 'weekday').value;
+                const month = parts.find(p => p.type === 'month').value;
+                
+                return `${weekday} ${month} ${day}${suffix}`;
             }
 
             // --- API and Map Logic ---
