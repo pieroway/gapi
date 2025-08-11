@@ -7,15 +7,15 @@ const events = [
     address: '204 Wabiskaw Private, Ottawa, ON K2J 0E6 Canada',
     latitude: 45.2548783,
     longitude: -75.7291679,
-    start_datetime: '2025-10-08 T09:00:00Z',
-    end_datetime: '2025-10-08 T17:00:00Z',
+    start_datetime: '2025-08-10 T09:00:00Z',
+    end_datetime: '2025-08-10 T17:00:00Z',
     photos: [`https://picsum.photos/200/300`],
     item_categories: [6, 7, 8],
     is_deleted: false,
     to_be_deleted: false,
     ended_early_flags: 0,
     ratings: [
-      { value: 5, timestamp: '2025-10-26T18:00:00Z' },
+      { value: 5, timestamp: '2025-11-26T18:00:00Z' },
       { value: 4, timestamp: '2025-10-26T18:05:00Z' },
     ],
     comments: [
