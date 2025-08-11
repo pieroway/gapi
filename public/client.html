@@ -240,7 +240,7 @@
                 const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/400x200?text=No+Image';
                 detailContent.innerHTML = `
                     <img src="${photoUrl}" alt="${event.title}" style="width: 100%; border-radius: 8px;">
-                    <p><strong>When:</strong> ${new Date(event.start_datetime).toLocaleString()}</p>
+                    <p><strong>When:</strong> ${formatEventDate(event.start_datetime, event.end_datetime)}</p>
                     <p><strong>Where:</strong> ${event.address}</p>
                     <p>${event.description}</p>
                 `;
@@ -252,6 +252,34 @@
             function closeDetailPanel() {
                 listPanel.classList.remove('detail-open');
                 detailPanel.classList.remove('open');
+            }
+
+            function formatEventDate(startStr, endStr) {
+                const startDate = new Date(startStr);
+                const endDate = new Date(endStr);
+                const now = new Date();
+
+                const isToday = startDate.getFullYear() === now.getFullYear() &&
+                              startDate.getMonth() === now.getMonth() &&
+                              startDate.getDate() === now.getDate();
+
+                const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+                const startTime = startDate.toLocaleTimeString('en-US', timeOptions).replace(' ', '');
+                const endTime = endDate.toLocaleTimeString('en-US', timeOptions).replace(' ', '');
+
+                if (isToday) {
+                    return `Today from ${startTime} to ${endTime}`;
+                }
+
+                const dayOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+                const day = startDate.getDate();
+                let suffix = 'th';
+                if (day % 10 === 1 && day % 100 !== 11) suffix = 'st';
+                if (day % 10 === 2 && day % 100 !== 12) suffix = 'nd';
+                if (day % 10 === 3 && day % 100 !== 13) suffix = 'rd';
+                
+                const formattedDate = startDate.toLocaleDateString('en-US', dayOptions);
+                return formattedDate.replace(`, ${day}`, ` ${day}${suffix}`);
             }
 
             // --- API and Map Logic ---
