@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upcoming Events Map</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EventsMap">
     <style>
         html, body {
             height: 100%;
@@ -523,8 +528,11 @@
                     }
                 });
 
-                if (allMarkers.length > 0) {
+                if (allMarkers.length > 1) {
                     map.fitBounds(bounds);
+                } else if (allMarkers.length === 1) {
+                    map.setCenter(allMarkers[0].position);
+                    map.setZoom(15); // A reasonable zoom level for a single marker
                 }
             }
 
@@ -644,6 +652,16 @@
             document.head.appendChild(script);
         });
     </script>
-
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
