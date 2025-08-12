@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,13 +11,15 @@
     <meta name="mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-title" content="Events Map">
     <style>
-        html, body {
+        html,
+        body {
             height: 100%;
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
         }
+
         #map {
             height: 100%;
             width: 100%;
@@ -24,7 +27,9 @@
             top: 0;
             left: 0;
             z-index: 1;
+            transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
+
         .panel {
             position: absolute;
             bottom: 0;
@@ -36,23 +41,27 @@
             flex-direction: column;
             transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
+
         #list-panel {
             height: 75vh;
-            border-top-left-radius: 16px;
-            border-top-right-radius: 16px;
             box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-            transform: translateY(calc(100% - 90px)); /* Adjusted to only show header */
+            transform: translateY(calc(100% - 90px));
+            /* Adjusted to only show header */
         }
+
         #list-panel.open {
             transform: translateY(0);
         }
+
         #list-panel.detail-open {
             transform: scale(0.95) translateY(0);
             border-radius: 16px;
         }
+
         #list-panel.open .panel-header {
             margin-bottom: 0;
         }
+
         .panel-header {
             padding: 10px 20px;
             text-align: center;
@@ -60,12 +69,15 @@
             margin-bottom: 45px;
             transition: margin-bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
+
         #list-panel .panel-header {
             cursor: grab;
         }
+
         #detail-panel .panel-header {
             margin-bottom: 0;
         }
+
         .panel-handle {
             width: 40px;
             height: 5px;
@@ -73,119 +85,173 @@
             border-radius: 2.5px;
             margin: 0 auto 10px;
         }
+
         .panel-title {
             font-size: 1.2rem;
             font-weight: 600;
+            flex-grow: 1;
         }
+
+        #collapse-button {
+            display: none;
+            cursor: pointer;
+            /* padding: 5px; */
+            position: relative;
+            top: 3px;
+        }
+
+        #expand-button {
+            position: absolute;
+            left: 12px;
+            z-index: 10;
+            align-items: initial;
+            cursor: pointer;
+            top: 25px;
+            z-index: 1;
+        }
+
         .panel-content {
-            flex: 1; /* Allow content to grow and fill space */
+            flex: 1;
+            /* Allow content to grow and fill space */
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Prevents content from overflowing the panel */
+            overflow: hidden;
+            /* Prevents content from overflowing the panel */
         }
+
         #sale-type-pills-container,
         #category-pills-container {
             background-color: #ffffff;
-            padding: 5px 20px; /* Reduced vertical padding */
-            flex-shrink: 0; /* Prevent pill containers from shrinking */
+            padding: 5px 20px;
+            /* Reduced vertical padding */
+            flex-shrink: 0;
+            /* Prevent pill containers from shrinking */
             white-space: nowrap;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            scrollbar-width: none; 
+            scrollbar-width: none;
         }
+
         #sale-type-pills-container::-webkit-scrollbar,
         #category-pills-container::-webkit-scrollbar {
-            display: none; /* Hide scrollbar */
+            display: none;
+            /* Hide scrollbar */
         }
+
         #sale-type-pills-container::-webkit-scrollbar,
         #category-pills-container::-webkit-scrollbar {
             height: 8px;
         }
+
         #sale-type-pills-container::-webkit-scrollbar-thumb,
         #category-pills-container::-webkit-scrollbar-thumb {
             background: #ccc;
             border-radius: 4px;
         }
+
         .sale-type-pill,
         .category-pill {
             display: inline-block;
-            padding: 6px 14px; /* Reduced padding */
-            margin-right: 8px; /* Reduced margin */
-            border-radius: 18px; /* Slightly smaller radius */
+            padding: 6px 14px;
+            /* Reduced padding */
+            margin-right: 8px;
+            /* Reduced margin */
+            border-radius: 18px;
+            /* Slightly smaller radius */
             background-color: #e9ecef;
             color: #495057;
             cursor: pointer;
             font-weight: 500;
-            font-size: 0.9rem; /* Slightly smaller font */
+            font-size: 0.9rem;
+            /* Slightly smaller font */
             transition: background-color 0.2s, color 0.2s;
         }
+
         .sale-type-pill:hover,
         .category-pill:hover {
             background-color: #dee2e6;
         }
+
         .sale-type-pill.active,
         .category-pill.active {
             background-color: #007bff;
             color: #ffffff;
         }
+
         #events-container {
             flex-grow: 1;
             overflow-y: auto;
             padding: 0 20px 20px;
             margin-top: 20px;
         }
+
         /* Custom Scrollbar for Webkit browsers */
         #events-container::-webkit-scrollbar {
             width: 8px;
         }
+
         #events-container::-webkit-scrollbar-track {
             background: #f1f1f1;
         }
+
         #events-container::-webkit-scrollbar-thumb {
             background: #888;
             border-radius: 4px;
         }
+
         #events-container::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+
         .card {
             background-color: #f9f9f9;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             cursor: pointer;
             transition: background-color 0.2s ease;
-            margin-bottom: 15px; /* Space between cards */
+            margin-bottom: 15px;
+            /* Space between cards */
         }
+
         .card:hover {
-            background-color: #f0f0f0; /* A subtle background color change */
+            background-color: #f0f0f0;
+            /* A subtle background color change */
         }
+
         .card:last-child {
             margin-bottom: 15px;
         }
+
         .card-img {
             width: 100%;
             height: 150px;
             object-fit: cover;
         }
+
         .card-content {
             padding: 15px;
         }
+
         .card-title {
             font-size: 1.1rem;
             font-weight: 600;
             margin: 0 0 5px;
         }
+
         .card-description {
             font-size: 0.9rem;
             color: #666;
-            margin-bottom: 10px; /* Add space before pills */
+            margin-bottom: 10px;
+            /* Add space before pills */
         }
+
         .mini-pills-container {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
         }
+
         .mini-pill {
             display: inline-block;
             padding: 4px 10px;
@@ -195,65 +261,82 @@
             font-size: 0.75rem;
             font-weight: 500;
         }
+
         .sale-type-pill-mini {
-            background-color: #28a745; /* A green color for sale type */
+            background-color: #28a745;
+            /* A green color for sale type */
             color: white;
         }
+
         #detail-panel {
-            height: 80vh; /* Changed from 100vh */
+            height: 80vh;
+            /* Changed from 100vh */
             z-index: 3;
-            transform: translateY(100%); /* Move completely out of view */
-            visibility: hidden; /* Hide when closed */
+            transform: translateY(100%);
+            /* Move completely out of view */
+            visibility: hidden;
+            /* Hide when closed */
             border-top-left-radius: 16px;
             border-top-right-radius: 16px;
             box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
             transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
         }
+
         #detail-panel.open {
             transform: translateY(0);
-            visibility: visible; /* Show when open */
+            visibility: visible;
+            /* Show when open */
         }
+
         #detail-content {
             padding: 20px;
             overflow-y: scroll;
             padding-top: 0px;
         }
+
         #qr-code-container {
             position: absolute;
-            bottom: 70px; /* Positioned just above the collapsed panel */
+            bottom: 70px;
+            /* Positioned just above the collapsed panel */
             left: 20px;
             z-index: 10;
             cursor: pointer;
             transition: opacity 0.3s ease;
         }
+
         #qr-code-container img {
             width: 50px;
             height: 50px;
             border-radius: 5px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
+
         #qr-modal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.6);
+            background-color: rgba(0, 0, 0, 0.6);
             z-index: 11;
-            display: none; /* Hidden by default */
+            display: none;
+            /* Hidden by default */
             justify-content: center;
             align-items: center;
             flex-direction: column;
         }
+
         #qr-modal img {
             width: 250px;
             height: 250px;
         }
+
         #qr-modal p {
             color: white;
             font-size: 1.2rem;
             margin-top: 20px;
         }
+
         /* Hide on mobile */
         @media (max-width: 768px) {
             #qr-code-container {
@@ -262,8 +345,8 @@
         }
 
         .user-location-dot {
-            width: 22px;
-            height: 22px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background-color: #007aff;
             border: 3px solid #fff;
@@ -276,29 +359,31 @@
             0% {
                 box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4);
             }
+
             70% {
                 box-shadow: 0 0 0 20px rgba(0, 122, 255, 0);
             }
+
             100% {
                 box-shadow: 0 0 0 0 rgba(0, 122, 255, 0);
             }
         }
 
-#center-location-button {
-    position: absolute;
-    top: 60px;
-    right: 10px;
-    z-index: 10;
-    background-color: #fff;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-}
+        #center-location-button {
+            position: absolute;
+            top: 16px;
+            right: 10px;
+            z-index: 10;
+            background-color: #fff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
 
         #center-location-button svg {
             stroke: #555;
@@ -306,67 +391,126 @@
 
         /* Desktop Layout */
         @media (min-width: 769px) {
-            .panel {
-                top: 20px;
-                bottom: 20px;
-                left: 20px;
-                right: auto;
-                width: 400px;
-                height: auto;
-                border-radius: 16px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            #map {
+                width: 75%;
+                left: 25%;
             }
+
+            #map.panel-closed {
+                width: 100%;
+                left: 0;
+            }
+
+            .panel {
+                top: 0;
+                bottom: 0;
+                left: 0;
+                right: auto;
+                width: 25%;
+                height: 100%;
+                border-radius: 0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                position: fixed;
+            }
+
             #list-panel {
-                height: auto;
+                height: 100%;
                 transform: translateX(0);
                 transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease;
             }
+
             #list-panel.closed {
-                 transform: translateX(calc(-100% - 20px));
-                 opacity: 0;
+                transform: translateX(-100%);
+                opacity: 0;
             }
+
             #list-panel.detail-open {
-                transform: translateX(0); /* Stays visible */
+                transform: translateX(0);
+                /* Stays visible */
             }
+
             #detail-panel {
-                height: auto;
-                width: 400px;
-                transform: translateX(calc(-100% - 20px));
-                z-index: 4; /* Ensure detail is on top */
+                height: 100%;
+                width: 25%;
+                transform: translateX(-100%);
+                z-index: 4;
+                /* Ensure detail is on top */
             }
+
             #detail-panel.open {
                 transform: translateX(0);
             }
-            #events-container {
-                /* Desktop uses the same single-column list, flexbox handles it */
-            }
+
             .panel-header {
-                cursor: default; /* No dragging on desktop */
+                display: flex;
+                align-items: center;
+                cursor: default;
+                /* No dragging on desktop */
+                margin-bottom: 0;
             }
+
+            #collapse-button {
+                display: block;
+            }
+
+            #list-panel.closed+#expand-button {
+                display: block;
+            }
+
             .panel-handle {
-                display: none; /* Hide mobile handle */
+                display: none;
+                /* Hide mobile handle */
             }
+
             #qr-code-container {
                 bottom: 20px;
                 left: auto;
                 right: 20px;
             }
+
+            #debug-overlay {
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                background-color: rgba(0, 0, 0, 0.7);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                z-index: 10;
+                font-family: monospace;
+                font-size: 12px;
+            }
+
+            @media (min-width: 769px) {
+                #debug-overlay {
+                    left: 50%;
+                    transform: translateX(-50%);
+                }
+            }
         }
     </style>
 </head>
+
 <body>
 
     <div id="map"></div>
+    <div id="debug-overlay"></div>
     <div id="center-location-button">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+        </svg>
     </div>
 
     <div id="qr-code-container">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://gapi-3iew.onrender.com" alt="QR Code for mobile access">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://gapi-3iew.onrender.com"
+            alt="QR Code for mobile access">
     </div>
 
     <div id="qr-modal">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https://gapi-3iew.onrender.com" alt="QR Code">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https://gapi-3iew.onrender.com"
+            alt="QR Code">
         <p>Scan with your mobile device to open.</p>
     </div>
 
@@ -374,12 +518,27 @@
         <div class="panel-header">
             <div class="panel-handle"></div>
             <h1 class="panel-title">Upcoming Events</h1>
+            <div id="collapse-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                </svg>
+            </div>
         </div>
         <div class="panel-content">
             <div id="sale-type-pills-container"></div>
             <div id="category-pills-container"></div>
             <div id="events-container"></div>
         </div>
+    </div>
+    <div id="expand-button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+            <line x1="15" y1="3" x2="15" y2="21"></line>
+        </svg>
     </div>
 
     <div id="detail-panel" class="panel">
@@ -404,7 +563,11 @@
             const qrContainer = document.getElementById('qr-code-container');
             const qrModal = document.getElementById('qr-modal');
             const centerLocationButton = document.getElementById('center-location-button');
-            
+            const debugOverlay = document.getElementById('debug-overlay');
+            const collapseButton = document.getElementById('collapse-button');
+            const expandButton = document.getElementById('expand-button');
+            const mapElement = document.getElementById('map');
+
             const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
             let isListPanelOpen = false;
             let allEvents = [];
@@ -415,9 +578,19 @@
             let userLocationMarker = null;
 
             // --- Panel Interactions ---
+            collapseButton.addEventListener('click', () => {
+                listPanel.classList.add('closed');
+                mapElement.classList.add('panel-closed');
+            });
+
+            expandButton.addEventListener('click', () => {
+                listPanel.classList.remove('closed');
+                mapElement.classList.remove('panel-closed');
+            });
+
             centerLocationButton.addEventListener('click', () => {
                 if (userLocationMarker) {
-                    smoothPanTo(userLocationMarker.position, 1000);
+                    smoothPanTo(userLocationMarker.position);
                 }
             });
 
@@ -443,10 +616,10 @@
 
                 // Pan map to center the marker in the visible area
                 if (event.latitude && event.longitude) {
-                    
+
                     lastSelectedPosition = new google.maps.LatLng(event.latitude, event.longitude);
-                    smoothPanTo(lastSelectedPosition, 1000);
-                    
+                    smoothPanTo(lastSelectedPosition);
+
                     if (isDesktop()) {
                         // Pan map right to center marker in visible area next to panel
                         const panelWidth = 400; // As defined in CSS
@@ -476,7 +649,7 @@
                         <div class="mini-pills-container" style="margin-top: 15px;">${saleTypePill}${categoryPills}</div>
                     </div>
                 `;
-                
+
                 if (!isDesktop()) {
                     listPanel.classList.add('detail-open');
                 }
@@ -491,7 +664,7 @@
 
                 // Pan back to the actual center of the last selected marker
                 if (lastSelectedPosition) {
-                    smoothPanTo(lastSelectedPosition, 1000);
+                    smoothPanTo(lastSelectedPosition);
                     lastSelectedPosition = null; // Clear after use
                 }
             }
@@ -510,8 +683,8 @@
 
                 const now = new Date();
                 const isToday = startDate.getFullYear() === now.getFullYear() &&
-                              startDate.getMonth() === now.getMonth() &&
-                              startDate.getDate() === now.getDate();
+                    startDate.getMonth() === now.getMonth() &&
+                    startDate.getDate() === now.getDate();
 
                 const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
                 const startTime = startDate.toLocaleTimeString('en-US', timeOptions).replace(' ', '');
@@ -527,14 +700,28 @@
                 if (day % 10 === 1 && day % 100 !== 11) suffix = 'st';
                 if (day % 10 === 2 && day % 100 !== 12) suffix = 'nd';
                 if (day % 10 === 3 && day % 100 !== 13) suffix = 'rd';
-                
+
                 // Intl.DateTimeFormat is more robust for this
                 const formatter = new Intl.DateTimeFormat('en-US', dayOptions);
                 const parts = formatter.formatToParts(startDate);
                 const weekday = parts.find(p => p.type === 'weekday').value;
                 const month = parts.find(p => p.type === 'month').value;
-                
+
                 return `${weekday} ${month} ${day}${suffix}`;
+            }
+
+            function updateDebugOverlay() {
+                const selectedSaleTypes = Array.from(document.querySelectorAll('.sale-type-pill.active')).map(pill => pill.textContent);
+                const selectedCategories = Array.from(document.querySelectorAll('.category-pill.active')).map(pill => pill.textContent);
+
+                debugOverlay.innerHTML = `
+                    <strong>Zoom Level:</strong> ${map.getZoom()}<br>
+                    <strong>Total Events:</strong> ${allEvents.length}<br>
+                    <strong>Filtered Events:</strong> ${eventsContainer.children.length}<br>
+                    <strong>Pin Count:</strong> ${allMarkers.length}<br>
+                    <strong>Sale Types:</strong> ${selectedSaleTypes.join(', ') || 'None'}<br>
+                    <strong>Categories:</strong> ${selectedCategories.join(', ') || 'None'}
+                `;
             }
 
             function filterAndDisplayEvents() {
@@ -572,6 +759,10 @@
                 const bounds = new google.maps.LatLngBounds();
                 const { AdvancedMarkerElement } = google.maps.marker;
 
+                if (userLocationMarker) {
+                    bounds.extend(userLocationMarker.position);
+                }
+
                 filteredEvents.forEach(event => {
                     // Add event card to list
                     const card = createEventCard(event);
@@ -591,14 +782,9 @@
                     }
                 });
 
-                smoothPanTo(allMarkers[0].position, 1000);
-                map.fitBounds(bounds, 350); // 250px padding
-                // if (allMarkers.length === 1) {
-                //     map.fitBounds(bounds, 250); // 250px padding
-                // } else if (allMarkers.length > 1) {
-                //     map.setCenter(allMarkers[0].position);
-                //     map.setZoom(15); // A reasonable zoom level for a single marker 
-                // }
+                smoothPanTo(allMarkers[0].position);
+                map.fitBounds(bounds, 150);
+                updateDebugOverlay();
             }
 
 
@@ -615,7 +801,12 @@
                 map = new Map(document.getElementById('map'), {
                     center: { lat: 45.345, lng: -75.760 }, // Default to Ottawa
                     zoom: 12,
-                    mapId: 'GAPI_MAP_ID'
+                    mapId: 'GAPI_MAP_ID',
+                    disableDefaultUI: true
+                });
+
+                map.addListener('zoom_changed', () => {
+                    updateDebugOverlay();
                 });
 
                 // Add user location tracking
@@ -635,9 +826,10 @@
                                 map: map,
                                 position: pos,
                                 content: dot,
-                                title: 'Your Location'
+                                title: 'Your Location',
+                                zIndex: google.maps.Marker.MAX_ZINDEX + 1 // Ensures it's always on top
                             });
-                            smoothPanTo(pos, 1000);
+                            smoothPanTo(pos);
                         }
                     }, () => {
                         // Handle location error
@@ -712,14 +904,15 @@
 
                     events.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
                     filterAndDisplayEvents(); // Display all events initially
+                    updateDebugOverlay();
                 })
-                .catch(error => {
-                    console.error('Error fetching data:', error);
-                    eventsContainer.innerHTML = `<p class="error-message">Could not load events.</p>`;
-                });
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        eventsContainer.innerHTML = `<p class="error-message">Could not load events.</p>`;
+                    });
             }
 
-            function smoothPanTo(position, duration) {
+            function smoothPanTo(position, duration = 300) {
                 const start = {
                     lat: map.getCenter().lat(),
                     lng: map.getCenter().lng()
@@ -792,4 +985,5 @@
         }
     </script>
 </body>
+
 </html>
