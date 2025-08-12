@@ -81,4 +81,62 @@ const events = [
   }
 ];
 
+// --- Mock Data Generation ---
+
+// Helper function to generate a random coordinate within a given radius (in km)
+function generateRandomPoint(center, radius) {
+    const r = radius / 111.32; // Convert radius from km to degrees
+    const y0 = center.latitude;
+    const x0 = center.longitude;
+    const u = Math.random();
+    const v = Math.random();
+    const w = r * Math.sqrt(u);
+    const t = 2 * Math.PI * v;
+    const x = w * Math.cos(t);
+    const y = w * Math.sin(t);
+    const newX = x / Math.cos(y0);
+
+    return {
+        latitude: y + y0,
+        longitude: newX + x0
+    };
+}
+
+// Helper to generate a random UUID
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+const firstEventCoordinates = {
+    latitude: events[0].latitude,
+    longitude: events[0].longitude
+};
+
+for (let i = 4; i <= 103; i++) {
+    const newCoords = generateRandomPoint(firstEventCoordinates, 5);
+    const newEvent = {
+        id: uuidv4(),
+        guid: uuidv4(),
+        title: `Mock Event ${i}`,
+        description: `This is a mock event number ${i}.`,
+        address: `${i} Mockingbird Lane, Ottawa, ON`,
+        latitude: newCoords.latitude,
+        longitude: newCoords.longitude,
+        start_datetime: `${todayStr}T${String(9 + (i % 8)).padStart(2, '0')}:00:00Z`,
+        end_datetime: `${todayStr}T${String(10 + (i % 8))}:00:00Z`,
+        photos: [`https://picsum.photos/seed/${i}/200/300`],
+        sale_type_id: Math.floor(Math.random() * 3) + 1,
+        item_categories: [Math.floor(Math.random() * 10) + 1],
+        is_deleted: false,
+        to_be_deleted: false,
+        ended_early_flags: 0,
+        ratings: [],
+        comments: [],
+    };
+    events.push(newEvent);
+}
+
 module.exports = events;
