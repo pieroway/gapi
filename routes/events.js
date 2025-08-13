@@ -76,6 +76,31 @@ router.get('/', (req, res) => {
   res.json(activeEvents);
 });
 
+// Update an event by public ID (for Admin)
+router.put('/:id', (req, res) => {
+  const { id } = req.params;
+  const eventIndex = events.findIndex(event => event.id === id);
+  if (eventIndex === -1) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+  // Exclude read-only fields from being updated
+  const { id: bodyId, guid, ratings, comments, ...updateData } = req.body;
+  const updatedEvent = { ...events[eventIndex], ...updateData };
+  events[eventIndex] = updatedEvent;
+  res.json(populateEventDetails(updatedEvent));
+});
+
+// Soft delete an event by public ID (for Admin)
+router.delete('/:id', (req, res) => {
+  const { id } = req.params;
+  const eventIndex = events.findIndex(event => event.id === id);
+  if (eventIndex === -1) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+  events[eventIndex].is_deleted = true;
+  res.status(204).send();
+});
+
 // --- Creator/Admin Routes ---
 
 // Create a new event

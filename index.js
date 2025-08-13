@@ -15,6 +15,7 @@ app.get('/', (req, res) => {
 app.use('/api/item_categories', require('./routes/item_categories'));
 app.use('/api/sale_types', require('./routes/sale_types'));
 app.use('/api/events', require('./routes/events'));
+app.use('/api/reports', require('./routes/reports'));
 
 // Catch-all route to serve the client.html for any other request
 app.get('*', (req, res) => {
