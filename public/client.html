@@ -17,17 +17,17 @@
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
         }
 
         #map {
-            height: 100%;
             width: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
+            position: relative;
             z-index: 1;
-            transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            flex-grow: 1;
         }
 
         .panel {
@@ -39,22 +39,27 @@
             z-index: 2;
             display: flex;
             flex-direction: column;
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
         #list-panel {
-            height: 75vh;
+            position: relative;
+            /* Override .panel's absolute positioning */
+            flex-shrink: 0;
+            /* Prevent panel from shrinking */
+            height: 90px;
+            /* Start collapsed */
+            transition: height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            overflow: hidden;
+            /* Hide content when collapsed */
             box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-            transform: translateY(calc(100% - 90px));
-            /* Adjusted to only show header */
         }
 
         #list-panel.open {
-            transform: translateY(0);
+            height: 75vh;
         }
 
         #list-panel.detail-open {
-            transform: scale(0.95) translateY(0);
+            transform: scale(0.95);
             border-radius: 16px;
         }
 
@@ -101,6 +106,7 @@
         }
 
         #expand-button {
+            display: none;
             position: absolute;
             left: 12px;
             z-index: 10;
@@ -116,7 +122,43 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
             /* Prevents content from overflowing the panel */
+        }
+
+        #search-container {
+            padding: 10px 20px 0;
+            position: relative;
+            flex-shrink: 0;
+            /* padding-top: 0px; */
+            margin-bottom: 10px;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            background-color: #f5f5f5;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        #search-input:focus {
+            outline: none;
+            border-color: #007bff;
+            background-color: #fff;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 35px;
+            top: 21px;
+            width: 18px;
+            height: 18px;
+            stroke: #999;
+            pointer-events: none;
         }
 
         #sale-type-pills-container,
@@ -124,8 +166,6 @@
             background-color: #ffffff;
             padding: 5px 20px;
             /* Reduced vertical padding */
-            flex-shrink: 0;
-            /* Prevent pill containers from shrinking */
             white-space: nowrap;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
@@ -147,6 +187,33 @@
         #category-pills-container::-webkit-scrollbar-thumb {
             background: #ccc;
             border-radius: 4px;
+        }
+
+        .pills-wrapper {
+            position: relative;
+            flex-shrink: 0;
+            /* Prevent wrapper from shrinking in the flex layout */
+        }
+
+        .pills-wrapper::before,
+        .pills-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 25px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .pills-wrapper::before {
+            left: 0;
+            background: linear-gradient(to right, #ffffff 20%, rgba(255, 255, 255, 0));
+        }
+
+        .pills-wrapper::after {
+            right: 0;
+            background: linear-gradient(to left, #ffffff 20%, rgba(255, 255, 255, 0));
         }
 
         .sale-type-pill,
@@ -221,6 +288,61 @@
 
         .card:last-child {
             margin-bottom: 15px;
+        }
+
+        .no-results-container {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .no-results-container p {
+            margin-bottom: 20px;
+        }
+
+        .clear-filters-btn {
+            padding: 10px 20px;
+            border: 1px solid #007bff;
+            color: #007bff;
+            background-color: transparent;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .clear-filters-btn:hover {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        #scroll-to-top-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            width: 44px;
+            height: 44px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 5;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: opacity 0.3s, visibility 0.3s, transform 0.3s;
+        }
+
+        #scroll-to-top-btn.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
         }
 
         .card-chevron {
@@ -362,6 +484,71 @@
             margin-top: 20px;
         }
 
+        #debug-overlay {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 5px;
+            z-index: 12;
+            font-family: monospace;
+            font-size: 12px;
+            pointer-events: auto;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        #debug-header {
+            padding: 5px 10px;
+            background-color: rgba(0, 0, 0, 0.9);
+            cursor: pointer;
+            font-weight: bold;
+            user-select: none;
+            /* Prevent text selection on drag */
+        }
+
+        #debug-content {
+            padding: 10px;
+            pointer-events: none;
+            /* Allow clicks to pass through content to map */
+        }
+
+        #debug-overlay.collapsed #debug-content {
+            display: none;
+        }
+
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease, visibility 0.5s;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #loading-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
         /* Hide on mobile */
         @media (max-width: 768px) {
             #qr-code-container {
@@ -378,6 +565,15 @@
             box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
             transform: translate(-50%, -50%);
             animation: pulse 2s infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         @keyframes pulse {
@@ -414,6 +610,12 @@
             stroke: #555;
         }
 
+        #center-location-button.following svg {
+            stroke: #007bff;
+            /* Active blue */
+            fill: #e6f2ff;
+        }
+
         /* Desktop Layout */
         @media (min-width: 769px) {
             .card-chevron {
@@ -423,6 +625,10 @@
             #detail-back-button {
                 display: flex;
                 align-items: center;
+            }
+
+            #debug-header {
+                cursor: move;
             }
 
             #map {
@@ -502,30 +708,15 @@
                 right: 20px;
             }
 
-            #debug-overlay {
-                position: absolute;
-                top: 10px;
-                left: 10px;
-                background-color: rgba(0, 0, 0, 0.7);
-                color: white;
-                padding: 10px;
-                border-radius: 5px;
-                z-index: 10;
-                font-family: monospace;
-                font-size: 12px;
-            }
-
-            @media (min-width: 769px) {
-                #debug-overlay {
-                    left: 50%;
-                    transform: translateX(-50%);
-                }
-            }
         }
     </style>
 </head>
 
 <body>
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
 
     <div id="map"></div>
     <div id="debug-overlay"></div>
@@ -561,9 +752,28 @@
             </div>
         </div>
         <div class="panel-content">
-            <div id="sale-type-pills-container"></div>
-            <div id="category-pills-container"></div>
+            <div id="search-container">
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="search" id="search-input" placeholder="Search by title or description...">
+            </div>
+            <div class="pills-wrapper">
+                <div id="sale-type-pills-container"></div>
+            </div>
+            <div class="pills-wrapper">
+                <div id="category-pills-container"></div>
+            </div>
             <div id="events-container"></div>
+            <button id="scroll-to-top-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5"></line>
+                    <polyline points="5 12 12 5 19 12"></polyline>
+                </svg>
+            </button>
         </div>
     </div>
     <div id="expand-button">
@@ -608,6 +818,9 @@
             const expandButton = document.getElementById('expand-button');
             const mapElement = document.getElementById('map');
             const detailBackButton = document.getElementById('detail-back-button');
+            const searchInput = document.getElementById('search-input');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const scrollToTopBtn = document.getElementById('scroll-to-top-btn');
 
             const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
             let isListPanelOpen = false;
@@ -619,7 +832,66 @@
             let userLocationMarker = null;
             let activeMarker = null;
             let hoveredMarker = null;
+            let isFollowingUser = false;
             let highlightedPinElement = null;
+
+            // --- Debug Panel Setup ---
+            debugOverlay.innerHTML = '<div id="debug-header">Debug</div><div id="debug-content"></div>';
+            const debugHeader = document.getElementById('debug-header');
+
+            let wasDragged = false;
+
+            // Collapse/Expand
+            debugHeader.addEventListener('click', () => {
+                if (wasDragged) {
+                    wasDragged = false; // Reset for next click
+                    return;
+                }
+                debugOverlay.classList.toggle('collapsed');
+            });
+
+            // Draggable on Desktop
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            const onDragStart = (e) => {
+                if (!isDesktop()) return;
+
+                isDragging = true;
+                wasDragged = false;
+
+                // If the panel is centered with transform, calculate absolute position before dragging
+                const style = window.getComputedStyle(debugOverlay);
+                if (style.transform !== 'none' && style.transform !== 'matrix(1, 0, 0, 1, 0, 0)') {
+                    const rect = debugOverlay.getBoundingClientRect();
+                    debugOverlay.style.transform = 'none';
+                    debugOverlay.style.left = `${rect.left}px`;
+                    debugOverlay.style.top = `${rect.top}px`;
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+                } else {
+                    offsetX = e.clientX - debugOverlay.offsetLeft;
+                    offsetY = e.clientY - debugOverlay.offsetTop;
+                }
+
+                document.addEventListener('mousemove', onDragMove);
+                document.addEventListener('mouseup', onDragEnd);
+            };
+
+            const onDragMove = (e) => {
+                if (!isDragging) return;
+                wasDragged = true; // It's a drag, not a click
+                debugOverlay.style.left = `${e.clientX - offsetX}px`;
+                debugOverlay.style.top = `${e.clientY - offsetY}px`;
+            };
+
+            const onDragEnd = () => {
+                isDragging = false;
+                document.removeEventListener('mousemove', onDragMove);
+                document.removeEventListener('mouseup', onDragEnd);
+            };
+
+            debugHeader.addEventListener('mousedown', onDragStart);
 
             // --- Panel Interactions ---
             collapseButton.addEventListener('click', () => {
@@ -632,9 +904,28 @@
                 mapElement.classList.remove('panel-closed');
             });
 
+            searchInput.addEventListener('input', filterAndDisplayEvents);
+
+            eventsContainer.addEventListener('scroll', () => {
+                if (eventsContainer.scrollTop > 300) {
+                    scrollToTopBtn.classList.add('visible');
+                } else {
+                    scrollToTopBtn.classList.remove('visible');
+                }
+            });
+
+            scrollToTopBtn.addEventListener('click', () => {
+                eventsContainer.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+
             centerLocationButton.addEventListener('click', () => {
+                isFollowingUser = true;
+                centerLocationButton.classList.add('following');
                 if (userLocationMarker) {
-                    smoothPanTo(userLocationMarker.position);
+                    smoothPanTo(userLocationMarker.position, 300, () => map.setZoom(15));
                 }
             });
 
@@ -715,10 +1006,16 @@
                         map.setZoom(14);
                     } else {
                         lastSelectedPosition = position;
-                        smoothPanTo(position);
-                        // Pan marker to the top 15% of the screen on mobile
-                        const offset = window.innerHeight * 0.35; // (50% - 15%)
-                        map.panBy(0, offset);
+                        smoothPanTo(position, 300, () => {
+                            map.setZoom(13);
+                            // After centering, pan the map so the pin is centered in the *visible* map area,
+                            // accounting for the detail panel that slides up from the bottom.
+                            const mapHeight = mapElement.offsetHeight;
+                            const detailPanelHeight = detailPanel.offsetHeight;
+                            const overlap = (mapHeight + detailPanelHeight) - window.innerHeight;
+                            const panOffset = overlap > 0 ? overlap / 2 : 0;
+                            map.panBy(0, panOffset);
+                        });
                     }
                 }
                 detailTitle.textContent = event.title;
@@ -758,6 +1055,72 @@
 
                 // Deactivate any highlighted marker
                 setActiveMarker(null);
+            }
+
+            function loadAndApplyFilters() {
+                const savedFiltersJSON = localStorage.getItem('eventFilters');
+                if (!savedFiltersJSON) return;
+
+                try {
+                    const savedFilters = JSON.parse(savedFiltersJSON);
+
+                    // Apply search term
+                    if (savedFilters.search) {
+                        searchInput.value = savedFilters.search;
+                    }
+
+                    // Apply sale type pill
+                    if (savedFilters.saleType) {
+                        document.querySelectorAll('.sale-type-pill').forEach(p => p.classList.remove('active'));
+                        const pillToActivate = document.querySelector(`.sale-type-pill[data-sale-type="${savedFilters.saleType}"]`);
+                        pillToActivate ? pillToActivate.classList.add('active') : document.querySelector('.sale-type-pill[data-sale-type="all"]').classList.add('active');
+                    }
+
+                    // Apply category pill
+                    if (savedFilters.category) {
+                        document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+                        const pillToActivate = document.querySelector(`.category-pill[data-category="${savedFilters.category}"]`);
+                        pillToActivate ? pillToActivate.classList.add('active') : document.querySelector('.category-pill[data-category="all"]').classList.add('active');
+                    }
+                } catch (e) {
+                    console.error("Failed to parse saved filters from localStorage", e);
+                    // If parsing fails, clear the corrupted data
+                    localStorage.removeItem('eventFilters');
+                }
+            }
+
+            function clearAllFilters() {
+                // Reset search
+                searchInput.value = '';
+
+                // Reset sale type pills
+                document.querySelectorAll('.sale-type-pill').forEach(p => p.classList.remove('active'));
+                const allSaleTypePill = document.querySelector('.sale-type-pill[data-sale-type="all"]');
+                if (allSaleTypePill) {
+                    allSaleTypePill.classList.add('active');
+                    allSaleTypePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+
+                // Reset category pills
+                document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+                const allCategoryPill = document.querySelector('.category-pill[data-category="all"]');
+                if (allCategoryPill) {
+                    allCategoryPill.classList.add('active');
+                    allCategoryPill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+
+                // Re-run the filter and display logic
+                filterAndDisplayEvents();
+            }
+
+            function scrollToEventCard(eventId) {
+                const cardToScrollTo = eventsContainer.querySelector(`.card[data-event-id='${eventId}']`);
+                if (cardToScrollTo) {
+                    cardToScrollTo.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+                }
             }
 
             function formatEventDate(startStr, endStr) {
@@ -804,12 +1167,16 @@
             function updateDebugOverlay() {
                 const selectedSaleTypes = Array.from(document.querySelectorAll('.sale-type-pill.active')).map(pill => pill.textContent);
                 const selectedCategories = Array.from(document.querySelectorAll('.category-pill.active')).map(pill => pill.textContent);
+                const searchTerm = searchInput.value.trim();
+                const contentEl = document.getElementById('debug-content');
+                if (!contentEl) return;
 
-                debugOverlay.innerHTML = `
+                contentEl.innerHTML = `
                     <strong>Zoom Level:</strong> ${map.getZoom()}<br>
                     <strong>Total Events:</strong> ${allEvents.length}<br>
                     <strong>Filtered Events:</strong> ${eventsContainer.children.length}<br>
                     <strong>Pin Count:</strong> ${allMarkers.length}<br>
+                    <strong>Search Term:</strong> ${searchTerm || 'None'}<br>
                     <strong>Sale Types:</strong> ${selectedSaleTypes.join(', ') || 'None'}<br>
                     <strong>Categories:</strong> ${selectedCategories.join(', ') || 'None'}
                 `;
@@ -818,6 +1185,15 @@
             function filterAndDisplayEvents() {
                 const selectedSaleType = document.querySelector('.sale-type-pill.active')?.dataset.saleType || 'all';
                 const selectedCategory = document.querySelector('.category-pill.active')?.dataset.category || 'all';
+                const searchTerm = searchInput.value.toLowerCase().trim();
+
+                // Save current filters to localStorage
+                const filtersToSave = {
+                    saleType: selectedSaleType,
+                    category: selectedCategory,
+                    search: searchTerm
+                };
+                localStorage.setItem('eventFilters', JSON.stringify(filtersToSave));
 
                 // Update active pills
                 document.querySelectorAll('.sale-type-pill').forEach(pill => {
@@ -839,11 +1215,22 @@
                 if (selectedCategory !== 'all') {
                     filteredEvents = filteredEvents.filter(event => event.item_categories && event.item_categories.includes(parseInt(selectedCategory)));
                 }
+                if (searchTerm) {
+                    filteredEvents = filteredEvents.filter(event =>
+                        (event.title && event.title.toLowerCase().includes(searchTerm)) ||
+                        (event.description && event.description.toLowerCase().includes(searchTerm))
+                    );
+                }
 
                 // Clear and re-populate list
                 eventsContainer.innerHTML = '';
                 if (filteredEvents.length === 0) {
-                    eventsContainer.innerHTML = '<p>No upcoming events found for this category.</p>';
+                    eventsContainer.innerHTML = `
+                        <div class="no-results-container">
+                            <p>No events match your current filters.</p>
+                            <button class="clear-filters-btn">Clear All Filters</button>
+                        </div>`;
+                    eventsContainer.querySelector('.clear-filters-btn').addEventListener('click', clearAllFilters);
                     return;
                 }
 
@@ -868,14 +1255,20 @@
                             position: position,
                             title: event.title,
                         });
+                        marker.addListener('click', () => {
+                            openDetailPanel(event.id);
+                            scrollToEventCard(event.id);
+                        });
                         marker.eventId = event.id;
                         allMarkers.push(marker);
                         bounds.extend(position);
                     }
                 });
 
-                smoothPanTo(allMarkers[0].position);
-                map.fitBounds(bounds, 150);
+                if (allMarkers.length > 0) {
+                    // Panning to the first result on every filter change can be jarring.
+                    map.fitBounds(bounds, 150);
+                }
                 updateDebugOverlay();
             }
 
@@ -905,6 +1298,21 @@
                     disableDefaultUI: true
                 });
 
+                // --- Map Interaction Listeners to disable 'follow me' mode ---
+                const stopFollowing = () => {
+                    if (isFollowingUser) {
+                        isFollowingUser = false;
+                        centerLocationButton.classList.remove('following');
+                    }
+                };
+                map.addListener('dragstart', stopFollowing);
+                mapElement.addEventListener('wheel', stopFollowing, { passive: true });
+                mapElement.addEventListener('touchstart', (e) => {
+                    if (e.touches.length > 1) { // Detect pinch-to-zoom
+                        stopFollowing();
+                    }
+                }, { passive: true });
+
                 map.addListener('zoom_changed', () => {
                     updateDebugOverlay();
                 });
@@ -929,11 +1337,18 @@
                                 title: 'Your Location',
                                 zIndex: google.maps.Marker.MAX_ZINDEX + 1 // Ensures it's always on top
                             });
+                            // Initially, don't follow, just center once.
+                            smoothPanTo(pos, 300, () => map.setZoom(15));
+                        }
+
+                        if (isFollowingUser) {
                             smoothPanTo(pos);
                         }
                     }, () => {
                         // Handle location error
                         console.log("Error: The Geolocation service failed.");
+                    }, {
+                        enableHighAccuracy: true
                     });
                 } else {
                     // Browser doesn't support Geolocation
@@ -1002,17 +1417,22 @@
                         categoryPillsContainer.appendChild(pill);
                     });
 
+                    // Load and apply filters from localStorage before the first render
+                    loadAndApplyFilters();
+
                     events.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
                     filterAndDisplayEvents(); // Display all events initially
                     updateDebugOverlay();
+                    loadingOverlay.classList.add('hidden');
                 })
                     .catch(error => {
                         console.error('Error fetching data:', error);
                         eventsContainer.innerHTML = `<p class="error-message">Could not load events.</p>`;
+                        loadingOverlay.classList.add('hidden');
                     });
             }
 
-            function smoothPanTo(position, duration = 300) {
+            function smoothPanTo(position, duration = 300, callback) {
                 const start = {
                     lat: map.getCenter().lat(),
                     lng: map.getCenter().lng()
@@ -1039,6 +1459,8 @@
 
                     if (progress < 1) {
                         requestAnimationFrame(animate);
+                    } else {
+                        if (callback) callback();
                     }
                 }
 
@@ -1047,6 +1469,7 @@
             function createEventCard(event) {
                 const card = document.createElement('div');
                 card.className = 'card';
+                card.dataset.eventId = event.id;
                 const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/300x150?text=No+Image';
 
                 const saleTypePill = event.sale_type_details ? `<span class="mini-pill sale-type-pill-mini">${event.sale_type_details.name}</span>` : '';
