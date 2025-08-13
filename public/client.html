@@ -223,6 +223,18 @@
             margin-bottom: 15px;
         }
 
+        .card-chevron {
+            display: none;
+            color: #aaa;
+            transition: color 0.2s ease;
+            margin-left: 10px;
+        }
+
+        .card:hover .card-chevron {
+            color: #333;
+        }
+
+
         .card-img {
             width: 100%;
             height: 150px;
@@ -230,7 +242,14 @@
         }
 
         .card-content {
-            padding: 15px;
+            padding: 15px 0;
+            flex-grow: 1;
+        }
+
+        .card-body {
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
         }
 
         .card-title {
@@ -286,6 +305,12 @@
             transform: translateY(0);
             visibility: visible;
             /* Show when open */
+        }
+
+        #detail-back-button {
+            display: none;
+            cursor: pointer;
+            margin-right: 10px;
         }
 
         #detail-content {
@@ -391,6 +416,15 @@
 
         /* Desktop Layout */
         @media (min-width: 769px) {
+            .card-chevron {
+                display: block;
+            }
+
+            #detail-back-button {
+                display: flex;
+                align-items: center;
+            }
+
             #map {
                 width: 75%;
                 left: 25%;
@@ -543,6 +577,12 @@
 
     <div id="detail-panel" class="panel">
         <div class="panel-header">
+            <div id="detail-back-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </div>
             <div class="panel-handle"></div>
             <h1 id="detail-title" class="panel-title"></h1>
         </div>
@@ -567,6 +607,7 @@
             const collapseButton = document.getElementById('collapse-button');
             const expandButton = document.getElementById('expand-button');
             const mapElement = document.getElementById('map');
+            const detailBackButton = document.getElementById('detail-back-button');
 
             const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
             let isListPanelOpen = false;
@@ -576,6 +617,9 @@
             let allSaleTypes = [];
             let lastSelectedPosition = null;
             let userLocationMarker = null;
+            let activeMarker = null;
+            let hoveredMarker = null;
+            let highlightedPinElement = null;
 
             // --- Panel Interactions ---
             collapseButton.addEventListener('click', () => {
@@ -609,6 +653,49 @@
             });
 
             detailPanelHeader.addEventListener('click', closeDetailPanel);
+            detailBackButton.addEventListener('click', closeDetailPanel);
+
+            function setHoveredMarker(markerToHover) {
+                // If there's already a hovered marker that isn't the active one, un-highlight it.
+                if (hoveredMarker && hoveredMarker !== activeMarker) {
+                    hoveredMarker.content = null;
+                    hoveredMarker.zIndex = null;
+                }
+
+                // Set the new hovered marker
+                hoveredMarker = markerToHover;
+
+                // If the new hovered marker is not the active one, highlight it.
+                if (hoveredMarker && hoveredMarker !== activeMarker) {
+                    hoveredMarker.content = highlightedPinElement;
+                    hoveredMarker.zIndex = 1; // Bring to front
+                }
+            }
+
+            function clearHoveredMarker() {
+                // If there's a hovered marker and it's not the active one, un-highlight it.
+                if (hoveredMarker && hoveredMarker !== activeMarker) {
+                    hoveredMarker.content = null;
+                    hoveredMarker.zIndex = null;
+                }
+                hoveredMarker = null;
+            }
+
+            function setActiveMarker(markerToActivate) {
+                // Deactivate the old marker
+                if (activeMarker) {
+                    activeMarker.content = null; // Revert to default pin
+                    activeMarker.zIndex = null; // Revert to default z-index
+                }
+
+                // Activate the new marker
+                if (markerToActivate) {
+                    markerToActivate.content = highlightedPinElement;
+                    markerToActivate.zIndex = 1; // Bring to front, above others
+                }
+
+                activeMarker = markerToActivate;
+            }
 
             function openDetailPanel(eventId) {
                 const event = allEvents.find(e => e.id === eventId);
@@ -616,23 +703,24 @@
 
                 // Pan map to center the marker in the visible area
                 if (event.latitude && event.longitude) {
+                    const position = { lat: event.latitude, lng: event.longitude };
+                    const marker = allMarkers.find(m => m.eventId === eventId);
 
-                    lastSelectedPosition = new google.maps.LatLng(event.latitude, event.longitude);
-                    smoothPanTo(lastSelectedPosition);
+                    if (marker) {
+                        setActiveMarker(marker);
+                    }
 
                     if (isDesktop()) {
-                        // Pan map right to center marker in visible area next to panel
-                        const panelWidth = 400; // As defined in CSS
-                        const panelMargin = 20;
-                        const offset = (panelWidth + panelMargin) / 2;
-                        map.panBy(-offset, 0);
+                        smoothPanTo(position);
+                        map.setZoom(14);
                     } else {
+                        lastSelectedPosition = position;
+                        smoothPanTo(position);
                         // Pan marker to the top 15% of the screen on mobile
                         const offset = window.innerHeight * 0.35; // (50% - 15%)
                         map.panBy(0, offset);
                     }
                 }
-
                 detailTitle.textContent = event.title;
                 const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/400x200?text=No+Image';
                 const saleTypePill = event.sale_type_details ? `<span class="mini-pill sale-type-pill-mini">${event.sale_type_details.name}</span>` : '';
@@ -662,11 +750,14 @@
                 }
                 detailPanel.classList.remove('open');
 
-                // Pan back to the actual center of the last selected marker
-                if (lastSelectedPosition) {
+                // On mobile, pan back to the actual center of the last selected marker
+                if (!isDesktop() && lastSelectedPosition) {
                     smoothPanTo(lastSelectedPosition);
                     lastSelectedPosition = null; // Clear after use
                 }
+
+                // Deactivate any highlighted marker
+                setActiveMarker(null);
             }
 
             function formatEventDate(startStr, endStr) {
@@ -777,6 +868,7 @@
                             position: position,
                             title: event.title,
                         });
+                        marker.eventId = event.id;
                         allMarkers.push(marker);
                         bounds.extend(position);
                     }
@@ -796,8 +888,16 @@
 
             async function initMap() {
                 const { Map } = await google.maps.importLibrary("maps");
-                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+                const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
 
+                // Create the reusable highlighted pin element
+                highlightedPinElement = new PinElement({
+                    background: '#007AFF', // A nice, standout blue
+                    borderColor: '#ffffff',
+                    glyphColor: '#ffffff',
+                    scale: 1.3, // Make it slightly larger than default
+                }).element;
+                
                 map = new Map(document.getElementById('map'), {
                     center: { lat: 45.345, lng: -75.760 }, // Default to Ottawa
                     zoom: 12,
@@ -956,12 +1056,29 @@
 
                 card.innerHTML = `
                     <img src="${photoUrl}" alt="${event.title}" class="card-img">
-                    <div class="card-content">
-                        <h2 class="card-title">${event.title}</h2>
-                        <p class="card-description">${event.description.substring(0, 100)}...</p>
-                        <div class="mini-pills-container">${saleTypePill}${categoryPills}</div>
+                    <div class="card-body">
+                        <div class="card-content">
+                            <h2 class="card-title">${event.title}</h2>
+                            <p class="card-description">${event.description.substring(0, 100)}...</p>
+                            <div class="mini-pills-container">${saleTypePill}${categoryPills}</div>
+                        </div>
+                        <div class="card-chevron">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
                     </div>
                 `;
+
+                card.addEventListener('mouseenter', () => {
+                    const marker = allMarkers.find(m => m.eventId === event.id);
+                    if (marker) {
+                        setHoveredMarker(marker);
+                    }
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    clearHoveredMarker();
+                });
+
                 return card;
             }
 
