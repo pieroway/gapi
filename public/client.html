@@ -70,6 +70,8 @@
 
         .panel-header {
             padding: 10px 20px;
+            display: flex;
+            align-items: center;
     text-align: center;
             cursor: pointer;
             margin-bottom: 45px;
@@ -95,6 +97,7 @@
 
         .panel-title {
             font-size: 1.2rem;
+            flex-grow: 1;
             font-weight: 600;
     margin: 0;
         }
@@ -280,6 +283,39 @@
             /* Space between cards */
         }
 
+        .card {
+            position: relative;
+            /* For positioning the favorite button */
+        }
+
+        .favorite-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.4);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            z-index: 2;
+        }
+
+        .favorite-btn:hover {
+            background-color: rgba(0, 0, 0, 0.6);
+            transform: scale(1.1);
+        }
+
+        .favorite-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
         .card:hover {
             background-color: #f0f0f0;
             /* A subtle background color change */
@@ -296,6 +332,7 @@
         }
 
         .card-img-container {
+            position: relative;
             height: 150px;
         }
 
@@ -754,8 +791,6 @@
             /* Move completely out of view */
             visibility: hidden;
             /* Hide when closed */
-            border-top-left-radius: 16px;
-            border-top-right-radius: 16px;
             box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
             transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
         }
@@ -774,6 +809,22 @@
             border: none;
             padding: 0;
             margin-right: 10px;
+        }
+
+        #detail-favorite-btn {
+            position: static;
+            background-color: transparent;
+            margin-left: 10px;
+            padding: 5px;
+        }
+
+        #detail-favorite-btn svg {
+            stroke: #666;
+        }
+
+        .favorite-btn.active svg, #detail-favorite-btn.active svg {
+            fill: #ff4757;
+            stroke: #ff4757;
         }
 
         #detail-content {
@@ -1166,6 +1217,9 @@
             </button>
             <div class="panel-handle"></div>
             <h1 id="detail-title" class="panel-title"></h1>
+            <button id="detail-favorite-btn" class="favorite-btn" aria-label="Toggle favorite">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            </button>
         </div>
         <div id="detail-content" class="panel-content"></div>
     </div>
@@ -1313,6 +1367,56 @@
 
             let submissionCoordinates = null;
             let currentlySelectedEventForDebug = null;
+
+            // --- Favorites Logic ---
+            const FAVORITES_KEY = 'garageSaleFavorites';
+
+            const getFavorites = () => {
+                const favorites = localStorage.getItem(FAVORITES_KEY);
+                return favorites ? JSON.parse(favorites) : [];
+            };
+
+            const saveFavorites = (favorites) => {
+                localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+            };
+
+            const isFavorite = (eventId) => {
+                return getFavorites().includes(eventId);
+            };
+
+            const updateFavoriteUI = (eventId, isNowFavorite) => {
+                // Update the UI for the card in the list
+                const cardInList = eventsContainer.querySelector(`.card[data-event-id="${eventId}"]`);
+                if (cardInList) {
+                    const cardFavBtn = cardInList.querySelector('.favorite-btn');
+                    if (cardFavBtn) {
+                        cardFavBtn.classList.toggle('active', isNowFavorite);
+                    }
+                }
+
+                // Update the UI for the detail panel button if it's open for this event
+                if (detailPanel.classList.contains('open') && currentlySelectedEventForDebug?.id === eventId) {
+                    const detailFavoriteBtn = document.getElementById('detail-favorite-btn');
+                    detailFavoriteBtn.classList.toggle('active', isNowFavorite);
+                }
+            };
+
+            const toggleFavorite = (eventId) => {
+                let favorites = getFavorites();
+                const isCurrentlyFavorite = favorites.includes(eventId);
+                const isNowFavorite = !isCurrentlyFavorite;
+
+                const newFavorites = isNowFavorite ? [...favorites, eventId] : favorites.filter(id => id !== eventId);
+                saveFavorites(newFavorites);
+
+                updateFavoriteUI(eventId, isNowFavorite);
+
+                // If the "Favorites" filter is active, re-render to reflect the change
+                if (document.querySelector('.sale-type-pill[data-sale-type="favorites"]')?.classList.contains('active')) {
+                    filterAndDisplayEvents();
+                }
+            };
+
             // --- Debug Panel Setup ---
             debugOverlay.innerHTML = '<div id="debug-header">Debug</div><div id="debug-content"></div>';
             const debugHeader = document.getElementById('debug-header');
@@ -1792,6 +1896,13 @@
                 currentlySelectedEventForDebug = event;
                 updateDebugOverlay();
 
+                // Set up the favorite button in the detail panel
+                const detailFavoriteBtn = document.getElementById('detail-favorite-btn');
+                detailFavoriteBtn.classList.toggle('active', isFavorite(event.id));
+                detailFavoriteBtn.onclick = () => {
+                    toggleFavorite(event.id);
+                };
+
                 // Pan map to center the marker in the visible area
                 if (event.latitude && event.longitude) {
                     const position = { lat: event.latitude, lng: event.longitude };
@@ -2143,17 +2254,21 @@
                 const searchTerm = searchInput.value.toLowerCase().trim();
 
                 let filtered = allEvents;
-                if (selectedSaleType !== 'all') {
+
+                // 1. Apply primary filter (Sale Type or Favorites)
+                if (selectedSaleType === 'favorites') {
+                    const favoriteIds = getFavorites();
+                    filtered = filtered.filter(event => favoriteIds.includes(event.id));
+                } else if (selectedSaleType !== 'all') {
                     filtered = filtered.filter(event => event.sale_type_id === parseInt(selectedSaleType));
                 }
+
+                // 2. Apply secondary filters (Category and Search) on the result
                 if (selectedCategory !== 'all') {
                     filtered = filtered.filter(event => event.item_categories && event.item_categories.includes(parseInt(selectedCategory)));
                 }
                 if (searchTerm) {
-                    filtered = filtered.filter(event =>
-                        (event.title && event.title.toLowerCase().includes(searchTerm)) ||
-                        (event.description && event.description.toLowerCase().includes(searchTerm))
-                    );
+                    filtered = filtered.filter(event => (event.title && event.title.toLowerCase().includes(searchTerm)) || (event.description && event.description.toLowerCase().includes(searchTerm)));
                 }
                 return filtered;
             }
@@ -2396,6 +2511,18 @@
                     });
                     saleTypePillsContainer.appendChild(allSaleTypePill);
 
+                    // "Favorites" pill
+                    const favoritesPill = document.createElement('div');
+                    favoritesPill.className = 'filter-pill sale-type-pill';
+                    favoritesPill.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 5px;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>Favorites`;
+                    favoritesPill.dataset.saleType = 'favorites';
+                    favoritesPill.addEventListener('click', () => {
+                        document.querySelectorAll('.sale-type-pill').forEach(p => p.classList.remove('active'));
+                        favoritesPill.classList.add('active');
+                        filterAndDisplayEvents();
+                    });
+                    saleTypePillsContainer.appendChild(favoritesPill);
+
                     // Sale type pills
                     saleTypes.forEach(saleType => {
                         const pill = document.createElement('div');
@@ -2505,6 +2632,12 @@
                 card.setAttribute('tabindex', '0');
                 card.setAttribute('aria-label', `View details for ${event.title}`);
 
+                const favoriteButtonHtml = `
+                    <button class="favorite-btn ${isFavorite(event.id) ? 'active' : ''}" aria-label="Toggle favorite">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    </button>
+                `;
+
                 const hasPhoto = event.photos && event.photos.length > 0;
                 let imageHtml = '';
                 if (hasPhoto) {
@@ -2522,6 +2655,7 @@
                 }).join('');
 
                 card.innerHTML = `
+                    ${favoriteButtonHtml}
                     ${imageHtml}
                     <div class="card-body">
                         <div class="card-content">
@@ -2551,6 +2685,14 @@
                     img.onerror = () => {
                         imageContainer.remove();
                     };
+                }
+
+                const favBtn = card.querySelector('.favorite-btn');
+                if (favBtn) {
+                    favBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent card click from firing
+                        toggleFavorite(event.id);
+                    });
                 }
 
                 card.addEventListener('keydown', (e) => {
