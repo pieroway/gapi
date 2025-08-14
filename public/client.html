@@ -769,6 +769,10 @@
         #detail-back-button {
             display: none;
             cursor: pointer;
+            /* Reset button styles */
+            background: none;
+            border: none;
+            padding: 0;
             margin-right: 10px;
         }
 
@@ -1061,6 +1065,13 @@
                 position: static;
                 margin-left: 10px;
             }
+
+            #detail-back-button {
+                background: none;
+                border: none;
+                padding: 0;
+                /* Reset button styles */
+            }
         }
     </style>
 </head>
@@ -1145,14 +1156,14 @@
         </svg>
     </div>
 
-    <div id="detail-panel" class="panel">
+    <div id="detail-panel" class="panel" role="dialog" aria-modal="true" aria-labelledby="detail-title" aria-hidden="true">
         <div class="panel-header">
-            <div id="detail-back-button">
+            <button id="detail-back-button" aria-label="Close event details" title="Close event details">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
-            </div>
+            </button>
             <div class="panel-handle"></div>
             <h1 id="detail-title" class="panel-title"></h1>
         </div>
@@ -1297,6 +1308,8 @@
             let hoveredMarker = null;
             let isFollowingUser = false;
             let highlightedPinElement = null;
+
+            let elementThatOpenedDetailPanel = null;
 
             let submissionCoordinates = null;
             let currentlySelectedEventForDebug = null;
@@ -1773,6 +1786,7 @@
             }
 
             function openDetailPanel(eventId) {
+                elementThatOpenedDetailPanel = document.activeElement; // Store focus before opening
                 const event = allEvents.find(e => e.id === eventId);
                 if (!event) return;
                 currentlySelectedEventForDebug = event;
@@ -1893,6 +1907,13 @@
                     listPanel.classList.add('detail-open');
                 }
                 detailPanel.classList.add('open');
+                detailPanel.setAttribute('aria-hidden', 'false');
+                listPanel.setAttribute('aria-hidden', 'true');
+
+                // Move focus to the panel after the transition
+                setTimeout(() => {
+                    detailBackButton.focus();
+                }, 400); // Should match CSS transition duration
             }
 
             function handleAddToCalendar(event) {
@@ -1988,6 +2009,8 @@
                     listPanel.classList.remove('detail-open');
                 }
                 detailPanel.classList.remove('open');
+                detailPanel.setAttribute('aria-hidden', 'true');
+                listPanel.setAttribute('aria-hidden', 'false');
 
                 // On mobile, pan back to the actual center of the last selected marker
                 if (!isDesktop() && lastSelectedPosition) {
@@ -1999,6 +2022,12 @@
                 setActiveMarker(null);
                 currentlySelectedEventForDebug = null;
                 updateDebugOverlay();
+
+                // Return focus to the element that opened the panel
+                if (elementThatOpenedDetailPanel) {
+                    elementThatOpenedDetailPanel.focus();
+                    elementThatOpenedDetailPanel = null;
+                }
             }
 
             function loadAndApplyFilters() {
@@ -2472,6 +2501,9 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.dataset.eventId = event.id;
+                card.setAttribute('role', 'button');
+                card.setAttribute('tabindex', '0');
+                card.setAttribute('aria-label', `View details for ${event.title}`);
 
                 const hasPhoto = event.photos && event.photos.length > 0;
                 let imageHtml = '';
@@ -2521,6 +2553,13 @@
                     };
                 }
 
+                card.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault(); // Prevent spacebar from scrolling
+                        openDetailPanel(event.id);
+                    }
+                });
+
                 card.addEventListener('mouseenter', () => {
                     const marker = allMarkers.find(m => m.eventId === event.id);
                     if (marker) {
@@ -2541,6 +2580,38 @@
             script.defer = true;
             window.initMap = initMap;
             document.head.appendChild(script);
+        });
+
+        // --- Accessibility: Close modal on Escape key ---
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && detailPanel.classList.contains('open')) {
+                closeDetailPanel();
+            }
+        });
+
+        // --- Accessibility: Trap focus within the detail panel ---
+        detailPanel.addEventListener('keydown', (e) => {
+            if (e.key !== 'Tab' || !detailPanel.classList.contains('open')) return;
+
+            const focusableElements = Array.from(detailPanel.querySelectorAll(
+                'a[href]:not([disabled]), button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled])'
+            )).filter(el => el.offsetParent !== null); // Check for visibility
+
+            if (focusableElements.length === 0) return;
+
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+            const isShiftPressed = e.shiftKey;
+
+            if (!isShiftPressed && document.activeElement === lastElement) {
+                firstElement.focus();
+                e.preventDefault();
+            }
+
+            if (isShiftPressed && document.activeElement === firstElement) {
+                lastElement.focus();
+                e.preventDefault();
+            }
         });
     </script>
     <script>
