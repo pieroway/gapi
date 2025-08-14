@@ -289,6 +289,37 @@
             margin-bottom: 15px;
         }
 
+        .image-container {
+            width: 100%;
+            overflow: hidden;
+            /* Ensures content (like a slightly oversized image) fits */
+        }
+
+        .card-img-container {
+            height: 150px;
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+        }
+
+        .detail-img-container .image-placeholder {
+            border-radius: 8px;
+        }
+
+        .image-placeholder .spinner {
+            width: 30px;
+            height: 30px;
+            border-width: 3px;
+            border-color: #ccc;
+            border-top-color: #666;
+        }
+
         .no-results-container {
             text-align: center;
             padding: 40px 20px;
@@ -802,7 +833,6 @@
             font-family: monospace;
             font-size: 12px;
             pointer-events: auto;
-            overflow: hidden;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
@@ -817,8 +847,11 @@
 
         #debug-content {
             padding: 10px;
-            pointer-events: none;
-            /* Allow clicks to pass through content to map */
+            pointer-events: auto;
+            /* Allow scrolling/selection */
+            min-width: 350px;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         #debug-overlay.collapsed #debug-content {
@@ -1153,15 +1186,13 @@
                         <button type="button" id="upload-photo-btn">Choose File</button>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="event-start">Start Time</label>
-                        <input type="datetime-local" id="event-start" name="start_datetime" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="event-end">End Time</label>
-                        <input type="datetime-local" id="event-end" name="end_datetime" required>
-                    </div>
+                <div class="form-group">
+                    <label for="event-start">Start Time</label>
+                    <input type="datetime-local" id="event-start" name="start_datetime" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-end">End Time</label>
+                    <input type="datetime-local" id="event-end" name="end_datetime" required>
                 </div>
                 <div class="form-group">
                     <label for="event-sale-type">Sale Type</label>
@@ -1267,6 +1298,8 @@
             let isFollowingUser = false;
             let highlightedPinElement = null;
 
+            let submissionCoordinates = null;
+            let currentlySelectedEventForDebug = null;
             // --- Debug Panel Setup ---
             debugOverlay.innerHTML = '<div id="debug-header">Debug</div><div id="debug-content"></div>';
             const debugHeader = document.getElementById('debug-header');
@@ -1428,40 +1461,80 @@
             };
 
             const validateForm = () => {
-                let isValid = true;
-                const requiredInputs = [
-                    { el: eventTitleInput, msg: 'Title is required.' },
-                    { el: eventDescriptionInput, msg: 'Description is required.' },
-                    { el: eventAddressInput, msg: 'Address is required.' },
-                    { el: eventSaleTypeSelect, msg: 'Please select a sale type.' },
-                    { el: eventStartInput, msg: 'Start time is required.' },
-                    { el: eventEndInput, msg: 'End time is required.' },
-                ];
+                let isFormValid = true;
+                const isRequired = (el) => el.value && el.value.trim() !== '';
 
-                requiredInputs.forEach(({ el, msg }) => {
-                    clearError(el);
-                    if (!el.value.trim()) {
-                        showError(el, msg);
-                        isValid = false;
-                    }
-                });
-
-                // Date logic validation
-                if (eventStartInput.value && eventEndInput.value && new Date(eventEndInput.value) <= new Date(eventStartInput.value)) {
-                    clearError(eventEndInput); // Clear required message if it exists
-                    showError(eventEndInput, 'End time must be after start time.');
-                    isValid = false;
+                // 1. Validate Title
+                clearError(eventTitleInput);
+                if (!isRequired(eventTitleInput)) {
+                    showError(eventTitleInput, 'Title is required.');
+                    isFormValid = false;
                 }
 
-                // Category checkbox validation
+                // 2. Validate Description
+                clearError(eventDescriptionInput);
+                if (!isRequired(eventDescriptionInput)) {
+                    showError(eventDescriptionInput, 'Description is required.');
+                    isFormValid = false;
+                }
+
+                // 3. Validate Address
+                clearError(eventAddressInput);
+                if (!isRequired(eventAddressInput)) {
+                    showError(eventAddressInput, 'Address is required.');
+                    isFormValid = false;
+                } else if (!submissionCoordinates) {
+                    // This check ensures a valid, geocoded address was selected from the dropdown.
+                    // It prevents submitting a manually typed address that has no coordinates.
+                    showError(eventAddressInput, 'Please select a valid address from the suggestions.');
+                    isFormValid = false;
+                }
+
+                // 4. Validate Sale Type
+                clearError(eventSaleTypeSelect);
+                if (!isRequired(eventSaleTypeSelect)) {
+                    showError(eventSaleTypeSelect, 'Please select a sale type.');
+                    isFormValid = false;
+                }
+
+                // 5. Validate Start and End Times
+                clearError(eventStartInput);
+                if (!isRequired(eventStartInput)) {
+                    showError(eventStartInput, 'Start time is required.');
+                    isFormValid = false;
+                }
+
+                clearError(eventEndInput);
+                if (!isRequired(eventEndInput)) {
+                    showError(eventEndInput, 'End time is required.');
+                    isFormValid = false;
+                } else if (eventStartInput.value && new Date(eventEndInput.value) <= new Date(eventStartInput.value)) {
+                    // This error is more specific, so it can overwrite the 'required' one if needed
+                    showError(eventEndInput, 'End time must be after start time.');
+                    isFormValid = false;
+                }
+
+                // 6. Validate Categories
                 clearError(eventCategoriesContainer);
                 if (eventCategoriesContainer.querySelectorAll('input[type="checkbox"]:checked').length === 0) {
                     showError(eventCategoriesContainer, 'Please select at least one category.');
-                    isValid = false;
+                    isFormValid = false;
                 }
 
-                return isValid;
+                return isFormValid;
             };
+
+            // --- Real-time validation setup ---
+            const fieldsForRealtimeValidation = [
+                eventTitleInput, eventDescriptionInput, eventAddressInput,
+                eventSaleTypeSelect, eventStartInput, eventEndInput
+            ];
+
+            fieldsForRealtimeValidation.forEach(field => {
+                field.addEventListener('input', validateForm);
+                field.addEventListener('change', validateForm);
+            });
+            eventCategoriesContainer.addEventListener('change', validateForm);
 
             uploadPhotoBtn.addEventListener('click', () => {
                 eventPhotoInput.click();
@@ -1507,12 +1580,34 @@
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
 
-                // Use FormData to handle multipart/form-data for the file upload
-                const submissionData = new FormData(submissionForm);
+                // Manually construct the payload to ensure correct types, similar to the admin edit form.
+                const formValues = new FormData(submissionForm);
+                const payload = {
+                    title: formValues.get('title'),
+                    description: formValues.get('description'),
+                    address: formValues.get('address'),
+                    latitude: submissionCoordinates.lat,
+                    longitude: submissionCoordinates.lng,
+                    start_datetime: new Date(formValues.get('start_datetime')).toISOString(),
+                    end_datetime: new Date(formValues.get('end_datetime')).toISOString(),
+                    sale_type_id: parseInt(formValues.get('sale_type_id'), 10),
+                    item_categories: formValues.getAll('item_categories').map(id => parseInt(id, 10))
+                };
+
+                // Create a new FormData object for the final submission.
+                const submissionData = new FormData();
+
+                // Append the JSON payload as a string. The server will need to parse this.
+                submissionData.append('eventData', JSON.stringify(payload));
+
+                // Append the photo file if it exists.
+                const photoFile = eventPhotoInput.files[0];
+                if (photoFile) {
+                    submissionData.append('photo', photoFile);
+                }
 
                 try {
-                    // When sending FormData with a file, do not set the Content-Type header.
-                    // The browser will automatically set it to 'multipart/form-data' with the correct boundary.
+                    // When sending FormData, do not set the Content-Type header.
                     const response = await fetch('/api/events', {
                         method: 'POST',
                         body: submissionData
@@ -1680,6 +1775,8 @@
             function openDetailPanel(eventId) {
                 const event = allEvents.find(e => e.id === eventId);
                 if (!event) return;
+                currentlySelectedEventForDebug = event;
+                updateDebugOverlay();
 
                 // Pan map to center the marker in the visible area
                 if (event.latitude && event.longitude) {
@@ -1708,7 +1805,18 @@
                     }
                 }
                 detailTitle.textContent = event.title;
-                const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/400x200?text=No+Image';
+
+                const hasPhoto = event.photos && event.photos.length > 0;
+                let imageHtml = '';
+                if (hasPhoto) {
+                    const imageContainerId = `detail-img-${event.id}`;
+                    imageHtml = `
+                        <div id="${imageContainerId}" class="image-container detail-img-container">
+                            <div class="image-placeholder"><div class="spinner"></div></div>
+                        </div>
+                    `;
+                }
+
                 const saleTypePill = event.sale_type_details ? `<span class="mini-pill sale-type-pill-mini">${event.sale_type_details.name}</span>` : '';
                 const categoryPills = (event.item_category_details || []).map(category => {
                     return category ? `<span class="mini-pill">${category.name}</span>` : '';
@@ -1720,11 +1828,14 @@
                 ` : '';
 
                 detailContent.innerHTML = `
-                    <img src="${photoUrl}" alt="${event.title}" style="width: 100%; border-radius: 8px;">
+                    ${imageHtml}
                     <div style="padding: 0 5px;">
                         <p><strong>When:</strong> ${formatEventDate(event.start_datetime, event.end_datetime)}</p>
                         <div class="address-container">
-                            <p><strong>Where:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address)}" target="_blank" rel="noopener noreferrer" class="address-link">${event.address}</a></p>
+                            <div>
+                                <p><strong>Where:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address)}" target="_blank" rel="noopener noreferrer" class="address-link">${event.address}</a></p>
+                                ${event.latitude && event.longitude ? `<p style="font-size: 0.8rem; color: #666; margin-top: 4px;">(${event.latitude.toFixed(5)}, ${event.longitude.toFixed(5)})</p>` : ''}
+                            </div>
                             ${directionsButtonHtml}
                         </div>
                         <p>${event.description}</p>
@@ -1745,6 +1856,25 @@
                         </div>
                     </div>
                 `;
+
+                if (hasPhoto) {
+                    const imageContainer = detailContent.querySelector(`#detail-img-${event.id}`);
+                    const photoUrl = event.photos[0];
+
+                    const img = new Image();
+                    img.src = photoUrl;
+                    img.alt = event.title;
+                    img.style.width = '100%';
+                    img.style.borderRadius = '8px';
+
+                    img.onload = () => {
+                        imageContainer.innerHTML = '';
+                        imageContainer.appendChild(img);
+                    };
+                    img.onerror = () => {
+                        imageContainer.remove();
+                    };
+                }
 
                 const directionsBtn = document.getElementById('directions-btn');
                 if (directionsBtn) {
@@ -1867,6 +1997,8 @@
 
                 // Deactivate any highlighted marker
                 setActiveMarker(null);
+                currentlySelectedEventForDebug = null;
+                updateDebugOverlay();
             }
 
             function loadAndApplyFilters() {
@@ -1976,21 +2108,48 @@
                 return `${weekday} ${month} ${day}${suffix}`;
             }
 
+            function getFilteredEvents() {
+                const selectedSaleType = document.querySelector('.sale-type-pill.active')?.dataset.saleType || 'all';
+                const selectedCategory = document.querySelector('.category-pill.active')?.dataset.category || 'all';
+                const searchTerm = searchInput.value.toLowerCase().trim();
+
+                let filtered = allEvents;
+                if (selectedSaleType !== 'all') {
+                    filtered = filtered.filter(event => event.sale_type_id === parseInt(selectedSaleType));
+                }
+                if (selectedCategory !== 'all') {
+                    filtered = filtered.filter(event => event.item_categories && event.item_categories.includes(parseInt(selectedCategory)));
+                }
+                if (searchTerm) {
+                    filtered = filtered.filter(event =>
+                        (event.title && event.title.toLowerCase().includes(searchTerm)) ||
+                        (event.description && event.description.toLowerCase().includes(searchTerm))
+                    );
+                }
+                return filtered;
+            }
+
             function updateDebugOverlay() {
-                const selectedSaleTypes = Array.from(document.querySelectorAll('.sale-type-pill.active')).map(pill => pill.textContent);
-                const selectedCategories = Array.from(document.querySelectorAll('.category-pill.active')).map(pill => pill.textContent);
-                const searchTerm = searchInput.value.trim();
                 const contentEl = document.getElementById('debug-content');
                 if (!contentEl) return;
+
+                const filteredEvents = getFilteredEvents();
+
+                let selectedEventHtml = '<strong>Selected Event:</strong><p style="margin:0;">None</p>';
+                if (currentlySelectedEventForDebug) {
+                    selectedEventHtml = `
+                        <strong>Selected Event Details:</strong>
+                        <pre style="white-space: pre-wrap; word-break: break-all; font-size: 11px; margin: 5px 0 0; background-color: rgba(0,0,0,0.2); padding: 5px; border-radius: 3px;">${JSON.stringify(currentlySelectedEventForDebug, null, 2)}</pre>
+                    `;
+                }
 
                 contentEl.innerHTML = `
                     <strong>Zoom Level:</strong> ${map.getZoom()}<br>
                     <strong>Total Events:</strong> ${allEvents.length}<br>
-                    <strong>Filtered Events:</strong> ${eventsContainer.children.length}<br>
+                    <strong>Filtered Events:</strong> ${filteredEvents.length}<br>
                     <strong>Pin Count:</strong> ${allMarkers.length}<br>
-                    <strong>Search Term:</strong> ${searchTerm || 'None'}<br>
-                    <strong>Sale Types:</strong> ${selectedSaleTypes.join(', ') || 'None'}<br>
-                    <strong>Categories:</strong> ${selectedCategories.join(', ') || 'None'}
+                    <hr style="margin: 5px 0;">
+                    ${selectedEventHtml}
                 `;
             }
 
@@ -2020,19 +2179,7 @@
                 allMarkers = [];
 
                 // Filter events
-                let filteredEvents = allEvents;
-                if (selectedSaleType !== 'all') {
-                    filteredEvents = filteredEvents.filter(event => event.sale_type_id === parseInt(selectedSaleType));
-                }
-                if (selectedCategory !== 'all') {
-                    filteredEvents = filteredEvents.filter(event => event.item_categories && event.item_categories.includes(parseInt(selectedCategory)));
-                }
-                if (searchTerm) {
-                    filteredEvents = filteredEvents.filter(event =>
-                        (event.title && event.title.toLowerCase().includes(searchTerm)) ||
-                        (event.description && event.description.toLowerCase().includes(searchTerm))
-                    );
-                }
+                const filteredEvents = getFilteredEvents();
 
                 // Clear and re-populate list
                 eventsContainer.innerHTML = '';
@@ -2119,6 +2266,24 @@
                     fields: ['formatted_address', 'geometry'] // Request only needed data
                 });
                 autocomplete.bindTo('bounds', map);
+
+                autocomplete.addListener('place_changed', () => {
+                    const place = autocomplete.getPlace();
+                    if (place.geometry && place.geometry.location) {
+                        submissionCoordinates = {
+                            lat: place.geometry.location.lat(),
+                            lng: place.geometry.location.lng()
+                        };
+                        // Manually trigger validation to clear the error message if it exists
+                        validateForm();
+                    } else {
+                        submissionCoordinates = null;
+                    }
+                });
+
+                eventAddressInput.addEventListener('input', () => {
+                    submissionCoordinates = null;
+                });
 
                 // --- Map Interaction Listeners to disable 'follow me' mode ---
                 const stopFollowing = () => {
@@ -2307,7 +2472,17 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.dataset.eventId = event.id;
-                const photoUrl = event.photos && event.photos.length > 0 ? event.photos[0] : 'https://via.placeholder.com/300x150?text=No+Image';
+
+                const hasPhoto = event.photos && event.photos.length > 0;
+                let imageHtml = '';
+                if (hasPhoto) {
+                    const imageContainerId = `card-img-${event.id}`;
+                    imageHtml = `
+                        <div id="${imageContainerId}" class="image-container card-img-container">
+                            <div class="image-placeholder"><div class="spinner"></div></div>
+                        </div>
+                    `;
+                }
 
                 const saleTypePill = event.sale_type_details ? `<span class="mini-pill sale-type-pill-mini">${event.sale_type_details.name}</span>` : '';
                 const categoryPills = (event.item_category_details || []).map(category => {
@@ -2315,7 +2490,7 @@
                 }).join('');
 
                 card.innerHTML = `
-                    <img src="${photoUrl}" alt="${event.title}" class="card-img">
+                    ${imageHtml}
                     <div class="card-body">
                         <div class="card-content">
                             <h2 class="card-title">${event.title}</h2>
@@ -2327,6 +2502,24 @@
                         </div>
                     </div>
                 `;
+
+                if (hasPhoto) {
+                    const imageContainer = card.querySelector(`#card-img-${event.id}`);
+                    const photoUrl = event.photos[0];
+
+                    const img = new Image();
+                    img.src = photoUrl;
+                    img.alt = event.title;
+                    img.className = 'card-img';
+
+                    img.onload = () => {
+                        imageContainer.innerHTML = '';
+                        imageContainer.appendChild(img);
+                    };
+                    img.onerror = () => {
+                        imageContainer.remove();
+                    };
+                }
 
                 card.addEventListener('mouseenter', () => {
                     const marker = allMarkers.find(m => m.eventId === event.id);

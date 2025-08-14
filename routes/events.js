@@ -19,7 +19,7 @@ const upload = multer({
   fileFilter: function(req, file, cb){
     checkFileType(file, cb);
   }
-}).single('eventImage'); // 'eventImage' is the field name for the file in the form
+}).single('photo'); // 'photo' is the field name from the client form
 
 function checkFileType(file, cb){
   const filetypes = /jpeg|jpg|png|gif/;
@@ -104,15 +104,47 @@ router.delete('/:id', (req, res) => {
 // --- Creator/Admin Routes ---
 
 // Create a new event
-router.post('/', (req, res) => {
-  const { title, description, address, latitude, longitude, start_datetime, end_datetime, photos, item_categories, sale_type_id } = req.body;
-  if (!title || !description || !start_datetime || !end_datetime) {
-    return res.status(400).json({ message: 'Missing required fields' });
+router.post('/', upload, (req, res) => {
+  const eventData = JSON.parse(req.body.eventData);
+
+  const {
+    title,
+    description,
+    address,
+    latitude,
+    longitude,
+    start_datetime,
+    end_datetime,
+    sale_type_id,
+    item_categories
+  } = eventData;
+
+  const missingFields = [];
+
+  // Build a list of all missing fields
+  if (!title) missingFields.push('Title');
+  if (!description) missingFields.push('Description');
+  if (!address) missingFields.push('Address');
+  if (latitude === undefined || latitude === null) missingFields.push('Coordinates');
+  if (longitude === undefined || longitude === null) missingFields.push('Coordinates');
+  if (!start_datetime) missingFields.push('Start Time');
+  if (!end_datetime) missingFields.push('End Time');
+  if (!sale_type_id) missingFields.push('Sale Type');
+  if (!item_categories || item_categories.length === 0) {
+    missingFields.push('Item Categories');
   }
 
-  let eventPhotos = photos || [];
-  if (eventPhotos.length === 0) {
-    eventPhotos.push(`https://picsum.photos/200/300`);
+  // If the list is not empty, send a detailed error message
+  if (missingFields.length > 0) {
+    // Use a Set to get unique field names before joining
+    const uniqueMissingFields = [...new Set(missingFields)];
+    const errorMessage = `Missing required fields: ${uniqueMissingFields.join(', ')}.`;
+    return res.status(400).json({ message: errorMessage });
+  }
+
+  let eventPhotos = [];
+  if (req.file) {
+    eventPhotos.push(`/uploads/${req.file.filename}`);
   }
 
   const newEvent = {
@@ -125,9 +157,9 @@ router.post('/', (req, res) => {
     longitude,
     start_datetime,
     end_datetime,
+    sale_type_id,
+    item_categories,
     photos: eventPhotos,
-    item_categories: item_categories || [],
-    sale_type_id: sale_type_id || null,
     is_deleted: false,
     to_be_deleted: false,
     ended_early_flags: 0,
@@ -135,7 +167,7 @@ router.post('/', (req, res) => {
     comments: [],
   };
   events.push(newEvent);
-  res.status(201).json(newEvent);
+  res.status(201).json(populateEventDetails(newEvent));
 });
 
 // Get event data for editing
