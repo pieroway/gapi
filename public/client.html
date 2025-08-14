@@ -176,30 +176,21 @@
             pointer-events: none;
         }
 
-        #sale-type-pills-container,
-        #category-pills-container {
+        .pills-container {
             background-color: #ffffff;
             padding: 5px 20px;
-            /* Reduced vertical padding */
             white-space: nowrap;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
+            scrollbar-width: none; /* For Firefox */
         }
 
-        #sale-type-pills-container::-webkit-scrollbar,
-        #category-pills-container::-webkit-scrollbar {
-            display: none;
-            /* Hide scrollbar */
-        }
-
-        #sale-type-pills-container::-webkit-scrollbar,
-        #category-pills-container::-webkit-scrollbar {
+        .pills-container::-webkit-scrollbar {
+            display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
             height: 8px;
         }
 
-        #sale-type-pills-container::-webkit-scrollbar-thumb,
-        #category-pills-container::-webkit-scrollbar-thumb {
+        .pills-container::-webkit-scrollbar-thumb {
             background: #ccc;
             border-radius: 4px;
         }
@@ -231,31 +222,24 @@
             background: linear-gradient(to left, #ffffff 20%, rgba(255, 255, 255, 0));
         }
 
-        .sale-type-pill,
-        .category-pill {
+        .filter-pill {
             display: inline-block;
             padding: 6px 14px;
-            /* Reduced padding */
             margin-right: 8px;
-            /* Reduced margin */
             border-radius: 18px;
-            /* Slightly smaller radius */
             background-color: #e9ecef;
             color: #495057;
             cursor: pointer;
             font-weight: 500;
             font-size: 0.9rem;
-            /* Slightly smaller font */
             transition: background-color 0.2s, color 0.2s;
         }
 
-        .sale-type-pill:hover,
-        .category-pill:hover {
+        .filter-pill:hover {
             background-color: #dee2e6;
         }
 
-        .sale-type-pill.active,
-        .category-pill.active {
+        .filter-pill.active {
             background-color: #007bff;
             color: #ffffff;
         }
@@ -1104,10 +1088,10 @@
                 <input type="search" id="search-input" placeholder="Search by title or description...">
             </div>
             <div class="pills-wrapper">
-                <div id="sale-type-pills-container"></div>
+                <div id="sale-type-pills-container" class="pills-container"></div>
             </div>
             <div class="pills-wrapper">
-                <div id="category-pills-container"></div>
+                <div id="category-pills-container" class="pills-container"></div>
             </div>
             <div id="events-container"></div>
             <button id="scroll-to-top-btn">
@@ -2208,7 +2192,7 @@
 
                     // "All" sale type pill
                     const allSaleTypePill = document.createElement('div');
-                    allSaleTypePill.className = 'sale-type-pill active';
+                    allSaleTypePill.className = 'filter-pill sale-type-pill active';
                     allSaleTypePill.textContent = 'All Sale Types';
                     allSaleTypePill.dataset.saleType = 'all';
                     allSaleTypePill.addEventListener('click', () => {
@@ -2221,7 +2205,7 @@
                     // Sale type pills
                     saleTypes.forEach(saleType => {
                         const pill = document.createElement('div');
-                        pill.className = 'sale-type-pill';
+                        pill.className = 'filter-pill sale-type-pill';
                         pill.textContent = saleType.name;
                         pill.dataset.saleType = saleType.id;
                         pill.addEventListener('click', () => {
@@ -2234,7 +2218,7 @@
 
                     // "All" category pill
                     const allCategoryPill = document.createElement('div');
-                    allCategoryPill.className = 'category-pill active';
+                    allCategoryPill.className = 'filter-pill category-pill active';
                     allCategoryPill.textContent = 'All Categories';
                     allCategoryPill.dataset.category = 'all';
                     allCategoryPill.addEventListener('click', () => {
@@ -2247,7 +2231,7 @@
                     // Category pills
                     categories.forEach(category => {
                         const pill = document.createElement('div');
-                        pill.className = 'category-pill';
+                        pill.className = 'filter-pill category-pill';
                         pill.textContent = category.name;
                         pill.dataset.category = category.id;
                         pill.addEventListener('click', () => {
