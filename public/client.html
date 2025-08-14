@@ -2368,9 +2368,19 @@
                     }
                 });
 
-                if (allMarkers.length > 0) {
-                    // Panning to the first result on every filter change can be jarring.
-                    map.fitBounds(bounds, 150);
+                // Adjust map view based on the new bounds
+                if (!bounds.isEmpty()) {
+                    const ne = bounds.getNorthEast();
+                    const sw = bounds.getSouthWest();
+
+                    if (ne.equals(sw)) {
+                        // If there's only a single point, center on it with a fixed zoom.
+                        map.setCenter(ne);
+                        map.setZoom(14);
+                    } else {
+                        // Otherwise, fit all the points in the view.
+                        map.fitBounds(bounds, 150);
+                    }
                 }
                 updateDebugOverlay();
             }
