@@ -1,7 +1,6 @@
 const CACHE_NAME = 'events-map-cache-v1';
 const urlsToCache = [
-  '/',
-  '/client.html',
+  '/css/shared.css',
   // Add other important assets here, like CSS, JS, and key images
 ];
 
