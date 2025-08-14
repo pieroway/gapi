@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Reported Events</title>
+    <link rel="stylesheet" href="/css/shared.css">
     <style>
         /* Basic Styles */
         body {
@@ -272,100 +273,6 @@
             color: #6c757d;
             cursor: not-allowed;
         }
-
-        /* Modal Styles (copied from client.html) */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            z-index: 1000;
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-overlay.visible {
-            display: flex;
-        }
-
-        .modal-content {
-            background-color: #fff;
-            padding: 20px 30px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-content h2 {
-            margin-top: 0;
-            margin-bottom: 25px;
-            text-align: center;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .form-group input[type="text"],
-        .form-group input[type="datetime-local"],
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 1rem;
-            box-sizing: border-box;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 20px;
-        }
-
-        .form-row .form-group {
-            flex: 1;
-        }
-
-        .checkbox-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            border-radius: 4px;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-
-        .checkbox-group label {
-            font-weight: normal;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .form-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 25px;
-        }
-
-        .form-actions .btn-secondary { background-color: #6c757d; color: white; }
     </style>
 </head>
 
@@ -398,7 +305,7 @@
                     <option value="inaccurate">Inaccurate Information</option>
                     <option value="spam">Spam or Scam</option>
                     <option value="inappropriate">Inappropriate Content</option>
-                    <option value="cancelled">Event is Cancelled</option>
+                    <option value="cancelled">Event is not happening/ended</option>
                     <option value="other">Other</option>
                 </select>
             </div>
@@ -446,7 +353,7 @@
                 </div>
                 <div class="form-actions">
                     <button type="button" id="cancel-edit-btn" class="btn-secondary">Cancel</button>
-                    <button type="submit" class="btn-edit">Save Changes</button>
+                    <button type="submit" class="btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>

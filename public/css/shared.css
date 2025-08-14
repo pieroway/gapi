@@ -1,0 +1,146 @@
+/* ==========================================================================
+   Shared Modal and Form Styles
+   ========================================================================== */
+
+/* Modal Overlay & Content
+   -------------------------------------------------------------------------- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 20px 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+/* Form Elements
+   -------------------------------------------------------------------------- */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="search"],
+.form-group input[type="datetime-local"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+/* Checkbox & Radio Groups
+   -------------------------------------------------------------------------- */
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.checkbox-group label {
+    font-weight: normal;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.radio-group label {
+    font-weight: normal;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+/* Form Actions & Buttons
+   -------------------------------------------------------------------------- */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.form-actions button {
+    padding: 10px 20px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.form-actions .btn-primary { background-color: #007bff; color: white; }
+.form-actions .btn-primary:hover { background-color: #0056b3; }
+.form-actions .btn-secondary { background-color: #6c757d; color: white; }
+.form-actions .btn-secondary:hover { background-color: #5a6268; }
+.form-actions button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+/* Form Validation
+   -------------------------------------------------------------------------- */
+.error-message { color: #dc3545; font-size: 0.8rem; margin-top: 4px; }
+
+.form-group .is-invalid,
+.form-group input.is-invalid,
+.form-group textarea.is-invalid,
+.form-group select.is-invalid,
+.form-group .checkbox-group.is-invalid {
+    border-color: #dc3545;
+}
