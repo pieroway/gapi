@@ -111,7 +111,7 @@
         .header-actions {
             position: absolute;
             right: 15px;
-            top: calc(50% + 10px);
+            top: calc(50% + 7.5px);
             transform: translateY(-50%);
             display: flex;
             align-items: center;
@@ -1719,6 +1719,10 @@
             let wasPanelDragged = false;
 
             const onPanelTouchStart = (e) => {
+                // If the touch target is a button within the header, don't initiate drag.
+                if (e.target.closest('.header-action-btn, #collapse-button')) {
+                    return;
+                }
                 if (isDesktop()) return;
                 touchStartY = e.touches[0].clientY;
                 initialPanelHeight = listPanel.offsetHeight;
