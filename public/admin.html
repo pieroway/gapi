@@ -111,7 +111,7 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
             display: flex;
             gap: 20px;
-            align-items: center;
+            align-items: flex-end;
         }
 
         .filter-group {
@@ -273,6 +273,14 @@
             color: #6c757d;
             cursor: not-allowed;
         }
+
+        /* Responsive adjustments for filter controls */
+        @media (max-width: 600px) {
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
     </style>
 </head>
 
@@ -401,10 +409,23 @@
                 renderPagination(filteredReports);
             }
 
-            searchInput.addEventListener('input', () => {
+            function debounce(func, delay) {
+                let timeoutId;
+                return function(...args) {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => {
+                        func.apply(this, args);
+                    }, delay);
+                };
+            }
+
+            const debouncedFilter = debounce(() => {
                 currentPage = 1;
                 filterAndRenderReports();
-            });
+            }, 300); // Wait for 300ms of inactivity before filtering
+
+            searchInput.addEventListener('input', debouncedFilter);
+
             reasonFilter.addEventListener('change', () => {
                 currentPage = 1;
                 filterAndRenderReports();
@@ -551,19 +572,45 @@
                 });
                 paginationContainer.appendChild(prevButton);
 
-                // Page number buttons
-                for (let i = 1; i <= pageCount; i++) {
+                // Smart pagination logic
+                const pagesToShow = new Set();
+                const window = 1; // Number of pages to show around the current page
+
+                pagesToShow.add(1);
+                pagesToShow.add(pageCount);
+
+                for (let i = currentPage - window; i <= currentPage + window; i++) {
+                    if (i > 0 && i <= pageCount) {
+                        pagesToShow.add(i);
+                    }
+                }
+
+                const sortedPages = Array.from(pagesToShow).sort((a, b) => a - b);
+
+                let lastPage = 0;
+                sortedPages.forEach(page => {
+                    if (page > lastPage + 1) {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.textContent = '...';
+                        ellipsis.style.padding = '8px 6px';
+                        ellipsis.style.color = '#6c757d';
+                        ellipsis.style.userSelect = 'none';
+                        paginationContainer.appendChild(ellipsis);
+                    }
+
                     const pageButton = document.createElement('button');
-                    pageButton.textContent = i;
-                    if (i === currentPage) {
+                    pageButton.textContent = page;
+                    if (page === currentPage) {
                         pageButton.classList.add('active');
                     }
                     pageButton.addEventListener('click', () => {
-                        currentPage = i;
+                        currentPage = page;
                         filterAndRenderReports();
                     });
                     paginationContainer.appendChild(pageButton);
-                }
+
+                    lastPage = page;
+                });
 
                 // Next button
                 const nextButton = document.createElement('button');
