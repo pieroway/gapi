@@ -13,13 +13,14 @@ const storage = multer.diskStorage({
   }
 });
 
+const MAX_PHOTOS = 10; // Align with client-side limit
 const upload = multer({
   storage: storage,
   limits:{fileSize: 10000000}, // 10MB limit
   fileFilter: function(req, file, cb){
     checkFileType(file, cb);
   }
-}).single('photo'); // 'photo' is the field name from the client form
+}); // We will specify single/multiple on a per-route basis now
 
 function checkFileType(file, cb){
   const filetypes = /jpeg|jpg|png|gif/;
@@ -104,7 +105,10 @@ router.delete('/:id', (req, res) => {
 // --- Creator/Admin Routes ---
 
 // Create a new event
-router.post('/', upload, (req, res) => {
+router.post('/', upload.fields([
+  { name: 'eventData', maxCount: 1 },
+  { name: 'photos', maxCount: MAX_PHOTOS }
+]), (req, res) => {
   const eventData = JSON.parse(req.body.eventData);
 
   const {
@@ -143,8 +147,9 @@ router.post('/', upload, (req, res) => {
   }
 
   let eventPhotos = [];
-  if (req.file) {
-    eventPhotos.push(`/uploads/${req.file.filename}`);
+  // req.files is an object like { photos: [ ... ] } when using upload.fields
+  if (req.files && req.files.photos) {
+    eventPhotos = req.files.photos.map(file => `/uploads/${file.filename}`);
   }
 
   const newEvent = {
@@ -215,28 +220,23 @@ router.post('/edit/:guid/undelete', (req, res) => {
 });
 
 // Add a photo to an event
-router.post('/edit/:guid/photos', (req, res) => {
+router.post('/edit/:guid/photos', upload.single('photo'), (req, res) => {
   const { guid } = req.params;
   const eventIndex = events.findIndex(event => event.guid === guid);
   if (eventIndex === -1) {
     return res.status(404).json({ message: 'Event not found' });
   }
 
-  upload(req, res, (err) => {
-    if(err){
-      return res.status(400).json({ message: err });
-    }
-    if(req.file == undefined){
-      return res.status(400).json({ message: 'Error: No File Selected!' });
-    }
-    
-    const photoPath = `/uploads/${req.file.filename}`;
-    events[eventIndex].photos.push(photoPath);
-    res.status(200).json({
-      message: 'File uploaded successfully',
-      filePath: photoPath,
-      event: events[eventIndex]
-    });
+  if (!req.file) {
+    return res.status(400).json({ message: 'Error: No file selected or invalid file type.' });
+  }
+
+  const photoPath = `/uploads/${req.file.filename}`;
+  events[eventIndex].photos.push(photoPath);
+  res.status(200).json({
+    message: 'File uploaded successfully',
+    filePath: photoPath,
+    event: events[eventIndex]
   });
 });
 
