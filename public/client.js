@@ -1256,7 +1256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.latitude && event.longitude) {
                 const position = { lat: event.latitude, lng: event.longitude };
                 const marker = new AdvancedMarkerElement({
-                    map: map,
+                    // map: map,
                     position: position,
                     title: event.title,
                 });
@@ -1266,10 +1266,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 marker.eventId = event.id;
                 allMarkers.push(marker);
+
                 bounds.extend(position);
             }
         });
 
+        new markerClusterer.MarkerClusterer({ markers:allMarkers, map:map });
+        
         // Adjust map view based on the new bounds
         if (!bounds.isEmpty()) {
             const ne = bounds.getNorthEast();
@@ -1335,6 +1338,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { Map } = await google.maps.importLibrary("maps");
         const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
         const { Autocomplete } = await google.maps.importLibrary("places");
+        
 
         // Create the reusable highlighted pin element
         highlightedPinElement = new PinElement({
