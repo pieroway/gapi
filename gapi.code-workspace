@@ -4,5 +4,7 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"geminicodeassist.project": "cpl-engit-p-app-gemini-01",
+	}
 }

@@ -1246,6 +1246,8 @@ document.addEventListener('DOMContentLoaded', () => {
             bounds.extend(userLocationMarker.position);
         }
 
+        useClustering = false;  // TODO: add onscreen toggle for this
+
         filteredEvents.forEach(event => {
             // Add event card to list
             const card = createEventCard(event);
@@ -1256,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.latitude && event.longitude) {
                 const position = { lat: event.latitude, lng: event.longitude };
                 const marker = new AdvancedMarkerElement({
-                    // map: map,
+                    map: useClustering ? null : map,
                     position: position,
                     title: event.title,
                 });
@@ -1271,7 +1273,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        new markerClusterer.MarkerClusterer({ markers:allMarkers, map:map });
+        if(useClustering) {
+            new markerClusterer.MarkerClusterer({ markers:allMarkers, map:map });
+        }
         
         // Adjust map view based on the new bounds
         if (!bounds.isEmpty()) {
