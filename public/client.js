@@ -41,15 +41,146 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportEventTitle = document.getElementById('report-event-title');
     const reportEventIdInput = document.getElementById('report-event-id');
     const reportDetailsGroup = document.getElementById('report-details-group');
+    const clusteringToggle = document.getElementById('clustering-toggle');
+    const clearFiltersWrapper = document.getElementById('clear-filters-wrapper');
+    const clearAllFiltersBtn = document.getElementById('clear-all-filters-btn');
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const mapTypeRadios = document.querySelectorAll('input[name="map-type"]');
+    const debugToggle = document.getElementById('debug-toggle');
+    const zoomLevelSlider = document.getElementById('zoom-level-slider');
+    const zoomLevelValue = document.getElementById('zoom-level-value');
+    const mapThemeRadios = document.querySelectorAll('input[name="map-theme"]');
+
+    let AdvancedMarkerElement = null;
+    let PinElement = null;
+
+    const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
+
+    class CustomClusterRenderer {
+        render(cluster, _stats, map) {
+            const { count, position } = cluster;
+
+            let color = '#007bff'; // Default blue for small clusters (< 25)
+            if (count >= 100) color = '#dc3545'; // Red for large clusters (100+)
+            else if (count >= 25) color = '#fd7e14'; // Orange for medium clusters (25-99)
+
+            const svg = `
+                <svg fill="${color}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="50" height="50">
+                    <circle cx="120" cy="120" opacity=".6" r="70" />
+                    <circle cx="120" cy="120" opacity=".3" r="90" />
+                    <circle cx="120" cy="120" opacity=".2" r="110" />
+                    <text x="50%" y="50%" style="fill:#fff" text-anchor="middle" font-size="50" dominant-baseline="middle" font-family="roboto,arial,sans-serif">${count}</text>
+                </svg>`;
+            const zIndex = Number(google.maps.Marker.MAX_ZINDEX) + count;
+
+            const buildInfoWindowContent = () => {
+                const maxTitles = 5;
+                const titles = cluster.markers
+                    .slice(0, maxTitles)
+                    .map(m => {
+                        const event = allEvents.find(e => e.id === m.eventId);
+                        const escapedTitle = event ? event.title.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+                        return event ? `<li>${escapedTitle}</li>` : '';
+                    })
+                    .join('');
+
+                const moreCount = count - maxTitles;
+                return `
+                    <div class="cluster-info-window">
+                        <strong>${count} Events Here</strong>
+                        <ul class="cluster-info-list">${titles}</ul>
+                        ${moreCount > 0 ? `<p class="cluster-info-more">...and ${moreCount} more.</p>` : ''}
+                    </div>`;
+            };
+
+            const onMouseOver = (anchor) => {
+                if (!clusterInfoWindow) return;
+                clusterInfoWindow.close();
+                clusterInfoWindow.setContent(buildInfoWindowContent());
+                clusterInfoWindow.open({ map, anchor, shouldFocus: false });
+            };
+
+            const onMouseOut = () => {
+                if (clusterInfoWindow) {
+                    clusterInfoWindow.close();
+                }
+            };
+
+            const parser = new DOMParser();
+            const svgEl = parser.parseFromString(svg, "image/svg+xml").documentElement;
+            svgEl.setAttribute("transform", "translate(0 25)");
+
+            const marker = new AdvancedMarkerElement({ map, position, zIndex, content: svgEl });
+
+            marker.content.addEventListener('mouseenter', () => onMouseOver(marker));
+            marker.content.addEventListener('mouseleave', onMouseOut);
+
+            return marker;
+        }
+    }
+
+    const CLUSTERING_KEY = 'eventsMapClusteringEnabled';
+    const MAP_TYPE_KEY = 'eventsMapType';
+    const DEBUG_OVERLAY_KEY = 'eventsMapDebugOverlayEnabled';
+    const ZOOM_LEVEL_KEY = 'eventsMapDefaultZoom';
+    // Keys for persisting UI state
+    const LIST_PANEL_COLLAPSED_KEY = 'eventsMapListPanelCollapsed';
+    const DEBUG_COLLAPSED_KEY = 'eventsMapDebugCollapsed';
+    const DEBUG_POSITION_KEY = 'eventsMapDebugPosition';
+
+    // Load and apply the saved clustering preference
+    const savedClusteringPref = localStorage.getItem(CLUSTERING_KEY);
+    clusteringToggle.checked = savedClusteringPref === 'true'; // Default to false if null or not 'true'
+
+    // Load and apply the saved debug overlay preference
+    const savedDebugPref = localStorage.getItem(DEBUG_OVERLAY_KEY);
+    const isDebugEnabled = savedDebugPref === 'true';
+    debugToggle.checked = isDebugEnabled;
+    debugOverlay.style.display = isDebugEnabled ? 'block' : 'none';
+
+    // Load and apply saved debug overlay collapsed state
+    const isDebugCollapsed = localStorage.getItem(DEBUG_COLLAPSED_KEY) === 'true';
+    if (isDebugCollapsed) {
+        debugOverlay.classList.add('collapsed');
+    }
+
+    // Load and apply saved debug overlay position (desktop only)
+    if (isDesktop()) {
+        const savedDebugPosition = localStorage.getItem(DEBUG_POSITION_KEY);
+        if (savedDebugPosition) {
+            try {
+                const { top, left } = JSON.parse(savedDebugPosition);
+                debugOverlay.style.transform = 'none'; // Remove centering
+                debugOverlay.style.top = top;
+                debugOverlay.style.left = left;
+            } catch (e) {
+                console.error("Failed to parse debug overlay position", e);
+                localStorage.removeItem(DEBUG_POSITION_KEY);
+            }
+        }
+    }
+
+    // Load and apply the saved zoom level preference
+    const savedZoom = localStorage.getItem(ZOOM_LEVEL_KEY) || '12';
+    zoomLevelSlider.value = savedZoom;
+    zoomLevelValue.textContent = savedZoom;
+
+    // Load and apply saved list panel state (desktop only)
+    if (isDesktop() && localStorage.getItem(LIST_PANEL_COLLAPSED_KEY) === 'true') {
+        listPanel.classList.add('closed');
+        mapElement.classList.add('panel-closed');
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const eventIdFromUrl = urlParams.get('event');
 
-    const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
     let isListPanelOpen = false;
     let allEvents = [];
     let allMarkers = [];
     let allCategories = [];
+    let markerCluster = null;
     let allSaleTypes = [];
     let lastSelectedPosition = null;
     let userLocationMarker = null;
@@ -57,6 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let hoveredMarker = null;
     let isFollowingUser = false;
     let highlightedPinElement = null;
+    let clusterInfoWindow = null;
 
     let elementThatOpenedDetailPanel = null;
 
@@ -220,7 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
             wasDragged = false; // Reset for next click
             return;
         }
-        debugOverlay.classList.toggle('collapsed');
+        const isCollapsed = debugOverlay.classList.toggle('collapsed');
+        localStorage.setItem(DEBUG_COLLAPSED_KEY, isCollapsed);
     });
 
     // Draggable on Desktop
@@ -262,6 +395,13 @@ document.addEventListener('DOMContentLoaded', () => {
         isDragging = false;
         document.removeEventListener('mousemove', onDragMove);
         document.removeEventListener('mouseup', onDragEnd);
+
+        // Save the final position to localStorage
+        const positionToSave = {
+            top: debugOverlay.style.top,
+            left: debugOverlay.style.left
+        };
+        localStorage.setItem(DEBUG_POSITION_KEY, JSON.stringify(positionToSave));
     };
 
     debugHeader.addEventListener('mousedown', onDragStart);
@@ -646,14 +786,64 @@ document.addEventListener('DOMContentLoaded', () => {
     collapseButton.addEventListener('click', () => {
         listPanel.classList.add('closed');
         mapElement.classList.add('panel-closed');
+        localStorage.setItem(LIST_PANEL_COLLAPSED_KEY, 'true');
     });
 
     expandButton.addEventListener('click', () => {
         listPanel.classList.remove('closed');
         mapElement.classList.remove('panel-closed');
+        localStorage.setItem(LIST_PANEL_COLLAPSED_KEY, 'false');
+    });
+
+    // --- Settings Modal Logic ---
+    settingsBtn.addEventListener('click', () => {
+        settingsModal.classList.add('visible');
+    });
+
+    closeSettingsBtn.addEventListener('click', () => {
+        settingsModal.classList.remove('visible');
+    });
+
+    settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            settingsModal.classList.remove('visible');
+        }
+    });
+
+    clusteringToggle.addEventListener('change', () => {
+        // Save the user's preference to localStorage
+        localStorage.setItem(CLUSTERING_KEY, clusteringToggle.checked);
+        filterAndDisplayEvents();
+    });
+
+    mapTypeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const newMapType = e.target.value;
+            if (map) {
+                map.setMapTypeId(newMapType);
+            }
+            localStorage.setItem(MAP_TYPE_KEY, newMapType);
+        });
+    });
+
+    debugToggle.addEventListener('change', () => {
+        const isEnabled = debugToggle.checked;
+        localStorage.setItem(DEBUG_OVERLAY_KEY, isEnabled);
+        debugOverlay.style.display = isEnabled ? 'block' : 'none';
+    });
+
+    zoomLevelSlider.addEventListener('input', () => {
+        zoomLevelValue.textContent = zoomLevelSlider.value;
+    });
+
+    zoomLevelSlider.addEventListener('change', () => {
+        const newZoom = zoomLevelSlider.value;
+        localStorage.setItem(ZOOM_LEVEL_KEY, newZoom);
     });
 
     refreshEventsBtn.addEventListener('click', refreshEvents);
+
+    clearAllFiltersBtn.addEventListener('click', clearAllFilters);
 
     searchInput.addEventListener('input', filterAndDisplayEvents);
 
@@ -675,8 +865,9 @@ document.addEventListener('DOMContentLoaded', () => {
     centerLocationButton.addEventListener('click', () => {
         isFollowingUser = true;
         centerLocationButton.classList.add('following');
-        if (userLocationMarker) {
-            smoothPanTo(userLocationMarker.position, 300, () => map.setZoom(15));
+        const userPos = getMarkerPosition(userLocationMarker);
+        if (userPos) {
+            smoothPanTo(userPos, 300, () => map.setZoom(15));
         }
     });
 
@@ -749,8 +940,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function setHoveredMarker(markerToHover) {
         // If there's already a hovered marker that isn't the active one, un-highlight it.
         if (hoveredMarker && hoveredMarker !== activeMarker) {
-            hoveredMarker.content = null;
-            hoveredMarker.zIndex = null;
+            hoveredMarker.content = hoveredMarker.defaultContent;
+            hoveredMarker.setZIndex(null);
         }
 
         // Set the new hovered marker
@@ -759,15 +950,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // If the new hovered marker is not the active one, highlight it.
         if (hoveredMarker && hoveredMarker !== activeMarker) {
             hoveredMarker.content = highlightedPinElement;
-            hoveredMarker.zIndex = 1; // Bring to front
+            hoveredMarker.setZIndex(1);
         }
     }
 
     function clearHoveredMarker() {
         // If there's a hovered marker and it's not the active one, un-highlight it.
         if (hoveredMarker && hoveredMarker !== activeMarker) {
-            hoveredMarker.content = null;
-            hoveredMarker.zIndex = null;
+            hoveredMarker.content = hoveredMarker.defaultContent;
+            hoveredMarker.setZIndex(null);
         }
         hoveredMarker = null;
     }
@@ -775,7 +966,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setActiveMarker(markerToActivate) {
         // Deactivate the old marker
         if (activeMarker) {
-            activeMarker.content = null; // Revert to default pin
+            activeMarker.content = activeMarker.defaultContent; // Revert to its original pin
             activeMarker.zIndex = null; // Revert to default z-index
         }
 
@@ -898,7 +1089,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const directionsBtn = document.getElementById('directions-btn');
         if (directionsBtn) {
             directionsBtn.addEventListener('click', () => {
-                const userPos = userLocationMarker.position;
+                const userPos = getMarkerPosition(userLocationMarker);
                 const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userPos.lat},${userPos.lng}&destination=${encodeURIComponent(event.address)}`;
                 window.open(directionsUrl, '_blank');
             });
@@ -1175,6 +1366,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return filtered;
     }
 
+    function getActiveFilterCount() {
+        const selectedSaleType = document.querySelector('.sale-type-pill.active')?.dataset.saleType || 'all';
+        const selectedCategory = document.querySelector('.category-pill.active')?.dataset.category || 'all';
+        const searchTerm = searchInput.value.trim();
+
+        let count = 0;
+        if (selectedSaleType !== 'all') count++;
+        if (selectedCategory !== 'all') count++;
+        if (searchTerm.length > 0) count++;
+
+        return count;
+    }
+
+    function updateClearFiltersButton() {
+        const count = getActiveFilterCount();
+        if (count > 0) {
+            clearAllFiltersBtn.textContent = `Clear ${count} Filter${count > 1 ? 's' : ''}`;
+            clearFiltersWrapper.style.display = 'flex';
+        } else {
+            clearFiltersWrapper.style.display = 'none';
+        }
+    }
+
     function updateDebugOverlay() {
         const contentEl = document.getElementById('debug-content');
         if (!contentEl) return;
@@ -1191,6 +1405,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         contentEl.innerHTML = `
                     <strong>Zoom Level:</strong> ${map.getZoom()}<br>
+                    <strong>Clustering:</strong> ${clusteringToggle.checked ? 'On' : 'Off'}<br>
                     <strong>Total Events:</strong> ${allEvents.length}<br>
                     <strong>Filtered Events:</strong> ${filteredEvents.length}<br>
                     <strong>Pin Count:</strong> ${allMarkers.length}<br>
@@ -1212,6 +1427,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         localStorage.setItem('eventFilters', JSON.stringify(filtersToSave));
 
+        updateClearFiltersButton();
+
         // Update active pills
         document.querySelectorAll('.sale-type-pill').forEach(pill => {
             pill.classList.toggle('active', pill.dataset.saleType === selectedSaleType);
@@ -1221,6 +1438,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Clear existing markers from the map
+        if (markerCluster) {
+            markerCluster.clearMarkers();
+            markerCluster = null;
+        }
         allMarkers.forEach(marker => marker.setMap(null));
         allMarkers = [];
 
@@ -1236,18 +1457,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="clear-filters-btn">Clear All Filters</button>
                         </div>`;
             eventsContainer.querySelector('.clear-filters-btn').addEventListener('click', clearAllFilters);
+            // Hide the primary "Clear X Filters" button to avoid duplication.
+            clearFiltersWrapper.style.display = 'none';
             return;
         }
 
         const bounds = new google.maps.LatLngBounds();
-        const { AdvancedMarkerElement } = google.maps.marker;
-
         if (userLocationMarker) {
-            bounds.extend(userLocationMarker.position);
+            const userPos = getMarkerPosition(userLocationMarker);
+            if (userPos) bounds.extend(userPos);
         }
 
-        useClustering = false;  // TODO: add onscreen toggle for this
-
+        const useClustering = clusteringToggle.checked;
         filteredEvents.forEach(event => {
             // Add event card to list
             const card = createEventCard(event);
@@ -1257,11 +1478,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // Add marker to map
             if (event.latitude && event.longitude) {
                 const position = { lat: event.latitude, lng: event.longitude };
-                const marker = new AdvancedMarkerElement({
+                let marker;
+
+                const pin = new PinElement();
+                marker = new AdvancedMarkerElement({
                     map: useClustering ? null : map,
                     position: position,
                     title: event.title,
+                    content: pin.element,
                 });
+                marker.defaultContent = pin.element; // Store for hover/active state changes
+
                 marker.addListener('click', () => {
                     openDetailPanel(event.id);
                     scrollToEventCard(event.id);
@@ -1273,8 +1500,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if(useClustering) {
-            new markerClusterer.MarkerClusterer({ markers:allMarkers, map:map });
+        if (useClustering) {
+            const onClusterClickHandler = (_event, cluster, map) => {
+                if (cluster.bounds) {
+                    map.fitBounds(cluster.bounds, 60); // Add padding for better visibility
+                }
+            };
+            markerCluster = new markerClusterer.MarkerClusterer({
+                markers: allMarkers,
+                map: map,
+                onClusterClick: onClusterClickHandler,
+                renderer: new CustomClusterRenderer(),
+            });
         }
         
         // Adjust map view based on the new bounds
@@ -1284,11 +1521,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (ne.equals(sw)) {
                 // If there's only a single point, center on it with a fixed zoom.
+                const defaultZoom = parseInt(localStorage.getItem(ZOOM_LEVEL_KEY) || '14', 10);
                 map.setCenter(ne);
-                map.setZoom(14);
+                map.setZoom(defaultZoom);
             } else {
-                // Otherwise, fit all the points in the view.
-                map.fitBounds(bounds, 150);
+                // Only fit the bounds automatically if a filter is active.
+                // On initial load, this respects the user's default zoom setting.
+                if (getActiveFilterCount() > 0) {
+                    map.fitBounds(bounds, 150);
+                }
                 // On mobile, prevent zooming out too far after filtering.
                 if (!isDesktop()) {
                     google.maps.event.addListenerOnce(map, 'idle', () => {
@@ -1340,11 +1581,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initMap() {
         const { Map } = await google.maps.importLibrary("maps");
-        const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+        const markerLibrary = await google.maps.importLibrary("marker");
+        AdvancedMarkerElement = markerLibrary.AdvancedMarkerElement;
+        PinElement = markerLibrary.PinElement;
         const { Autocomplete } = await google.maps.importLibrary("places");
-        
+        clusterInfoWindow = new google.maps.InfoWindow({
+            content: '',
+            disableAutoPan: true,
+            ariaLabel: "Cluster Preview",
+            disableCloseButton: true,
+            pixelOffset: new google.maps.Size(0, 25)
+        });
 
-        // Create the reusable highlighted pin element
+        const defaultZoom = parseInt(localStorage.getItem(ZOOM_LEVEL_KEY) || '12', 10);
+        map = new Map(document.getElementById('map'), {
+            center: { lat: 45.345, lng: -75.760 }, // Default to Ottawa
+            zoom: defaultZoom,
+            mapId: 'GAPI_MAP_ID', // This is required for Advanced Markers
+            disableDefaultUI: true
+        });
+
         highlightedPinElement = new PinElement({
             background: '#007AFF', // A nice, standout blue
             borderColor: '#ffffff',
@@ -1352,12 +1608,13 @@ document.addEventListener('DOMContentLoaded', () => {
             scale: 1.3, // Make it slightly larger than default
         }).element;
 
-        map = new Map(document.getElementById('map'), {
-            center: { lat: 45.345, lng: -75.760 }, // Default to Ottawa
-            zoom: 12,
-            mapId: 'GAPI_MAP_ID',
-            disableDefaultUI: true
-        });
+        // Load and apply saved map type preference
+        const savedMapType = localStorage.getItem(MAP_TYPE_KEY) || 'roadmap';
+        map.setMapTypeId(savedMapType);
+        const radioToCheck = document.querySelector(`input[name="map-type"][value="${savedMapType}"]`);
+        if (radioToCheck) {
+            radioToCheck.checked = true;
+        }
 
         // --- Initialize Places Autocomplete for the submission form ---
         const eventAddressInput = document.getElementById('event-address');
@@ -1414,7 +1671,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 if (userLocationMarker) {
-                    userLocationMarker.position = pos;
+                    // Check if it's an Advanced Marker by checking for a 'content' property
+                    if (userLocationMarker.hasOwnProperty('content')) {
+                        userLocationMarker.position = pos;
+                    } else {
+                        userLocationMarker.setPosition(pos);
+                    }
                 } else {
                     const dot = document.createElement('div');
                     dot.className = 'user-location-dot';
@@ -1581,6 +1843,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         requestAnimationFrame(animate);
     }
+
+    function getMarkerPosition(marker) {
+        if (!marker) return null;
+        // Advanced Marker has a .position property which can be a LatLng or LatLngLiteral
+        if (marker.position) {
+            const pos = marker.position;
+            // Check if it's a LatLng object with lat() and lng() methods
+            if (typeof pos.lat === 'function') {
+                return { lat: pos.lat(), lng: pos.lng() };
+            }
+            return pos; // It's already a LatLngLiteral
+        }
+        return null;
+    }
     function createEventCard(event) {
         const card = document.createElement('div');
         card.className = 'card';
@@ -1667,7 +1943,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBA5gWJDCdQIvqWXdtMN6aWJg2h5rLiikU&callback=initMap&libraries=marker,places&loading=async`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBA5gWJDCdQIvqWXdtMN6aWJg2h5rLiikU&callback=initMap&libraries=marker,places`;
     script.async = true;
     script.defer = true;
     window.initMap = initMap;

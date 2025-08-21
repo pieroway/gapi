@@ -113,15 +113,14 @@
      color: #555;
      line-height: 1;
      position: static;
+     display: flex;
+     align-items: center;
+     justify-content: center;
      /* Was absolute */
  }
 
  #collapse-button {
      display: none;
-     cursor: pointer;
-     /* padding: 5px; */
-     position: relative;
-     top: 3px;
  }
 
  #expand-button {
@@ -146,6 +145,9 @@
  }
 
  #search-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
      padding: 10px 20px 0;
      position: relative;
      flex-shrink: 0;
@@ -154,7 +156,8 @@
  }
 
  #search-input {
-     width: 100%;
+     flex-grow: 1;
+     min-width: 0; /* Prevents input from overflowing flex container */
      padding: 10px 15px 10px 40px;
      border: 1px solid #e0e0e0;
      border-radius: 20px;
@@ -226,6 +229,12 @@
  .pills-wrapper::after {
      right: 0;
      background: linear-gradient(to left, #ffffff 20%, rgba(255, 255, 255, 0));
+ }
+
+ #clear-filters-wrapper {
+     flex-shrink: 0;
+     /* The wrapper is now just a container, no extra styles needed */
+     /* The button inside will have its own margin/padding if needed */
  }
 
  .filter-pill {
@@ -438,6 +447,145 @@
  #report-event-btn:hover {
      background-color: #dc3545;
      color: #fff;
+ }
+
+ .settings-content {
+    margin: 20px 0;
+ }
+
+.settings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.settings-item:first-of-type {
+    border-top: 1px solid #eee;
+}
+
+.settings-item > label {
+    font-weight: 500;
+    color: #333;
+}
+
+.segmented-control {
+    display: flex;
+    border: 1px solid #007bff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.segmented-control input[type="radio"] {
+    display: none;
+}
+
+.segmented-control label {
+    padding: 6px 16px;
+    cursor: pointer;
+    background-color: #fff;
+    color: #007bff;
+    transition: background-color 0.2s, color 0.2s;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.segmented-control input[type="radio"]:checked + label {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.segmented-control label:not(:last-of-type) {
+    border-right: 1px solid #007bff;
+}
+
+.zoom-control {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.zoom-control input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 120px;
+    height: 8px;
+    background: #ddd;
+    border-radius: 5px;
+    outline: none;
+    transition: background .2s;
+}
+
+.zoom-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #007bff;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.zoom-control input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #007bff;
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+}
+
+.zoom-control #zoom-level-value {
+    font-weight: 500;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* Modern Toggle Switch */
+ .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+ }
+
+ .toggle-switch-checkbox {
+    opacity: 0;
+    width: 0;
+    height: 0;
+ }
+
+ .toggle-switch-label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 28px;
+ }
+
+ .toggle-switch-label:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+ }
+
+ .toggle-switch-checkbox:checked + .toggle-switch-label {
+    background-color: #007bff;
+ }
+
+ .toggle-switch-checkbox:checked + .toggle-switch-label:before {
+    transform: translateX(22px);
  }
 
  .address-container {
@@ -874,6 +1022,68 @@
      }
  }
 
+ /* --- Cluster Info Window --- */
+ .cluster-info-window {
+     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+     padding: 5px;
+     max-width: 250px;
+ }
+ 
+ .cluster-info-window strong {
+     font-size: 1rem;
+     color: #333;
+     display: block;
+     margin-bottom: 8px;
+     border-bottom: 1px solid #eee;
+     padding-bottom: 5px;
+ }
+ 
+ .cluster-info-list {
+     list-style: none;
+     padding: 0;
+     margin: 0;
+     max-height: 150px;
+     overflow-y: auto;
+ }
+ 
+ .cluster-info-list li {
+     font-size: 0.9rem;
+     color: #555;
+     padding: 4px 0;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+ }
+ 
+ .cluster-info-more {
+     font-style: italic;
+     color: #666;
+     margin: 5px 0 0;
+     font-size: 0.8rem;
+ }
+ 
+ @keyframes infowindow-fade-in {
+     from {
+         opacity: 0;
+         transform: translateY(5px);
+     }
+     to {
+         opacity: 1;
+         transform: translateY(0);
+     }
+ }
+ 
+ .infowindow-fade-animation {
+     animation: infowindow-fade-in 0.25s ease-out;
+ }
+ 
+ /* --- Google Maps Overrides --- */
+ /* Hide the default close button on our InfoWindow. This is a direct override
+    because the API's `disableCloseButton` option is not taking effect. */
+ .gm-style-iw-c button[aria-label="Close"] {
+     display: none !important;
+ }
+ 
  #center-location-button {
      position: absolute;
      top: 16px;
@@ -976,7 +1186,9 @@
      }
 
      #collapse-button {
-         display: block;
+         display: flex; /* Use flex to align with other buttons */
+         /* Minor visual adjustment to perfectly align with the other icons. */
+         transform: translateY(1px);
      }
 
      #list-panel.closed+#expand-button {
@@ -1011,10 +1223,6 @@
 
      .header-action-btn {
          position: static;
-         margin-left: 10px;
-     }
-
-     #collapse-button {
          margin-left: 10px;
      }
 
