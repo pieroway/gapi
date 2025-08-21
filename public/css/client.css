@@ -1002,6 +1002,10 @@
          height: 100%;
          max-height: 100%;
          border-radius: 0;
+         /* Ensure the modal takes full width on mobile */
+         max-width: 100%; 
+         /* Ensure the flexbox layout works by preventing the main container from scrolling */
+         overflow: hidden;
          /* The new layout class handles the flexbox setup */
      }
  
@@ -1023,9 +1027,6 @@
      /* Hide original header actions and show bottom nav */
      #list-panel .header-actions {
         display: none;
-     }
-     #bottom-nav {
-        display: flex;
      }
      body {
         padding-bottom: 60px; /* Height of the nav bar */
@@ -1110,7 +1111,7 @@
     border-top: 1px solid #e0e0e0;
     box-shadow: 0 -2px 8px rgba(0,0,0,0.08); 
     justify-content: space-around;
-    display: none; /* Hidden by default, shown on mobile via media query. */
+    display: flex; /* Display by default for mobile-first. */
     align-items: stretch; /* Make buttons fill the height */
     z-index: 999;
  }
@@ -1127,12 +1128,22 @@
     padding: 5px 0;
     cursor: pointer;
     color: #666;
-    transition: color 0.2s;
+    transition: color 0.2s, transform 0.1s ease-out;
+ }
+
+ /* Add a subtle "tap" animation when a nav button is pressed. */
+ .nav-btn:active {
+    transform: scale(0.92);
+    /* Make the press-down feel faster and more responsive. */
+    transition-duration: 0.05s;
  }
 
  .nav-btn svg {
-    width: 24px;
-    height: 24px;
+   width: 24px;
+   height: 24px;
+   /* Default to stroked icons, which is the most common case. */
+   stroke: currentColor;
+   fill: none;
  }
 
  .nav-btn-text {
@@ -1142,6 +1153,11 @@
 
  .nav-btn.active {
     color: #007bff;
+    transform: translateY(-2px); /* Pop the active icon up slightly */
+ }
+
+ .nav-btn.active .nav-btn-text {
+    font-weight: 700; /* Make the text bolder for emphasis */
  }
 
  /* --- Cluster Info Window --- */
@@ -1226,16 +1242,10 @@
      stroke: #555;
  }
 
- /* Handle filled icons in nav bar */
+ /* Override for the few icons that should be filled instead of stroked. */
  .nav-btn svg[fill="currentColor"] {
     stroke: none;
     fill: currentColor;
- }
-
- /* Handle stroked icons in nav bar */
- .nav-btn svg[stroke="currentColor"] {
-    stroke: currentColor;
-    fill: none;
  }
 
  #center-location-button.following svg {
@@ -1246,6 +1256,10 @@
 
  /* Desktop Layout */
  @media (min-width: 769px) {
+     #bottom-nav {
+         display: none;
+     }
+
      .card-chevron {
          display: block;
      }
