@@ -1,8 +1,12 @@
-const CACHE_NAME = 'events-map-cache-v1';
+const CACHE_NAME = 'events-map-cache-v2'; // Bump version to trigger update
 const urlsToCache = [
+  '/', // Cache the root to allow offline start
+  '/client.html',
   '/css/shared.css',
   '/css/client.css',
-  // Add other important assets here, like CSS, JS, and key images
+  '/client.js',
+  '/markercluster.js',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', event => {
@@ -13,6 +17,32 @@ self.addEventListener('install', event => {
         console.log('Opened cache');
         return cache.addAll(urlsToCache);
       })
+  );
+  // We don't call skipWaiting() here because we want to give the user
+  // the choice to update when they are ready.
+});
+
+// Listen for a message from the client to skip waiting.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+self.addEventListener('activate', event => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            // If this cache name is not in our whitelist, delete it.
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim()) // Take control of all open clients immediately.
   );
 });
 
