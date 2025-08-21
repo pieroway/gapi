@@ -245,7 +245,8 @@
                     </div>
                     <div class="form-group">
                         <label for="event-description">Description</label>
-                        <textarea id="event-description" name="description" rows="3" required></textarea>
+                        <textarea id="event-description" name="description" rows="3" required maxlength="500"></textarea>
+                        <div class="char-counter"><span>0</span> / 500</div>
                     </div>
                     <div class="form-group">
                         <label for="event-address">Address</label>
@@ -418,6 +419,136 @@
                     }
                 });
             }
+
+            /**
+             * Adds character counting functionality to textareas with a maxlength attribute
+             * and a corresponding counter element.
+             */
+            function setupCharCounters() {
+                const textarea = document.getElementById('event-description');
+                if (!textarea) return;
+
+                // The counter element is expected to be the next sibling
+                const counter = textarea.nextElementSibling;
+                if (!counter || !counter.classList.contains('char-counter')) return;
+
+                const countSpan = counter.querySelector('span');
+                const maxLength = parseInt(textarea.getAttribute('maxlength'), 10);
+
+                if (!countSpan || isNaN(maxLength)) return;
+
+                textarea.addEventListener('input', () => {
+                    const currentLength = textarea.value.length;
+                    countSpan.textContent = currentLength;
+
+                    counter.classList.remove('warning', 'error');
+                    if (currentLength > maxLength) {
+                        counter.classList.add('error');
+                    } else if (currentLength > maxLength * 0.9) {
+                        counter.classList.add('warning');
+                    }
+                });
+            }
+
+            /**
+             * Persists submission form data to localStorage to prevent data loss on accidental close.
+             */
+            function setupFormPersistence() {
+                const submissionForm = document.getElementById('submission-form');
+                if (!submissionForm) return;
+
+                const submissionModal = document.getElementById('submission-modal');
+                if (submissionModal) {
+                    submissionModal.addEventListener('click', (e) => {
+                        // Prevent the submission modal from closing when the overlay is clicked.
+                        // This is a specific override because this form has data persistence,
+                        // and we don't want users to accidentally lose their input.
+                        if (e.target === submissionModal) {
+                            e.stopImmediatePropagation();
+                        }
+                    }, true); // Use capture phase to run before any generic modal-closing handlers.
+                }
+
+                const addEventDesktopBtn = document.getElementById('add-event-btn');
+                const addEventMobileBtn = document.getElementById('nav-add-btn');
+                const cancelSubmissionBtn = document.getElementById('cancel-submission-btn');
+                const FORM_STORAGE_KEY = 'unsavedSubmissionFormData';
+
+                const saveFormData = () => {
+                    const formData = new FormData(submissionForm);
+                    const data = {};
+                    // Handle all single-value fields
+                    for (const key of formData.keys()) {
+                        if (!key.endsWith('[]')) {
+                            data[key] = formData.get(key);
+                        }
+                    }
+                    // Handle multi-value fields (checkboxes)
+                    data['category_ids[]'] = formData.getAll('category_ids[]');
+                    
+                    // Don't save the file itself for security reasons
+                    delete data.photo;
+
+                    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
+                };
+
+                const loadFormData = () => {
+                    const savedDataJSON = localStorage.getItem(FORM_STORAGE_KEY);
+                    if (!savedDataJSON) return;
+
+                    try {
+                        const data = JSON.parse(savedDataJSON);
+                        console.log('Restoring form data from localStorage.');
+
+                        // Restore standard inputs
+                        for (const key in data) {
+                            if (key.endsWith('[]')) continue; // Handle checkboxes separately
+                            const element = submissionForm.querySelector(`[name="${key}"]`);
+                            if (element) {
+                                element.value = data[key];
+                            }
+                        }
+
+                        // Restore sale type pill by simulating a click
+                        const saleTypeId = data['sale_type_id'];
+                        if (saleTypeId) {
+                            const pill = document.querySelector(`#event-sale-type-pills .filter-pill[data-id="${saleTypeId}"]`);
+                            pill?.click();
+                        }
+
+                        // Restore category checkboxes
+                        const categoryIds = data['category_ids[]'] || [];
+                        submissionForm.querySelectorAll('input[name="category_ids[]"]').forEach(cb => {
+                            cb.checked = categoryIds.includes(cb.value);
+                        });
+
+                        // Manually trigger an input event on the textarea to update the counter
+                        submissionForm.querySelector('#event-description')?.dispatchEvent(new Event('input', { bubbles: true }));
+
+                    } catch (error) {
+                        console.error('Failed to load form data:', error);
+                        localStorage.removeItem(FORM_STORAGE_KEY); // Clear corrupted data
+                    }
+                };
+
+                const clearFormData = () => localStorage.removeItem(FORM_STORAGE_KEY);
+
+                submissionForm.addEventListener('input', saveFormData);
+                submissionForm.addEventListener('submit', () => setTimeout(clearFormData, 500));
+                [addEventDesktopBtn, addEventMobileBtn].forEach(btn => btn?.addEventListener('click', loadFormData));
+                cancelSubmissionBtn?.addEventListener('click', (e) => {
+                    if (localStorage.getItem(FORM_STORAGE_KEY)) {
+                        if (confirm('Are you sure you want to discard your changes?')) {
+                            clearFormData();
+                        } else {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                        }
+                    }
+                }, true); // Use capture phase to run before other modal-closing listeners
+            }
+            setupCharCounters();
+            setupFormPersistence();
         });
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

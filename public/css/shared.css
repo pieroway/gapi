@@ -180,6 +180,23 @@
 
 }
 
+/* Character Counter for textareas
+   -------------------------------------------------------------------------- */
+.char-counter {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 4px;
+    transition: color 0.2s;
+}
+.char-counter.warning {
+    color: #ffc107; /* Amber */
+}
+.char-counter.error {
+    color: #dc3545; /* Red */
+    font-weight: 600;
+}
+
 /* --- Multi-Photo Upload Previews --- */
 #photo-preview {
     display: flex;
