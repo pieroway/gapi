@@ -231,6 +231,26 @@
      background: linear-gradient(to left, #ffffff 20%, rgba(255, 255, 255, 0));
  }
 
+ .pill-select-group {
+     display: flex;
+     flex-wrap: wrap;
+     gap: 8px;
+     margin-top: 5px;
+ }
+ 
+ .pill-select-group .filter-pill {
+     margin-right: 0; /* Override default margin from main filter pills */
+ }
+ 
+ /* Override for submission form's category container to prevent scrolling
+    and allow it to grow to fit all category options. */
+ #submission-modal .checkbox-group {
+     max-height: none;
+     overflow-y: visible;
+     border: none;
+     padding: 0;
+ }
+ 
  #clear-filters-wrapper {
      flex-shrink: 0;
      /* The wrapper is now just a container, no extra styles needed */
@@ -953,6 +973,29 @@
      #qr-code-container {
          display: none;
      }
+ 
+     #submission-modal .modal-content {
+         width: 100%;
+         height: 100%;
+         max-height: 100%;
+         border-radius: 0;
+         /* The new layout class handles the flexbox setup */
+     }
+ 
+     /* Mobile-specific padding adjustments */
+     #submission-modal .modal-content--layout-flex > h2 {
+         padding: 20px;
+         font-size: 1.2rem;
+         text-align: center;
+     }
+ 
+     #submission-modal .modal-content--layout-flex .form-scroll-content {
+         padding: 20px;
+     }
+ 
+     #submission-modal .modal-content--layout-flex .form-actions {
+         padding: 15px 20px;
+     }
  }
 
  .slider-btn.next {
@@ -1231,5 +1274,9 @@
          border: none;
          padding: 0;
          /* Reset button styles */
+     }
+
+     #submission-modal .modal-content {
+         max-width: 1000px;
      }
  }

@@ -24,8 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const submissionModal = document.getElementById('submission-modal');
     const submissionForm = document.getElementById('submission-form');
     const cancelSubmissionBtn = document.getElementById('cancel-submission-btn');
-    const eventSaleTypeSelect = document.getElementById('event-sale-type');
     const eventCategoriesContainer = document.getElementById('event-categories-container');
+    const eventSaleTypePillsContainer = document.getElementById('event-sale-type-pills');
     const eventPhotoInput = document.getElementById('event-photo');
     const eventTitleInput = document.getElementById('event-title');
     const eventDescriptionInput = document.getElementById('event-description');
@@ -51,8 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const debugToggle = document.getElementById('debug-toggle');
     const zoomLevelSlider = document.getElementById('zoom-level-slider');
     const zoomLevelValue = document.getElementById('zoom-level-value');
-    const mapThemeRadios = document.querySelectorAll('input[name="map-theme"]');
-
     let AdvancedMarkerElement = null;
     let PinElement = null;
 
@@ -187,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeMarker = null;
     let hoveredMarker = null;
     let isFollowingUser = false;
-    let highlightedPinElement = null;
+    let highlightedLegacyIcon = null;
     let clusterInfoWindow = null;
 
     let elementThatOpenedDetailPanel = null;
@@ -539,9 +537,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 4. Validate Sale Type
-        clearError(eventSaleTypeSelect);
-        if (!isRequired(eventSaleTypeSelect)) {
-            showError(eventSaleTypeSelect, 'Please select a sale type.');
+        const saleTypeHiddenInput = document.getElementById('event-sale-type-hidden');
+        clearError(eventSaleTypePillsContainer); // Clear error from the container
+        if (!isRequired(saleTypeHiddenInput)) {
+            showError(eventSaleTypePillsContainer, 'Please select a sale type.');
             isFormValid = false;
         }
 
@@ -626,7 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Real-time validation setup ---
     const fieldsForRealtimeValidation = [
         eventTitleInput, eventDescriptionInput, eventAddressInput,
-        eventSaleTypeSelect, eventStartInput, eventEndInput
+        eventStartInput, eventEndInput
     ];
 
     fieldsForRealtimeValidation.forEach(field => {
@@ -683,6 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addEventBtn.addEventListener('click', () => {
         submissionForm.reset();
         submissionPhotos = [];
+        document.getElementById('event-sale-type-hidden').value = '';
         renderPhotoPreviews();
         
         // Set default start and end times for today
@@ -694,6 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Clear all previous validation errors
         submissionForm.querySelectorAll('.is-invalid').forEach(el => clearError(el));
+        eventSaleTypePillsContainer.querySelectorAll('.active').forEach(p => p.classList.remove('active'));
         submissionModal.classList.add('visible');
     });
 
@@ -705,6 +706,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === submissionModal) {
             submissionModal.classList.remove('visible');
         }
+    });
+
+    eventSaleTypePillsContainer.addEventListener('click', (e) => {  
+        const pill = e.target.closest('.filter-pill');
+        if (!pill) return;
+
+        // A pill was clicked, clear any validation error on the container
+        clearError(eventSaleTypePillsContainer);
+
+        if (pill.classList.contains('active')) return;
+
+        // Deactivate other pills
+        eventSaleTypePillsContainer.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+
+        pill.classList.add('active');
+        document.getElementById('event-sale-type-hidden').value = pill.dataset.saleTypeId;
     });
 
     submissionForm.addEventListener('submit', async (e) => {
@@ -941,7 +958,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // If there's already a hovered marker that isn't the active one, un-highlight it.
         if (hoveredMarker && hoveredMarker !== activeMarker) {
             hoveredMarker.content = hoveredMarker.defaultContent;
-            hoveredMarker.setZIndex(null);
+            hoveredMarker.zIndex = null;
         }
 
         // Set the new hovered marker
@@ -950,7 +967,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // If the new hovered marker is not the active one, highlight it.
         if (hoveredMarker && hoveredMarker !== activeMarker) {
             hoveredMarker.content = highlightedPinElement;
-            hoveredMarker.setZIndex(1);
+            hoveredMarker.zIndex = 1;
         }
     }
 
@@ -958,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // If there's a hovered marker and it's not the active one, un-highlight it.
         if (hoveredMarker && hoveredMarker !== activeMarker) {
             hoveredMarker.content = hoveredMarker.defaultContent;
-            hoveredMarker.setZIndex(null);
+            hoveredMarker.zIndex = null;
         }
         hoveredMarker = null;
     }
@@ -1178,12 +1195,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function populateSubmissionForm() {
         // Populate sale types
-        eventSaleTypeSelect.innerHTML = '<option value="" disabled selected>Select a type</option>';
+        eventSaleTypePillsContainer.innerHTML = '';
         allSaleTypes.forEach(type => {
-            const option = document.createElement('option');
-            option.value = type.id;
-            option.textContent = type.name;
-            eventSaleTypeSelect.appendChild(option);
+            const pill = document.createElement('div');
+            pill.className = 'filter-pill'; // Reuse existing pill style
+            pill.textContent = type.name;
+            pill.dataset.saleTypeId = type.id;
+            eventSaleTypePillsContainer.appendChild(pill);
         });
 
         // Populate categories
@@ -1463,6 +1481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const bounds = new google.maps.LatLngBounds();
+
         if (userLocationMarker) {
             const userPos = getMarkerPosition(userLocationMarker);
             if (userPos) bounds.extend(userPos);
@@ -1671,12 +1690,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 if (userLocationMarker) {
-                    // Check if it's an Advanced Marker by checking for a 'content' property
-                    if (userLocationMarker.hasOwnProperty('content')) {
-                        userLocationMarker.position = pos;
-                    } else {
-                        userLocationMarker.setPosition(pos);
-                    }
+                    userLocationMarker.position = pos;
                 } else {
                     const dot = document.createElement('div');
                     dot.className = 'user-location-dot';
