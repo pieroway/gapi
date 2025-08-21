@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Upcoming Garage Sales Map</title>
     <link rel="stylesheet" href="/css/shared.css">
     <link rel="stylesheet" href="/css/client.css">
@@ -13,11 +13,64 @@
     <meta name="mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-title" content="Events Map">
     <style>
-        /* Add extra space at the bottom of the navigation when in standalone "app mode" */
-        body.standalone-app #bottom-nav {
-            /* Using padding-bottom is better than margin for fixed-bottom elements. */
-            /* It ensures the background color extends to the screen edge, which is crucial for accommodating the "home indicator" on modern mobile devices. */
-            padding-bottom: 5px;
+        /* 
+         * Define CSS variables for safe area insets.
+         * These are provided by the browser on devices with notches or home indicators
+         * when `viewport-fit=cover` is used in the viewport meta tag.
+         */
+        :root {
+            --safe-area-inset-top: env(safe-area-inset-top, 0px);
+            --safe-area-inset-right: env(safe-area-inset-right, 0px);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-area-inset-left: env(safe-area-inset-left, 0px);
+        }
+
+        /*
+         * Apply safe area padding to the main body to avoid system UI.
+         * This pushes the entire layout inward to avoid notches or rounded corners.
+         */
+        body {
+            padding-top: var(--safe-area-inset-top);
+            padding-left: var(--safe-area-inset-left);
+            padding-right: var(--safe-area-inset-right);
+        }
+
+        /*
+         * Adjust absolutely positioned UI elements to respect the safe areas.
+         */
+        #center-location-button {
+            top: calc(16px + var(--safe-area-inset-top));
+            right: calc(10px + var(--safe-area-inset-right));
+        }
+
+        /* Apply safe area padding to the fixed bottom navigation bar. */
+        #bottom-nav {
+            /* Add 5px of padding PLUS the safe area inset. */
+            padding-bottom: calc(5px + var(--safe-area-inset-bottom));
+            /* Account for left/right safe areas, especially in landscape mode. */
+            padding-left: var(--safe-area-inset-left);
+            padding-right: var(--safe-area-inset-right);
+        }
+
+        /*
+         * Hide UI elements that are not needed when running as a standalone PWA.
+         * The QR code is not needed if the app is already installed on the device.
+         * The install button is also not needed.
+         */
+        body.standalone-app #qr-code-container,
+        body.standalone-app #install-pwa-item {
+            display: none;
+        }
+
+        .btn-install {
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.2s;
         }
     </style>
 </head>
@@ -267,6 +320,10 @@
         <div class="modal-content">
             <h2>Settings</h2>
             <div class="settings-content">
+                <div id="install-pwa-item" class="settings-item" style="display: none;">
+                    <span>Install App to Home Screen</span>
+                    <button id="install-pwa-btn" class="btn-install">Install</button>
+                </div>
                 <div class="settings-item">
                     <label for="clustering-toggle">Cluster Map Pins</label>
                     <div class="toggle-switch">
@@ -326,6 +383,41 @@
                 console.log(`Is mobile device: ${isMobile}`);
             }
             checkDisplayMode();
+
+            /**
+             * Handles the PWA installation prompt.
+             */
+            let deferredPrompt;
+            const installPwaItem = document.getElementById('install-pwa-item');
+            const installPwaBtn = document.getElementById('install-pwa-btn');
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                // Prevent the default browser prompt from showing automatically
+                e.preventDefault();
+                // Stash the event so it can be triggered later.
+                deferredPrompt = e;
+                // Show our custom install button in the settings
+                if (installPwaItem) {
+                    installPwaItem.style.display = 'flex';
+                }
+            });
+
+            if (installPwaBtn) {
+                installPwaBtn.addEventListener('click', async () => {
+                    if (!deferredPrompt) return;
+                    // Show the browser's installation prompt.
+                    deferredPrompt.prompt();
+                    // Wait for the user to respond and log their choice.
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`User response to install prompt: ${outcome}`);
+                    // The prompt can only be used once, so clear it.
+                    deferredPrompt = null;
+                    // Hide the install button as it can't be used again.
+                    if (installPwaItem) {
+                        installPwaItem.style.display = 'none';
+                    }
+                });
+            }
         });
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

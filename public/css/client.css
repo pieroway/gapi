@@ -1110,6 +1110,7 @@
     border-top: 1px solid #e0e0e0;
     box-shadow: 0 -2px 8px rgba(0,0,0,0.08); 
     justify-content: space-around;
+    display: none; /* Hidden by default, shown on mobile via media query. */
     align-items: stretch; /* Make buttons fill the height */
     z-index: 999;
  }
