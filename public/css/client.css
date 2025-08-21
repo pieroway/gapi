@@ -1214,14 +1214,16 @@
  .infowindow-fade-animation {
      animation: infowindow-fade-in 0.25s ease-out;
  }
- 
+
  /* --- Google Maps Overrides --- */
- /* Hide the default close button on our InfoWindow. This is a direct override
-    because the API's `disableCloseButton` option is not taking effect. */
- .gm-style-iw-c button[aria-label="Close"] {
-     display: none !important;
+ /*
+  * Selectively hide the close button on the InfoWindow for cluster previews.
+  * We use the :has() pseudo-class to apply this style only when the InfoWindow
+  * contains our custom .cluster-info-window content.
+  */
+ .gm-style-iw-c:has(.cluster-info-window) button[aria-label="Close"] {
+    display: none !important;
  }
- 
  #center-location-button {
      position: absolute;
      top: 16px;
