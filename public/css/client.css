@@ -32,20 +32,24 @@
  }
 
  #list-panel {
-     position: relative;
-     /* Override .panel's absolute positioning */
      flex-shrink: 0;
      /* Prevent panel from shrinking */
-     height: 90px;
-     /* Start collapsed */
-     transition: height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+     height: 75vh;
+     /* Set to open height */
+     transform: translateY(100%);
+     /* Start hidden */
+     visibility: hidden;
+     transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
      overflow: hidden;
      /* Hide content when collapsed */
      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+     border-top-left-radius: 16px;
+     border-top-right-radius: 16px;
  }
 
  #list-panel.open {
-     height: 75vh;
+     transform: translateY(0);
+     visibility: visible;
  }
 
  #list-panel.detail-open {
@@ -76,6 +80,19 @@
      margin-bottom: 0;
  }
 
+ /* --- Detail Panel Layout --- */
+ /* Make the header sticky and the content scrollable */
+ #detail-panel .panel-header {
+    flex-shrink: 0; /* Prevent header from shrinking */
+    background-color: #fff; /* Cover content during scroll */
+    border-bottom: 1px solid #eee;
+ }
+
+ #detail-panel .panel-content {
+    overflow-y: auto; /* Override the default overflow:hidden */
+    display: block; /* Override display:flex to allow normal block scrolling */
+ }
+ 
  .panel-handle {
      position: absolute;
      top: 10px;
@@ -119,6 +136,10 @@
      /* Was absolute */
  }
 
+ .header-action-text {
+     display: none;
+ }
+ 
  #collapse-button {
      display: none;
  }
@@ -750,6 +771,8 @@
      visibility: hidden;
      /* Hide when closed */
      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+     border-top-left-radius: 16px;
+     border-top-right-radius: 16px;
      transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
  }
 
@@ -996,6 +1019,17 @@
      #submission-modal .modal-content--layout-flex .form-actions {
          padding: 15px 20px;
      }
+
+     /* Hide original header actions and show bottom nav */
+     #list-panel .header-actions {
+        display: none;
+     }
+     #bottom-nav {
+        display: flex;
+     }
+     body {
+        padding-bottom: 60px; /* Height of the nav bar */
+     }
  }
 
  .slider-btn.next {
@@ -1063,6 +1097,50 @@
      100% {
          box-shadow: 0 0 0 0 rgba(0, 122, 255, 0);
      }
+ }
+
+ /* --- Bottom Navigation Bar --- */
+ #bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: #ffffff;
+    border-top: 1px solid #e0e0e0;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.08); 
+    justify-content: space-around;
+    align-items: stretch; /* Make buttons fill the height */
+    z-index: 999;
+ }
+
+ .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    padding: 5px 0;
+    cursor: pointer;
+    color: #666;
+    transition: color 0.2s;
+ }
+
+ .nav-btn svg {
+    width: 24px;
+    height: 24px;
+ }
+
+ .nav-btn-text {
+    font-size: 0.7rem;
+    font-weight: 500;
+ }
+
+ .nav-btn.active {
+    color: #007bff;
  }
 
  /* --- Cluster Info Window --- */
@@ -1147,6 +1225,18 @@
      stroke: #555;
  }
 
+ /* Handle filled icons in nav bar */
+ .nav-btn svg[fill="currentColor"] {
+    stroke: none;
+    fill: currentColor;
+ }
+
+ /* Handle stroked icons in nav bar */
+ .nav-btn svg[stroke="currentColor"] {
+    stroke: currentColor;
+    fill: none;
+ }
+
  #center-location-button.following svg {
      stroke: #007bff;
      /* Active blue */
@@ -1195,6 +1285,7 @@
          height: 100%;
          transform: translateX(0);
          transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease;
+         visibility: visible; /* Ensure it's visible on desktop */
      }
 
      #list-panel.closed {

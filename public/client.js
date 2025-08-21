@@ -51,6 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const debugToggle = document.getElementById('debug-toggle');
     const zoomLevelSlider = document.getElementById('zoom-level-slider');
     const zoomLevelValue = document.getElementById('zoom-level-value');
+    const navEventsBtn = document.getElementById('nav-events-btn');
+    const navRefreshBtn = document.getElementById('nav-refresh-btn');
+    const navAddBtn = document.getElementById('nav-add-btn');
+    const navSettingsBtn = document.getElementById('nav-settings-btn');
     let AdvancedMarkerElement = null;
     let PinElement = null;
 
@@ -858,6 +862,41 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(ZOOM_LEVEL_KEY, newZoom);
     });
 
+    // --- Bottom Navigation Logic ---
+    if (navEventsBtn) {
+        navEventsBtn.addEventListener('click', () => {
+            // If the detail panel is open, close it. This brings back the list view.
+            if (detailPanel.classList.contains('open')) {
+                closeDetailPanel();
+                // Ensure the list panel is open after closing detail
+                if (!listPanel.classList.contains('open')) {
+                    listPanel.classList.add('open');
+                    isListPanelOpen = true;
+                }
+                return;
+            }
+
+            // Otherwise, toggle the list panel.
+            listPanel.classList.toggle('open');
+            isListPanelOpen = listPanel.classList.contains('open');
+        });
+    }
+    if (navRefreshBtn) {
+        navRefreshBtn.addEventListener('click', () => {
+            refreshEventsBtn.click(); // Trigger the existing button's logic
+        });
+    }
+    if (navAddBtn) {
+        navAddBtn.addEventListener('click', () => {
+            addEventBtn.click(); // Trigger the existing button's logic
+        });
+    }
+    if (navSettingsBtn) {
+        navSettingsBtn.addEventListener('click', () => {
+            settingsBtn.click(); // Trigger the existing button's logic
+        });
+    }
+
     refreshEventsBtn.addEventListener('click', refreshEvents);
 
     clearAllFiltersBtn.addEventListener('click', clearAllFilters);
@@ -895,12 +934,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const onPanelTouchStart = (e) => {
         // If the touch target is a button within the header, don't initiate drag.
-        if (e.target.closest('.header-action-btn, #collapse-button')) {
+        if (isDesktop() || !listPanel.classList.contains('open') || e.target.closest('.header-action-btn, #collapse-button')) {
             return;
         }
-        if (isDesktop()) return;
         touchStartY = e.touches[0].clientY;
-        initialPanelHeight = listPanel.offsetHeight;
         listPanel.style.transition = 'none'; // Disable transition for smooth dragging
         wasPanelDragged = false;
         window.addEventListener('touchmove', onPanelTouchMove, { passive: false });
@@ -910,16 +947,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const onPanelTouchMove = (e) => {
         e.preventDefault(); // Prevent page scroll while dragging panel
         const currentY = e.touches[0].clientY;
-        const deltaY = touchStartY - currentY; // Upward drag is positive delta
-        let newHeight = initialPanelHeight + deltaY;
+        const deltaY = currentY - touchStartY;
 
-        // Clamp the height between collapsed (90px) and open (75vh)
-        const minHeight = 90;
-        const maxHeight = window.innerHeight * 0.75;
-        newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
-
-        listPanel.style.height = `${newHeight}px`;
-        wasPanelDragged = true;
+        // Only allow dragging down
+        if (deltaY > 0) {
+            listPanel.style.transform = `translateY(${deltaY}px)`;
+            wasPanelDragged = true;
+        }
     };
 
     const onPanelTouchEnd = () => {
@@ -928,17 +962,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         listPanel.style.transition = ''; // Re-enable CSS transition for snapping
 
-        // If it was just a tap, not a drag, toggle the state
-        if (!wasPanelDragged) {
-            isListPanelOpen = !isListPanelOpen;
-            listPanel.classList.toggle('open', isListPanelOpen);
+        if (!wasPanelDragged) { // It was a tap on the header
+            listPanel.classList.remove('open');
+            isListPanelOpen = false;
         } else {
-            // Snap open or closed based on a threshold
-            const currentHeight = listPanel.offsetHeight;
-            isListPanelOpen = currentHeight > window.innerHeight * 0.3;
+            const panelHeight = listPanel.offsetHeight;
+            const transformMatrix = new WebKitCSSMatrix(window.getComputedStyle(listPanel).transform);
+            const currentY = transformMatrix.m42;
+
+            // If dragged more than a third of the way down, close it
+            isListPanelOpen = currentY < panelHeight / 3;
             listPanel.classList.toggle('open', isListPanelOpen);
         }
-        listPanel.style.height = ''; // Let CSS class handle the final height with transition
+        // Let CSS handle the final position by removing the inline style
+        listPanel.style.transform = '';
     };
 
     listPanelHeader.addEventListener('touchstart', onPanelTouchStart);
