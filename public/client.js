@@ -175,6 +175,19 @@ document.addEventListener('DOMContentLoaded', () => {
         mapElement.classList.add('panel-closed');
     }
 
+    // Set initial body class for logo shrinking based on panel state
+    if (isDesktop()) {
+        // On desktop, the panel is visible by default unless it has the 'closed' class.
+        if (!listPanel.classList.contains('closed')) {
+            document.body.classList.add('list-panel-visible');
+        }
+    } else {
+        // On mobile, the panel is only visible if it has the 'open' class.
+        if (listPanel.classList.contains('open')) {
+            document.body.classList.add('list-panel-visible');
+        }
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const eventIdFromUrl = urlParams.get('event');
 
@@ -808,12 +821,16 @@ document.addEventListener('DOMContentLoaded', () => {
         listPanel.classList.add('closed');
         mapElement.classList.add('panel-closed');
         localStorage.setItem(LIST_PANEL_COLLAPSED_KEY, 'true');
+        // This is the key change: remove the class to grow the logo
+        document.body.classList.remove('list-panel-visible');
     });
 
     expandButton.addEventListener('click', () => {
         listPanel.classList.remove('closed');
         mapElement.classList.remove('panel-closed');
         localStorage.setItem(LIST_PANEL_COLLAPSED_KEY, 'false');
+        // This is the key change: add the class to shrink the logo
+        document.body.classList.add('list-panel-visible');
     });
 
     // --- Settings Modal Logic ---
@@ -871,6 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Ensure the list panel is open after closing detail
                 if (!listPanel.classList.contains('open')) {
                     listPanel.classList.add('open');
+                    document.body.classList.add('list-panel-visible');
                     isListPanelOpen = true;
                 }
                 return;
@@ -879,6 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Otherwise, toggle the list panel.
             listPanel.classList.toggle('open');
             isListPanelOpen = listPanel.classList.contains('open');
+            document.body.classList.toggle('list-panel-visible', isListPanelOpen);
         });
     }
     if (navRefreshBtn) {
@@ -917,6 +936,34 @@ document.addEventListener('DOMContentLoaded', () => {
             behavior: 'smooth'
         });
     });
+
+    // --- MOBILE: Sliding Transition Classes (Needed for CSS) ---
+    // When panels start to slide off-screen, add these classes to the <body>,
+    // so CSS can adjust the logo size during the transition.
+    listPanel.addEventListener('transitionstart', () => {
+        if (listPanel.classList.contains('detail-open')) {
+            document.body.classList.add('list-panel-sliding-off');
+        }
+    });
+
+    detailPanel.addEventListener('transitionstart', () => {
+        if (detailPanel.classList.contains('open')) {
+            document.body.classList.add('detail-panel-sliding-off');
+        }
+    });
+
+    listPanel.addEventListener('transitionend', () => {
+        document.body.classList.remove('list-panel-sliding-off');
+    });
+
+    detailPanel.addEventListener('transitionend', () => {
+        document.body.classList.remove('detail-panel-sliding-off');
+    });
+
+
+
+
+
 
     centerLocationButton.addEventListener('click', () => {
         isFollowingUser = true;
@@ -964,6 +1011,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!wasPanelDragged) { // It was a tap on the header
             listPanel.classList.remove('open');
+            document.body.classList.remove('list-panel-visible');
             isListPanelOpen = false;
         } else {
             const panelHeight = listPanel.offsetHeight;
@@ -973,6 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // If dragged more than a third of the way down, close it
             isListPanelOpen = currentY < panelHeight / 3;
             listPanel.classList.toggle('open', isListPanelOpen);
+            document.body.classList.toggle('list-panel-visible', isListPanelOpen);
         }
         // Let CSS handle the final position by removing the inline style
         listPanel.style.transform = '';
@@ -1160,6 +1209,10 @@ document.addEventListener('DOMContentLoaded', () => {
         detailPanel.setAttribute('aria-hidden', 'false');
         listPanel.setAttribute('aria-hidden', 'true');
 
+        // Add class to body when detail panel is visible
+        document.body.classList.add('detail-panel-visible');
+
+
         // Move focus to the panel after the transition
         setTimeout(() => {
             detailBackButton.focus();
@@ -1271,6 +1324,10 @@ document.addEventListener('DOMContentLoaded', () => {
         detailPanel.setAttribute('aria-hidden', 'true');
         listPanel.setAttribute('aria-hidden', 'false');
 
+        // Remove class to body when detail panel is closed
+        document.body.classList.remove('detail-panel-visible');
+        document.body.classList.remove('detail-panel-sliding-off');
+
         // On mobile, pan back to the actual center of the last selected marker
         if (!isDesktop() && lastSelectedPosition) {
             smoothPanTo(lastSelectedPosition);
@@ -1288,6 +1345,8 @@ document.addEventListener('DOMContentLoaded', () => {
             elementThatOpenedDetailPanel = null;
         }
     }
+
+
 
     function loadAndApplyFilters() {
         const savedFiltersJSON = localStorage.getItem('eventFilters');
@@ -2031,4 +2090,4 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
         }
     });
-}); 
+});

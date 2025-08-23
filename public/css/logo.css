@@ -21,15 +21,16 @@
     transition: left var(--logo-transition-speed) ease-in-out;
 }
 
-.logo-container svg {
+.logo-container svg {   
     display: block;
     height: 65px;
     width: auto;
     transition: height var(--logo-transition-speed) ease-in-out, filter var(--logo-transition-speed) ease-in-out, opacity var(--logo-transition-speed) ease-in-out;
     filter: drop-shadow(2px 3px 4px rgba(0, 0, 0, 0.5));
-    opacity: .5;
+    opacity: .85;
     position: relative;
-    top: -11px;
+    top: 0px;
+    left: 5px;
 }
 
 /*
@@ -37,9 +38,10 @@
  * Your client.js should add these classes to the <body> tag when the
  * respective panels are shown.
  */
-body.list-panel-active .logo-container svg,
+body.list-panel-active  .logo-container svg,
 body.detail-panel-visible .logo-container svg {
-    height: 45px; /* 'Shrunk' size */
+
+    height: 32.5px; /* 'Shrunk' size, 50% of original mobile size (65px) */
 }
 
 
@@ -60,4 +62,13 @@ body.detail-panel-visible .logo-container svg {
     body.list-panel-collapsed .logo-container {
         left: var(--logo-margin);
     }
+}
+
+/*
+ * MOBILE: Restore the logo size when panels are sliding off screen.
+ * This assumes your JavaScript removes the classes when the animation is complete.
+ */
+body.list-panel-sliding-off .logo-container svg,
+body.detail-panel-sliding-off .logo-container svg {
+    height: 65px; /* Restore original mobile size */
 }
