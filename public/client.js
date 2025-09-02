@@ -1,4 +1,3 @@
-document.addEventListener('DOMContentLoaded', () => {
     const listPanel = document.getElementById('list-panel');
     const listPanelHeader = listPanel.querySelector('.panel-header');
     const detailPanel = document.getElementById('detail-panel');
@@ -29,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const eventPhotoInput = document.getElementById('event-photo');
     const eventTitleInput = document.getElementById('event-title');
     const eventDescriptionInput = document.getElementById('event-description');
-    const eventAddressInput = document.getElementById('event-address');
+    let eventAddressInput = document.getElementById('event-address');
     const eventStartInput = document.getElementById('event-start');
     const eventEndInput = document.getElementById('event-end');
     const photoPreview = document.getElementById('photo-preview');
@@ -1027,7 +1026,7 @@ document.addEventListener('DOMContentLoaded', () => {
         listPanel.style.transform = '';
     };
 
-    listPanelHeader.addEventListener('touchstart', onPanelTouchStart);
+    listPanelHeader.addEventListener('touchstart', onPanelTouchStart, { passive: true });
 
     qrContainer.addEventListener('click', () => {
         qrModal.style.display = 'flex';
@@ -1699,7 +1698,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const markerLibrary = await google.maps.importLibrary("marker");
         AdvancedMarkerElement = markerLibrary.AdvancedMarkerElement;
         PinElement = markerLibrary.PinElement;
-        const { Autocomplete } = await google.maps.importLibrary("places");
+        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
         clusterInfoWindow = new google.maps.InfoWindow({
             content: '',
             disableAutoPan: true,
@@ -1731,31 +1730,65 @@ document.addEventListener('DOMContentLoaded', () => {
             radioToCheck.checked = true;
         }
 
-        // --- Initialize Places Autocomplete for the submission form ---
-        const eventAddressInput = document.getElementById('event-address');
-        const autocomplete = new Autocomplete(eventAddressInput, {
+        // --- Initialize Places Autocomplete (new Web Component version) ---
+        const autocompleteElement = new PlaceAutocompleteElement({
             types: ['address'],
             componentRestrictions: { 'country': 'ca' }, // Bias to Canada
-            fields: ['formatted_address', 'geometry'] // Request only needed data
         });
-        autocomplete.bindTo('bounds', map);
 
-        autocomplete.addListener('place_changed', () => {
-            const place = autocomplete.getPlace();
+        const formGroup = eventAddressInput.closest('.form-group');
+        const originalInputReference = eventAddressInput;
+
+        // Replace the old input with the new autocomplete component in the DOM.
+        formGroup.replaceChild(autocompleteElement, originalInputReference);
+
+        // The web component's internal input is not always available synchronously.
+        // We defer the rest of the setup to ensure the component is fully initialized.
+        requestAnimationFrame(() => {
+            const newAddressInput = autocompleteElement.inputElement;
+
+            if (!newAddressInput) {
+                console.error("PlaceAutocompleteElement.inputElement is not available. Address field cannot be initialized.");
+                return;
+            }
+
+            // Transfer necessary attributes from the old (now detached) input to the new one.
+            newAddressInput.id = originalInputReference.id;
+            newAddressInput.name = originalInputReference.name;
+            newAddressInput.required = originalInputReference.required;
+            newAddressInput.placeholder = originalInputReference.placeholder;
+
+            // Update the module-scoped variable to point to the new, active input element.
+            eventAddressInput = newAddressInput;
+
+            // Update the array used for real-time validation to use the new input.
+            const validationIndex = fieldsForRealtimeValidation.indexOf(originalInputReference);
+            if (validationIndex > -1) {
+                fieldsForRealtimeValidation[validationIndex] = eventAddressInput;
+            }
+
+            // Add the listener to clear coordinates when the user types manually.
+            eventAddressInput.addEventListener('input', () => {
+                submissionCoordinates = null;
+            });
+
+            // Re-attach validation listeners that were lost when the original input was replaced.
+            eventAddressInput.addEventListener('input', validateForm);
+            eventAddressInput.addEventListener('change', validateForm);
+        });
+
+        // Add the event listener for place selection. This can be attached to the component itself.
+        autocompleteElement.addEventListener('gmp-placeselect', (event) => {
+            const place = event.place;
             if (place.geometry && place.geometry.location) {
                 submissionCoordinates = {
                     lat: place.geometry.location.lat(),
                     lng: place.geometry.location.lng()
                 };
-                // Manually trigger validation to clear the error message if it exists
                 validateForm();
             } else {
                 submissionCoordinates = null;
             }
-        });
-
-        eventAddressInput.addEventListener('input', () => {
-            submissionCoordinates = null;
         });
 
         // --- Map Interaction Listeners to disable 'follow me' mode ---
@@ -2052,13 +2085,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBA5gWJDCdQIvqWXdtMN6aWJg2h5rLiikU&callback=initMap&libraries=marker,places`;
-    script.async = true;
-    script.defer = true;
-    window.initMap = initMap;
-    document.head.appendChild(script);
-
     // --- Accessibility: Close modal on Escape key ---
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && detailPanel.classList.contains('open')) {
@@ -2090,4 +2116,3 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
         }
     });
-});

@@ -54,6 +54,14 @@ self.addEventListener('fetch', event => {
     // This serves a cached response immediately for speed, then fetches
     // a fresh version in the background to update the cache for next time.
     if (url.pathname.startsWith('/api/')) {
+        // The Cache API only supports GET requests. For POST, PUT, etc.,
+        // we must bypass the cache and fetch directly from the network.
+        if (request.method !== 'GET') {
+            // Simply fetch the request and return the network response,
+            // without trying to cache it.
+            event.respondWith(fetch(request));
+            return;
+        }
         event.respondWith(
             caches.open(CACHE_NAME).then(cache => {
                 return cache.match(request).then(cachedResponse => {
@@ -77,9 +85,11 @@ self.addEventListener('fetch', event => {
                 return response || fetch(request).then(networkResponse => {
                     // Optionally, cache newly fetched static assets as well.
                     return caches.open(CACHE_NAME).then(cache => {
-                        // Be careful not to cache everything, only known assets.
-                        // This example caches any non-API asset upon first request.
-                        cache.put(request, networkResponse.clone());
+                        // IMPORTANT: Only cache GET requests. POST/PUT/etc. are not cacheable.
+                        if (request.method === 'GET') {
+                            // Be careful not to cache everything, only known assets.
+                            cache.put(request, networkResponse.clone());
+                        }
                         return networkResponse;
                     });
                 });

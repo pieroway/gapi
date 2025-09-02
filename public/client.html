@@ -103,6 +103,136 @@
             cursor: pointer;
             font-weight: 600;
         }
+
+        /*
+         * On mobile landscape, dock the event list as a floating panel
+         * in the bottom-left corner for a better map-centric experience.
+         */
+        @media screen and (orientation: landscape) and (max-height: 600px) {
+            #list-panel {
+                position: fixed;
+                /* Position as a floating "island" with margins on all sides */
+                left: calc(10px + var(--safe-area-inset-left));
+                bottom: calc(10px + var(--safe-area-inset-bottom));
+
+                /* Define a reasonable size for the panel */
+                width: 350px;
+                max-width: 45vw; /* Responsive width */
+                /* Let the panel grow with content, but cap its height at 80% of the viewport. */
+                max-height: 80vh;
+
+                /* Override default panel styles (e.g., sliding up from bottom) */
+                top: auto;
+                /* By default, hide the panel off-screen. It becomes visible via the .open class. */
+                transform: translateY(calc(100% + 20px));
+                opacity: 0;
+                visibility: hidden;
+                transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease, visibility 0s 0.4s;
+                display: flex;
+                flex-direction: column;
+
+                /* Apple-like "Glassmorphism" effect */
+      
+                z-index: 1010; /* Above map, below modals */
+            }
+
+            /* When the panel is toggled, slide it into view */
+            #list-panel.open {
+                transform: translateY(0);
+                opacity: 1;
+                visibility: visible;
+                transition-delay: 0s; /* Ensure visibility transition is immediate on open */
+            }
+
+            /* Make UI elements within the panel more compact in this view */
+            #list-panel .panel-header {
+                padding: 4px 8px;
+                background-color: transparent; /* Ensure header is transparent for blur effect */
+            }
+
+            #list-panel .panel-content {
+                background-color: transparent;
+            }
+
+            #list-panel .panel-title {
+                font-size: 1rem;
+            }
+
+            #list-panel .header-action-btn {
+                padding: 4px;
+            }
+
+            #list-panel .header-action-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            #list-panel .header-action-text {
+                display: none;
+            }
+
+            #list-panel #search-input {
+                font-size: 0.8rem;
+                padding: 6px 6px 6px 30px;
+            }
+
+            #list-panel .search-icon {
+                width: 14px;
+                height: 14px;
+                left: 8px;
+            }
+
+            #list-panel .filter-pill {
+                font-size: 0.7rem;
+                padding: 2px 6px;
+            }
+
+            #list-panel .card {
+                padding: 6px;
+                flex-direction: row;
+                align-items: center;
+                gap: 8px;
+                background-color: transparent; /* Make cards transparent */
+                border-bottom: 1px solid rgba(128, 128, 128, 0.2); /* Use a line separator */
+                border-radius: 0; /* Remove any card-specific rounding */
+                box-shadow: none; /* Remove any base shadow */
+            }
+
+            #list-panel .card:last-child {
+                border-bottom: none; /* No separator on the last item */
+            }
+
+            #list-panel .card-slider {
+                width: 50px;
+                height: 50px;
+                flex-shrink: 0;
+            }
+
+            #list-panel .card-title {
+                font-size: 0.85rem;
+                margin-bottom: 0;
+            }
+
+            #list-panel .card-description {
+                font-size: 0.75rem;
+                line-height: 1.2;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            #list-panel .mini-pills-container {
+                display: none;
+            }
+
+            /* Hide UI elements that are redundant or conflict with this layout */
+            #list-panel .panel-handle,
+            #collapse-button,
+            #expand-button {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 
@@ -655,6 +785,12 @@
             });
         }
     </script>
+    <!-- 
+      Load the Google Maps API asynchronously. 
+      Set the Google Maps API key here.
+      The 'callback=initMap' will automatically call the initMap function once the API is ready.
+    -->
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBA5gWJDCdQIvqWXdtMN6aWJg2h5rLiikU&libraries=marker,places&callback=initMap"></script>
     <script src="/markercluster.js" defer></script>
     <script src="/client.js" defer></script>
 </body>
