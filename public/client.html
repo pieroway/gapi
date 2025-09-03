@@ -123,25 +123,20 @@
 
                 /* Override default panel styles (e.g., sliding up from bottom) */
                 top: auto;
-                /* By default, hide the panel off-screen. It becomes visible via the .open class. */
-                transform: translateY(calc(100% + 20px));
-                opacity: 0;
-                visibility: hidden;
-                transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease, visibility 0s 0.4s;
+                transform: none !important;
+                transition: none !important;
+                visibility: visible !important;
                 display: flex;
                 flex-direction: column;
 
                 /* Apple-like "Glassmorphism" effect */
-      
+                background: rgba(242, 242, 247, 0.8); /* Light, semi-transparent background */
+                -webkit-backdrop-filter: blur(20px) saturate(180%);
+                backdrop-filter: blur(20px) saturate(180%);
+                border-radius: 16px; /* Round all corners for a floating panel */
+                border: 1px solid rgba(255, 255, 255, 0.125); /* Subtle border to catch light */
+                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); /* Softer, more diffuse shadow */
                 z-index: 1010; /* Above map, below modals */
-            }
-
-            /* When the panel is toggled, slide it into view */
-            #list-panel.open {
-                transform: translateY(0);
-                opacity: 1;
-                visibility: visible;
-                transition-delay: 0s; /* Ensure visibility transition is immediate on open */
             }
 
             /* Make UI elements within the panel more compact in this view */
@@ -227,6 +222,7 @@
             }
 
             /* Hide UI elements that are redundant or conflict with this layout */
+            #bottom-nav,
             #list-panel .panel-handle,
             #collapse-button,
             #expand-button {
