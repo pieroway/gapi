@@ -5,7 +5,7 @@
 :root {
     /* Adjust these variables to match your design */
     --list-panel-width: 360px; /* The width of #list-panel on desktop */
-    --logo-margin: 16px;
+    --logo-margin: 5px;
     --logo-transition-speed: 0.35s;
     --logo-brand-color: #007bff; /* Matches your PWA theme-color */
 

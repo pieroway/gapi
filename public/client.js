@@ -130,6 +130,7 @@
     const LIST_PANEL_COLLAPSED_KEY = 'eventsMapListPanelCollapsed';
     const DEBUG_COLLAPSED_KEY = 'eventsMapDebugCollapsed';
     const DEBUG_POSITION_KEY = 'eventsMapDebugPosition';
+    const LIST_PANEL_WIDTH_KEY = 'eventsMapListPanelWidth';
 
     // Load and apply the saved clustering preference
     const savedClusteringPref = localStorage.getItem(CLUSTERING_KEY);
@@ -172,6 +173,12 @@
     if (isDesktop() && localStorage.getItem(LIST_PANEL_COLLAPSED_KEY) === 'true') {
         listPanel.classList.add('closed');
         mapElement.classList.add('panel-closed');
+    }
+
+    // Load and apply saved list panel width (desktop only)
+    if (isDesktop()) {
+        const savedWidth = localStorage.getItem(LIST_PANEL_WIDTH_KEY);
+        if (savedWidth) document.documentElement.style.setProperty('--list-panel-width', savedWidth);
     }
 
     // Set initial body class for logo shrinking based on panel state
@@ -830,6 +837,61 @@
         localStorage.setItem(LIST_PANEL_COLLAPSED_KEY, 'false');
         // This is the key change: add the class to shrink the logo
         document.body.classList.add('list-panel-visible');
+    });
+
+    // --- DESKTOP: Resizable Panel Logic ---
+    function initializePanelResizer() {
+        if (!isDesktop()) return;
+
+        const resizer = document.createElement('div');
+        resizer.id = 'panel-resizer';
+        listPanel.appendChild(resizer);
+
+        const onMouseDown = (e) => {
+            e.preventDefault();
+            document.body.style.cursor = 'col-resize';
+            resizer.classList.add('resizing');
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        };
+
+        const onMouseMove = (e) => {
+            // Constrain width between 300px and 50% of the viewport
+            const minWidth = 300;
+            const maxWidth = window.innerWidth / 2;
+            let newWidth = e.clientX;
+
+            if (newWidth < minWidth) newWidth = minWidth;
+            if (newWidth > maxWidth) newWidth = maxWidth;
+
+            // Set the CSS variable to apply the new width
+            document.documentElement.style.setProperty('--list-panel-width', `${newWidth}px`);
+        };
+
+        const onMouseUp = () => {
+            document.body.style.cursor = 'default';
+            resizer.classList.remove('resizing');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+
+            // Save the final width to localStorage
+            const finalWidth = getComputedStyle(document.documentElement).getPropertyValue('--list-panel-width');
+            localStorage.setItem(LIST_PANEL_WIDTH_KEY, finalWidth);
+        };
+
+        resizer.addEventListener('mousedown', onMouseDown);
+    }
+
+    // Initialize the resizer on load
+    initializePanelResizer();
+
+    // Re-initialize if the window is resized from mobile to desktop view
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            if (isDesktop() && !document.getElementById('panel-resizer')) initializePanelResizer();
+        }, 250);
     });
 
     // --- Settings Modal Logic ---

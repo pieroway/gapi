@@ -1002,48 +1002,6 @@
      left: 10px;
  }
 
- /* Hide on mobile */
- @media (max-width: 768px) {
-     #qr-code-container {
-         display: none;
-     }
- 
-     #submission-modal .modal-content {
-         width: 100%;
-         height: 100%;
-         max-height: 100%;
-         border-radius: 0;
-         /* Ensure the modal takes full width on mobile */
-         max-width: 100%; 
-         /* Ensure the flexbox layout works by preventing the main container from scrolling */
-         overflow: hidden;
-         /* The new layout class handles the flexbox setup */
-     }
- 
-     /* Mobile-specific padding adjustments */
-     #submission-modal .modal-content--layout-flex > h2 {
-         padding: 20px;
-         font-size: 1.2rem;
-         text-align: center;
-     }
- 
-     #submission-modal .modal-content--layout-flex .form-scroll-content {
-         padding: 20px;
-     }
- 
-     #submission-modal .modal-content--layout-flex .form-actions {
-         padding: 15px 20px;
-     }
-
-     /* Hide original header actions and show bottom nav */
-     #list-panel .header-actions {
-        display: none;
-     }
-     body {
-        padding-bottom: 65px; /* Height of the nav bar */
-     }
- }
-
  .slider-btn.next {
      right: 10px;
  }
@@ -1242,66 +1200,60 @@
      z-index: 10;
  }
 
- @media (min-width: 769px) {
-  #logo {
-      right: 10px;
-      left: auto;
-     background-color: #fff;
-     border-radius: 50%;
-     width: 40px;
-     height: 40px;
-     display: flex;
-     justify-content: center;
-     align-items: center;
-     cursor: pointer;
-     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
- }
-
- #center-location-button svg {
-     stroke: #555;
- }
-
- /* Override for the few icons that should be filled instead of stroked. */
- .nav-btn svg[fill="currentColor"] {
-    stroke: none;
-    fill: currentColor;
- }
-
- #center-location-button.following svg {
-     stroke: #007bff;
-     /* Active blue */
-     fill: #e6f2ff;
- }
-
  /* Desktop Layout */
  @media (min-width: 769px) {
+     #logo {
+         right: 10px;
+         left: auto;
+         background-color: #fff;
+         border-radius: 50%;
+         width: 40px;
+         height: 40px;
+         display: flex;
+         justify-content: center;
+         align-items: center;
+         cursor: pointer;
+         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+     }
+ 
+     #center-location-button svg {
+         stroke: #555;
+     }
+ 
+     /* Override for the few icons that should be filled instead of stroked. */
+     .nav-btn svg[fill="currentColor"] {
+         stroke: none;
+         fill: currentColor;
+     }
+ 
+     #center-location-button.following svg {
+         stroke: #007bff;
+         /* Active blue */
+         fill: #e6f2ff;
+     }
+ 
      #bottom-nav {
          display: none;
      }
-
+ 
      .card-chevron {
          display: block;
      }
-
+ 
      #detail-back-button {
          display: flex;
          align-items: center;
      }
-
+ 
      #debug-header {
          cursor: move;
      }
-
-     #map {
-         /* width: 75%;
-         margin-left: 25%; */
-     }
-
+ 
      #map.panel-closed {
          width: 100%;
          margin-left: 0;
      }
-
+ 
      .panel {
          top: 0;
          bottom: 0;
@@ -1314,27 +1266,28 @@
          position: fixed;
          border-radius: 0px;
      }
-
+ 
      #list-panel {
          position: fixed;
          height: 100%;
          transform: translateX(0);
          transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease;
-         visibility: visible; /* Ensure it's visible on desktop */     
+         visibility: visible;
+         /* Ensure it's visible on desktop */
          border-top-left-radius: 0px;
          border-top-right-radius: 0px;
      }
-
+ 
      #list-panel.closed {
          transform: translateX(-100%);
          opacity: 0;
      }
-
+ 
      #list-panel.detail-open {
          transform: translateX(0);
          /* Stays visible */
      }
-
+ 
      #detail-panel {
          height: 100%;
          width: 25%;
@@ -1342,11 +1295,11 @@
          z-index: 4;
          /* Ensure detail is on top */
      }
-
+ 
      #detail-panel.open {
          transform: translateX(0);
      }
-
+ 
      .panel-header {
          display: flex;
          align-items: center;
@@ -1356,55 +1309,56 @@
          padding: 10px 20px;
          border-radius: 0px;
      }
-
+ 
      #collapse-button {
-         display: flex; /* Use flex to align with other buttons */
+         display: flex;
+         /* Use flex to align with other buttons */
          /* Minor visual adjustment to perfectly align with the other icons. */
          transform: translateY(1px);
      }
-
+ 
      #list-panel.closed+#expand-button {
          display: block;
      }
-
+ 
      .panel-handle {
          display: none;
          /* Hide mobile handle */
      }
-
+ 
      #qr-code-container {
          bottom: 20px;
          left: auto;
          right: 20px;
      }
-
+ 
      .panel-header {
          text-align: left;
          /* Override mobile-first center alignment */
      }
-
+ 
      .panel-title {
          flex-grow: 1;
      }
-
+ 
      .header-actions {
          position: static;
          transform: none;
          gap: 0;
      }
-
+ 
      .header-action-btn {
          position: static;
          margin-left: 10px;
      }
-
+ 
      #detail-back-button {
          background: none;
          border: none;
          padding: 0;
          /* Reset button styles */
      }
-
+ 
      #submission-modal .modal-content {
          max-width: 1000px;
      }
