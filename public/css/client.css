@@ -833,6 +833,7 @@
      left: 20px;
      z-index: 10;
      cursor: pointer;
+     display: none !important; /* Hidden on mobile by default */
      transition: opacity 0.3s ease;
  }
 
@@ -1307,7 +1308,7 @@
          /* No dragging on desktop */
          margin-bottom: 0;
          padding: 10px 20px;
-         border-radius: 0px;
+         border-radius: 16px 16px 0 0 !important;
      }
  
      #collapse-button {
@@ -1329,6 +1330,7 @@
      #qr-code-container {
          bottom: 20px;
          left: auto;
+         display: block !important; /* Re-enable for desktop view */
          right: 20px;
      }
  
