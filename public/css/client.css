@@ -5,6 +5,7 @@
      margin: 0;
      padding: 0;
      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+     font-size: 0.8em;
      display: flex;
      flex-direction: column;
      overflow: hidden;
@@ -1356,5 +1357,99 @@
  
      #submission-modal .modal-content {
          max-width: 1000px;
+     }
+
+     /* --- Desktop Content Condensation --- */
+     /* Make the UI more data-dense on larger screens */
+ 
+     .panel .panel-header {
+         padding-block: 6px;
+         /* Reduce vertical padding */
+     }
+ 
+     .panel .panel-title {
+         font-size: 1.0rem;
+         /* Slightly smaller title */
+     }
+ 
+     .panel #search-input {
+         font-size: 0.85rem;
+         padding-block: 6px;
+     }
+ 
+     .panel .pills-container {
+         padding-block: 2px;
+     }
+ 
+     .panel .filter-pill {
+         font-size: 0.75rem;
+         padding: 3px 8px;
+     }
+ 
+     .panel #events-container {
+         padding: 0 10px 10px;
+         /* Reduce padding */
+         margin-top: 10px;
+     }
+ 
+     .panel .card {
+         margin-bottom: 8px;
+         /* Tighter card spacing */
+     }
+ 
+     .panel .card-content {
+         padding: 10px 0;
+     }
+ 
+     .panel .card-body {
+         padding: 0 10px;
+     }
+ 
+     .panel .card-title {
+         font-size: 0.95rem;
+     }
+ 
+     .panel .card-description {
+         font-size: 0.8rem;
+         margin-bottom: 6px;
+     }
+ 
+     .panel .mini-pill {
+         font-size: 0.65rem;
+         padding: 2px 6px;
+     }
+ 
+     /* Detail Panel Specifics */
+     #detail-content {
+         padding: 12px;
+     }
+ 
+     #detail-content p,
+     #detail-content .address-container {
+         font-size: 0.85rem;
+         margin: 0.7em 0;
+     }
+ 
+     #detail-content .detail-actions button {
+         font-size: 0.8rem;
+         padding: 6px 12px;
+     }
+
+     /* Condense map elements for desktop */
+     .user-location-dot {
+         width: 10px;
+         height: 10px;
+         border-width: 2px;
+     }
+
+     .cluster-info-window strong {
+         font-size: 0.9rem;
+         margin-bottom: 5px;
+         padding-bottom: 4px;
+     }
+
+     .cluster-info-list li {
+         font-size: 0.8rem;
+         padding: 3px 0;
      }
  }

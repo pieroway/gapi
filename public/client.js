@@ -62,13 +62,16 @@
     class CustomClusterRenderer {
         render(cluster, _stats, map) {
             const { count, position } = cluster;
+            const isDesktopView = isDesktop();
 
             let color = '#007bff'; // Default blue for small clusters (< 25)
             if (count >= 100) color = '#dc3545'; // Red for large clusters (100+)
             else if (count >= 25) color = '#fd7e14'; // Orange for medium clusters (25-99)
 
+            const size = isDesktopView ? 40 : 50;
+            const fontSize = isDesktopView ? 45 : 50;
             const svg = `
-                <svg fill="${color}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="50" height="50">
+                <svg fill="${color}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="${size}" height="${size}">
                     <circle cx="120" cy="120" opacity=".6" r="70" />
                     <circle cx="120" cy="120" opacity=".3" r="90" />
                     <circle cx="120" cy="120" opacity=".2" r="110" />
@@ -1648,7 +1651,11 @@
                 const position = { lat: event.latitude, lng: event.longitude };
                 let marker;
 
-                const pin = new PinElement();
+                // Conditionally scale the pin for desktop view
+                const pinOptions = {};
+                if (isDesktop()) pinOptions.scale = 0.85;
+
+                const pin = new PinElement(pinOptions);
                 marker = new AdvancedMarkerElement({
                     map: useClustering ? null : map,
                     position: position,
