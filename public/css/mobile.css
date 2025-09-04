@@ -41,17 +41,14 @@ body {
     /* Account for left/right safe areas, especially in landscape mode. */
     padding-left: var(--safe-area-inset-left);
     padding-right: var(--safe-area-inset-right);
-}
+} 
 
 /*
- * Hide UI elements that are not needed when running as a standalone PWA.
- * The QR code is not needed if the app is already installed on the device.
- * The install button is also not needed.
+ * Hide UI elements not intended for mobile devices.
+ * The QR code is for desktop users to open the app on their phone.
+ * The install button is hidden by default and shown via JS if applicable.
  */
-body.standalone-app #qr-code-container,
-body.standalone-app #install-pwa-item {
-    display: none;
-}
+/* The QR code is now hidden by default in client.css and shown only on desktop. */
 
 /*
  * =================================================================
@@ -83,13 +80,9 @@ body.standalone-app #install-pwa-item {
     }
 
     /*
-     * Ensure the logo is always positioned in the top-left corner,
-     * overriding any desktop-specific logic that might shift it based on panel state.
+     * Hide the logo in mobile landscape view to maximize screen space for the map and panels.
      */
-    .logo-container { left: var(--logo-margin) !important; }
-    
-    /* Reduce logo size to save vertical space */
-    .logo-container svg { height: 32.5px !important; }
+    #logo-container { display: none !important; }
 
     /* Dock the event list as a floating panel in the bottom-left corner */
     #list-panel {
@@ -100,10 +93,10 @@ body.standalone-app #install-pwa-item {
         height: 90vh; /* 90% of viewport height */
         top: auto;
         /* Override default mobile transitions and transforms */
-        transform: none !important;
-        transition: none !important;
+        transform: none !important; /* Reset any transform from portrait mode */
+        transition: none !important; /* Disable transitions that interfere with this layout */
         visibility: visible !important;
-        display: flex;
+        display: flex !important; /* Ensure it's always displayed */
         flex-direction: column;
         /* Round top corners */
         border-radius: 16px 16px 0 0;

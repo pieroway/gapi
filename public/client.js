@@ -170,24 +170,18 @@
     zoomLevelValue.textContent = savedZoom;
 
     // Load and apply saved list panel state (desktop only)
-    if (isDesktop() && localStorage.getItem(LIST_PANEL_COLLAPSED_KEY) === 'true') {
-        listPanel.classList.add('closed');
-        mapElement.classList.add('panel-closed');
-    }
-
-    // Load and apply saved list panel width (desktop only)
     if (isDesktop()) {
+        if (localStorage.getItem(LIST_PANEL_COLLAPSED_KEY) === 'true') {
+            document.body.classList.add('list-panel-collapsed');
+            listPanel.classList.add('closed');
+            mapElement.classList.add('panel-closed');
+        }
         const savedWidth = localStorage.getItem(LIST_PANEL_WIDTH_KEY);
         if (savedWidth) document.documentElement.style.setProperty('--list-panel-width', savedWidth);
     }
 
     // Set initial body class for logo shrinking based on panel state
-    if (isDesktop()) {
-        // On desktop, the panel is visible by default unless it has the 'closed' class.
-        if (!listPanel.classList.contains('closed')) {
-            document.body.classList.add('list-panel-visible');
-        }
-    } else {
+    if (!isDesktop()) {
         // On mobile, the panel is only visible if it has the 'open' class.
         if (listPanel.classList.contains('open')) {
             document.body.classList.add('list-panel-visible');
@@ -827,16 +821,14 @@
         listPanel.classList.add('closed');
         mapElement.classList.add('panel-closed');
         localStorage.setItem(LIST_PANEL_COLLAPSED_KEY, 'true');
-        // This is the key change: remove the class to grow the logo
-        document.body.classList.remove('list-panel-visible');
+        document.body.classList.add('list-panel-collapsed');
     });
 
     expandButton.addEventListener('click', () => {
         listPanel.classList.remove('closed');
         mapElement.classList.remove('panel-closed');
         localStorage.setItem(LIST_PANEL_COLLAPSED_KEY, 'false');
-        // This is the key change: add the class to shrink the logo
-        document.body.classList.add('list-panel-visible');
+        document.body.classList.remove('list-panel-collapsed');
     });
 
     // --- DESKTOP: Resizable Panel Logic ---
@@ -1804,11 +1796,24 @@
         // Replace the old input with the new autocomplete component in the DOM.
         formGroup.replaceChild(autocompleteElement, originalInputReference);
 
-        // The web component's internal input is not always available synchronously.
-        // We defer the rest of the setup to ensure the component is fully initialized.
-        requestAnimationFrame(() => {
-            const newAddressInput = autocompleteElement.inputElement;
+        // Add the event listener for place selection. This can be attached to the component itself.
+        autocompleteElement.addEventListener('gmp-placeselect', (event) => {
+            const place = event.place;
+            if (place.geometry && place.geometry.location) {
+                submissionCoordinates = {
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng()
+                };
+                validateForm();
+            } else {
+                submissionCoordinates = null;
+            }
+        });
 
+        // Use whenDefined to reliably wait for the web component to be ready.
+        // This is more robust than requestAnimationFrame.
+        customElements.whenDefined(autocompleteElement.localName).then(() => {
+            const newAddressInput = autocompleteElement.inputElement;
             if (!newAddressInput) {
                 console.error("PlaceAutocompleteElement.inputElement is not available. Address field cannot be initialized.");
                 return;
@@ -1825,32 +1830,14 @@
 
             // Update the array used for real-time validation to use the new input.
             const validationIndex = fieldsForRealtimeValidation.indexOf(originalInputReference);
-            if (validationIndex > -1) {
-                fieldsForRealtimeValidation[validationIndex] = eventAddressInput;
-            }
+            if (validationIndex > -1) fieldsForRealtimeValidation[validationIndex] = eventAddressInput;
 
-            // Add the listener to clear coordinates when the user types manually.
-            eventAddressInput.addEventListener('input', () => {
-                submissionCoordinates = null;
-            });
-
-            // Re-attach validation listeners that were lost when the original input was replaced.
+            // Add listeners to the new input element.
+            eventAddressInput.addEventListener('input', () => { submissionCoordinates = null; });
             eventAddressInput.addEventListener('input', validateForm);
             eventAddressInput.addEventListener('change', validateForm);
-        });
-
-        // Add the event listener for place selection. This can be attached to the component itself.
-        autocompleteElement.addEventListener('gmp-placeselect', (event) => {
-            const place = event.place;
-            if (place.geometry && place.geometry.location) {
-                submissionCoordinates = {
-                    lat: place.geometry.location.lat(),
-                    lng: place.geometry.location.lng()
-                };
-                validateForm();
-            } else {
-                submissionCoordinates = null;
-            }
+        }).catch(error => {
+            console.error("Error waiting for PlaceAutocompleteElement:", error);
         });
 
         // --- Map Interaction Listeners to disable 'follow me' mode ---

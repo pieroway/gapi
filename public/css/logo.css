@@ -5,70 +5,67 @@
 :root {
     /* Adjust these variables to match your design */
     --list-panel-width: 360px; /* The width of #list-panel on desktop */
-    --logo-margin: 5px;
+    --collapsed-panel-width: 50px; /* The width of the #expand-button */
+    --logo-margin: 10px;
     --logo-transition-speed: 0.35s;
-    --logo-brand-color: #007bff; /* Matches your PWA theme-color */
 
     /* Use safe area for top positioning to avoid the notch on mobile */
     --logo-top-position: calc(var(--logo-margin) + var(--safe-area-inset-top));
+
+    /* Define logo sizes in one place for easy maintenance */
+    --logo-height-mobile: 60px;
+    --logo-height-desktop: 75px;
 }
 
-.logo-container {
+#logo-container {
     position: fixed;
     top: var(--logo-top-position);
     left: var(--logo-margin);
     z-index: 1500; /* Must be higher than map, but can be lower than modals */
-    transition: left var(--logo-transition-speed) ease-in-out;
+    transition: left var(--logo-transition-speed) ease-in-out, transform var(--logo-transition-speed) ease-in-out;
 }
 
-.logo-container svg {   
+#logo-container:hover {
+    transform: scale(1.03); /* Slightly enlarge on hover */
+}
+
+#logo-container svg {
     display: block;
-    height: 65px;
     width: auto;
-    transition: height var(--logo-transition-speed) ease-in-out, filter var(--logo-transition-speed) ease-in-out, opacity var(--logo-transition-speed) ease-in-out;
+    transition: height var(--logo-transition-speed) ease-in-out, filter var(--logo-transition-speed) ease-in-out;
     filter: drop-shadow(2px 3px 4px rgba(0, 0, 0, 0.5));
-    opacity: .85;
-    position: relative;
-    top: 0px;
-    left: 5px;
+    /* Use clamp for fluid height: min 60px, preferred 10vw, max 75px */
+    height: clamp(var(--logo-height-mobile), 10vw, var(--logo-height-desktop));
 }
 
 /*
- * MOBILE: Shrink the logo when a panel is active.
+ * --- Mobile Styles (up to 768px) ---
  * Your client.js should add these classes to the <body> tag when the
  * respective panels are shown.
  */
-body.list-panel-active  .logo-container svg,
-body.detail-panel-visible .logo-container svg {
-
-    height: 32.5px; /* 'Shrunk' size, 50% of original mobile size (65px) */
-}
-
-
-/* --- Desktop Styles (e.g., 768px and wider) --- */
-/* Adjust this breakpoint to match your client.css layout */
-@media (min-width: 768px) {
-
-    /* By default on desktop, the panel is visible. Position the logo next to it. */
-    .logo-container {
-        left: calc(var(--list-panel-width) + var(--logo-margin));
+@media (max-width: 768px) {
+    /* Shrink the logo when a panel is active to save screen space. */
+    body.list-panel-visible #logo-container svg,
+    body.detail-panel-visible #logo-container svg {
+        height: calc(var(--logo-height-mobile) * 0.55) !important; /* 'Shrunk' size, use !important to override clamp */
     }
 
-    .logo-container svg {
-        height: 80px; /* A bit bigger on desktop */
+    /* Restore the logo size when panels are sliding off screen. */
+    body.list-panel-sliding-off #logo-container svg,
+    body.detail-panel-sliding-off #logo-container svg {
+        height: var(--logo-height-mobile); /* Restore original mobile size */
+    }
+}
+
+/* --- Desktop Styles (769px and wider) --- */
+/* This breakpoint should match the one in client.css for consistency */
+@media (min-width: 769px) {
+    #logo-container {
+        left: calc(var(--list-panel-width) + (var(--logo-margin) * 4));
     }
 
     /* When the list panel is collapsed, move the logo to the far left. */
-    body.list-panel-collapsed .logo-container {
-        left: var(--logo-margin);
+    body.list-panel-collapsed #logo-container {
+        left: calc(var(--collapsed-panel-width) + var(--logo-margin));
     }
-}
-
-/*
- * MOBILE: Restore the logo size when panels are sliding off screen.
- * This assumes your JavaScript removes the classes when the animation is complete.
- */
-body.list-panel-sliding-off .logo-container svg,
-body.detail-panel-sliding-off .logo-container svg {
-    height: 65px; /* Restore original mobile size */
 }

@@ -162,7 +162,7 @@
      z-index: 10;
      align-items: initial;
      cursor: pointer;
-     top: 25px;
+     top: 20px;
      z-index: 1;
  }
 
@@ -828,12 +828,11 @@
 
  #qr-code-container {
      position: absolute;
-     bottom: 70px;
-     /* Positioned just above the collapsed panel */
-     left: 20px;
+     bottom: 20px;
+     right: 20px;
      z-index: 10;
      cursor: pointer;
-     display: none !important; /* Hidden on mobile by default */
+     display: none; /* Hidden by default, shown via JS for desktop */
      transition: opacity 0.3s ease;
  }
 
@@ -1325,13 +1324,6 @@
      .panel-handle {
          display: none;
          /* Hide mobile handle */
-     }
- 
-     #qr-code-container {
-         bottom: 20px;
-         left: auto;
-         display: block !important; /* Re-enable for desktop view */
-         right: 20px;
      }
  
      .panel-header {
