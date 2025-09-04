@@ -11,15 +11,15 @@
      position: static;
  }
  #logo {
-    position: absolute;
-    top: 10px;
-    left: 10px;
+    position: fixed;
+    inset-block-start: 10px;
+    inset-inline-start: 10px;
     z-index: 10; /* Ensure it's on top of the map */
  }
 
  #logo svg {
-    width: 50px;
-    height: 50px;
+    inline-size: 50px;
+    block-size: 50px;
  }
 
  #map {
@@ -27,7 +27,7 @@
      width: 100%;
      position: static;
      z-index: 1;
-     transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), margin-left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+     transition: inline-size 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), margin-inline-start 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), block-size 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
      flex-grow: 1;
  }
 
@@ -35,7 +35,7 @@
      position: absolute;
      bottom: 0;
      left: 0;
-     right: 0;
+     inset-inline-end: 0;
      background-color: #ffffff;
      z-index: 2;
      display: flex;
@@ -52,10 +52,9 @@
      visibility: hidden;
      transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
      overflow: hidden;
-     /* Hide content when collapsed */
      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-     border-top-left-radius: 16px;
-     border-top-right-radius: 16px;
+     border-start-start-radius: 16px;
+     border-start-end-radius: 16px;
  }
 
  #list-panel.open {
@@ -73,10 +72,12 @@
  }
 
  .panel-header {
-     padding: 25px 20px 10px;
+     padding-block-start: 25px;
+     padding-inline: 20px;
+     padding-block-end: 10px;
      display: flex;
      align-items: center;
-     text-align: center;
+     text-align: left;
      cursor: pointer;
      margin-bottom: 45px;
      transition: margin-bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -107,7 +108,7 @@
  .panel-handle {
      position: absolute;
      top: 10px;
-     left: 50%;
+     inset-inline-start: 50%;
      transform: translateX(-50%);
      width: 40px;
      height: 5px;
@@ -125,8 +126,8 @@
 
  .header-actions {
      position: absolute;
-     right: 15px;
-     top: calc(50% + 7.5px);
+     inset-inline-end: 15px;
+     inset-block-start: calc(50% + 7.5px);
      transform: translateY(-50%);
      display: flex;
      align-items: center;
@@ -158,11 +159,11 @@
  #expand-button {
      display: none;
      position: absolute;
-     left: 12px;
+     inset-inline-start: 12px;
      z-index: 10;
      align-items: initial;
      cursor: pointer;
-     top: 20px;
+     inset-block-start: 20px;
      z-index: 1;
  }
 
@@ -190,7 +191,9 @@
  #search-input {
      flex-grow: 1;
      min-width: 0; /* Prevents input from overflowing flex container */
-     padding: 10px 15px 10px 40px;
+     padding-block: 10px;
+     padding-inline-end: 15px;
+     padding-inline-start: 40px;
      border: 1px solid #e0e0e0;
      border-radius: 20px;
      font-size: 1rem;
@@ -207,8 +210,8 @@
 
  .search-icon {
      position: absolute;
-     left: 35px;
-     top: 21px;
+     inset-inline-start: 35px;
+     inset-block-start: 21px;
      width: 18px;
      height: 18px;
      stroke: #999;
@@ -217,7 +220,7 @@
 
  .pills-container {
      background-color: #ffffff;
-     padding: 5px 20px;
+     padding-block: 5px; padding-inline: 20px;
      white-space: nowrap;
      overflow-x: auto;
      -webkit-overflow-scrolling: touch;
@@ -254,13 +257,13 @@
  }
 
  .pills-wrapper::before {
-     left: 0;
-     background: linear-gradient(to right, #ffffff 20%, rgba(255, 255, 255, 0));
+     inset-inline-start: 0;
+     background: linear-gradient(to inline-end, #ffffff 20%, rgba(255, 255, 255, 0));
  }
 
  .pills-wrapper::after {
-     right: 0;
-     background: linear-gradient(to left, #ffffff 20%, rgba(255, 255, 255, 0));
+     inset-inline-end: 0;
+     background: linear-gradient(to inline-start, #ffffff 20%, rgba(255, 255, 255, 0));
  }
 
  .pill-select-group {
@@ -292,7 +295,7 @@
  .filter-pill {
      display: inline-block;
      padding: 6px 14px;
-     margin-right: 8px;
+     margin-inline-end: 8px;
      border-radius: 18px;
      background-color: #e9ecef;
      color: #495057;
@@ -354,8 +357,8 @@
 
  .favorite-btn {
      position: absolute;
-     top: 10px;
-     right: 10px;
+     inset-block-start: 10px;
+     inset-inline-end: 10px;
      background-color: rgba(0, 0, 0, 0.4);
      color: white;
      border: none;
@@ -509,7 +512,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 0;
+    padding: 10px 0;
     border-bottom: 1px solid #eee;
 }
 
@@ -690,8 +693,8 @@
 
  #scroll-to-top-btn {
      position: absolute;
-     bottom: 20px;
-     right: 30px;
+     inset-block-end: 20px;
+     inset-inline-end: 30px;
      width: 44px;
      height: 44px;
      background-color: #007bff;
@@ -720,7 +723,7 @@
      display: none;
      color: #aaa;
      transition: color 0.2s ease;
-     margin-left: 10px;
+     margin-inline-start: 10px;
  }
 
  .card:hover .card-chevron {
@@ -780,10 +783,9 @@
      transform: translateY(100%);
      /* Move completely out of view */
      visibility: hidden;
-     /* Hide when closed */
      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-     border-top-left-radius: 16px;
-     border-top-right-radius: 16px;
+     border-start-start-radius: 16px;
+     border-start-end-radius: 16px;
      transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
  }
 
@@ -800,13 +802,13 @@
      background: none;
      border: none;
      padding: 0;
-     margin-right: 10px;
+     margin-inline-end: 10px;
  }
 
  #detail-favorite-btn {
      position: static;
      background-color: transparent;
-     margin-left: 10px;
+     margin-inline-start: 10px;
      padding: 5px;
  }
 
@@ -828,8 +830,8 @@
 
  #qr-code-container {
      position: absolute;
-     bottom: 20px;
-     right: 20px;
+     inset-block-end: 20px;
+     inset-inline-end: 20px;
      z-index: 10;
      cursor: pointer;
      display: none; /* Hidden by default, shown via JS for desktop */
@@ -845,8 +847,8 @@
 
  #qr-modal {
      position: fixed;
-     top: 0;
-     left: 0;
+     inset-block-start: 0;
+     inset-inline-start: 0;
      width: 100%;
      height: 100%;
      background-color: rgba(0, 0, 0, 0.6);
@@ -871,8 +873,8 @@
 
  #debug-overlay {
      position: absolute;
-     top: 10px;
-     left: 50%;
+     inset-block-start: 10px;
+     inset-inline-start: 50%;
      transform: translateX(-50%);
      background-color: rgba(0, 0, 0, 0.7);
      color: white;
@@ -908,8 +910,8 @@
 
  #loading-overlay {
      position: fixed;
-     top: 0;
-     left: 0;
+     inset-block-start: 0;
+     inset-inline-start: 0;
      width: 100%;
      height: 100%;
      background-color: rgba(255, 255, 255, 0.9);
@@ -972,7 +974,7 @@
 
  .slider-btn {
      position: absolute;
-     top: 50%;
+     inset-block-start: 50%;
      transform: translateY(-50%);
      background-color: rgba(0, 0, 0, 0.5);
      color: white;
@@ -999,11 +1001,11 @@
  }
 
  .slider-btn.prev {
-     left: 10px;
+     inset-inline-start: 10px;
  }
 
  .slider-btn.next {
-     right: 10px;
+     inset-inline-end: 10px;
  }
 
  .slider-btn:hover {
@@ -1012,8 +1014,8 @@
 
  .slider-dots {
      position: absolute;
-     bottom: 10px;
-     left: 50%;
+     inset-block-end: 10px;
+     inset-inline-start: 50%;
      transform: translateX(-50%);
      display: flex;
      gap: 6px;
@@ -1072,9 +1074,9 @@
  /* --- Bottom Navigation Bar --- */
  #bottom-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     height: 60px;
     background-color: #ffffff;
     border-top: 1px solid #e0e0e0;
@@ -1194,17 +1196,17 @@
     display: none !important;
  }
  #center-location-button {
-     position: absolute;
-     top: 16px;
-     right: 10px;
+     position: fixed;
+     inset-block-start: 16px;
+     inset-inline-end: 10px;
      z-index: 10;
  }
 
  /* Desktop Layout */
  @media (min-width: 769px) {
      #logo {
-         right: 10px;
-         left: auto;
+         inset-inline-end: 10px;
+         inset-inline-start: auto;
          background-color: #fff;
          border-radius: 50%;
          width: 40px;
@@ -1250,16 +1252,16 @@
      }
  
      #map.panel-closed {
-         width: 100%;
-         margin-left: 0;
+         inline-size: 100%;
+         margin-inline-start: 0;
      }
  
      .panel {
-         top: 0;
-         bottom: 0;
-         left: 0;
-         right: auto;
-         width: 25%;
+         inset-block-start: 0;
+         inset-block-end: 0;
+         inset-inline-start: 0;
+         inset-inline-end: auto;
+         inline-size: 25%;
          height: 100%;
          border-radius: 0;
          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1273,9 +1275,8 @@
          transform: translateX(0);
          transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease;
          visibility: visible;
-         /* Ensure it's visible on desktop */
-         border-top-left-radius: 0px;
-         border-top-right-radius: 0px;
+         border-start-start-radius: 0px;
+         border-start-end-radius: 0px;
      }
  
      #list-panel.closed {
@@ -1290,7 +1291,7 @@
  
      #detail-panel {
          height: 100%;
-         width: 25%;
+         inline-size: 25%;
          transform: translateX(-100%);
          z-index: 4;
          /* Ensure detail is on top */
@@ -1306,8 +1307,8 @@
          cursor: default;
          /* No dragging on desktop */
          margin-bottom: 0;
-         padding: 10px 20px;
-         border-radius: 16px 16px 0 0 !important;
+         padding-block: 10px; padding-inline: 20px;
+         border-radius: 0 !important;
      }
  
      #collapse-button {
@@ -1343,7 +1344,7 @@
  
      .header-action-btn {
          position: static;
-         margin-left: 10px;
+         margin-inline-start: 10px;
      }
  
      #detail-back-button {

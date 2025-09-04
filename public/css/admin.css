@@ -65,7 +65,7 @@ h1 {
     /* Fixed width for labels */
     flex-shrink: 0;
     text-transform: capitalize;
-    text-align: right;
+    text-align: end;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -89,7 +89,7 @@ h1 {
     color: white;
     font-weight: bold;
     font-size: 0.8rem;
-    padding-right: 5px;
+    padding-inline-end: 5px;
     box-sizing: border-box;
 }
 
@@ -176,12 +176,12 @@ strong {
 /* Details Sections */
 .event-details,
 .report-details {
-    border-left: 3px solid #e0e0e0;
-    padding-left: 15px;
+    border-inline-start: 3px solid #e0e0e0;
+    padding-inline-start: 15px;
 }
 
 .report-details {
-    border-left-color: #dc3545;
+    border-inline-start-color: #dc3545;
     /* Red for report */
 }
 
