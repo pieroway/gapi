@@ -1,10 +1,10 @@
 const CACHE_NAME = 'events-map-cache-v2'; // Bump version to trigger update
 const urlsToCache = [
-  '/', // Cache the root to allow offline start
-  '/client.html',
-  '/css/shared.css',
-  '/css/client.css',
-  '/client.js',
+  // '/', // Cache the root to allow offline start
+  // '/client.html',
+  // '/css/shared.css',
+  // '/css/client.css',
+  // '/client.js',
   '/markercluster.js',
   '/manifest.json'
 ];

@@ -21,11 +21,14 @@
 
     <div id="logo-container">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
-            <text x="0" y="40" font-family="Arial" font-size="48" fill="#333" stroke="#FFF" stroke-width="1.5px" stroke-linejoin="round" paint-order="stroke fill">
+            <text x="0" y="40" font-family="Arial" font-size="48" fill="#333" stroke="#FFF" stroke-width="1.5px"
+                stroke-linejoin="round" paint-order="stroke fill">
                 garagesailing
             </text>
-            <text x="283" y="40" font-family="Arial" font-size="48" fill="#FF5733" stroke="#FFF" stroke-width="1.5px" stroke-linejoin="round" paint-order="stroke fill">.</text>
-            <text x="15" y="80" font-family="Arial" font-size="48" fill="#FF5733" stroke="#FFF" stroke-width="1.5px" stroke-linejoin="round" paint-order="stroke fill">today</text>
+            <text x="283" y="40" font-family="Arial" font-size="48" fill="#FF5733" stroke="#FFF" stroke-width="1.5px"
+                stroke-linejoin="round" paint-order="stroke fill">.</text>
+            <text x="15" y="80" font-family="Arial" font-size="48" fill="#FF5733" stroke="#FFF" stroke-width="1.5px"
+                stroke-linejoin="round" paint-order="stroke fill">today</text>
         </svg>
     </div>
 
@@ -135,7 +138,8 @@
 
     <nav id="bottom-nav">
         <button id="nav-events-btn" class="nav-btn active" title="Events">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="8" y1="6" x2="21" y2="6"></line>
                 <line x1="8" y1="12" x2="21" y2="12"></line>
                 <line x1="8" y1="18" x2="21" y2="18"></line>
@@ -146,14 +150,16 @@
             <span class="nav-btn-text">Events</span>
         </button>
         <button id="nav-refresh-btn" class="nav-btn" title="Refresh">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="23 4 23 10 17 10"></polyline>
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
             </svg>
             <span class="nav-btn-text">Refresh</span>
         </button>
         <button id="nav-add-btn" class="nav-btn" title="Add Event">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="8" x2="12" y2="16"></line>
                 <line x1="8" y1="12" x2="16" y2="12"></line>
@@ -206,7 +212,8 @@
                     </div>
                     <div class="form-group">
                         <label for="event-description">Description</label>
-                        <textarea id="event-description" name="description" rows="3" required maxlength="500"></textarea>
+                        <textarea id="event-description" name="description" rows="3" required
+                            maxlength="500"></textarea>
                         <div class="char-counter"><span>0</span> / 500</div>
                     </div>
                     <div class="form-group">
@@ -453,7 +460,7 @@
                     }
                     // Handle multi-value fields (checkboxes)
                     data['category_ids[]'] = formData.getAll('category_ids[]');
-                    
+
                     // Don't save the file itself for security reasons
                     delete data.photo;
 
@@ -574,7 +581,8 @@
       Set the Google Maps API key here.
       The 'callback=initMap' will automatically call the initMap function once the API is ready.
     -->
-    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-pNE-VhST7g0544fnA6iPWA-Ask5YKxc&libraries=marker,places&callback=initMap"></script>
+    <script async
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-pNE-VhST7g0544fnA6iPWA-Ask5YKxc&libraries=marker,places&callback=initMap"></script>
     <script src="/markercluster.js" defer></script>
     <script src="/client.js" defer></script>
 </body>
