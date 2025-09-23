@@ -715,15 +715,18 @@
         // Clear all previous validation errors
         submissionForm.querySelectorAll('.is-invalid').forEach(el => clearError(el));
         eventSaleTypePillsContainer.querySelectorAll('.active').forEach(p => p.classList.remove('active'));
+        document.body.classList.add('submission-modal-visible');
         submissionModal.classList.add('visible');
     });
 
     cancelSubmissionBtn.addEventListener('click', () => {
+        document.body.classList.remove('submission-modal-visible');
         submissionModal.classList.remove('visible');
     });
 
     submissionModal.addEventListener('click', (e) => {
         if (e.target === submissionModal) {
+            document.body.classList.remove('submission-modal-visible');
             submissionModal.classList.remove('visible');
         }
     });
@@ -805,6 +808,7 @@
             const newEvent = await response.json();
             allEvents.push(newEvent);
             filterAndDisplayEvents(); // Refresh the list and map
+            document.body.classList.remove('submission-modal-visible');
             submissionModal.classList.remove('visible');
             submissionForm.reset();
             submissionPhotos = []; // Clear photos after successful submission
