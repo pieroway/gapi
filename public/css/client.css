@@ -1490,7 +1490,7 @@
      }
 
      #submission-modal .form-actions {
-         padding-bottom: calc(15px + var(--safe-area-inset-bottom));
+         /* padding-bottom: calc(15px + var(--safe-area-inset-bottom)); */
          padding-left: calc(20px + var(--safe-area-inset-left));
          padding-right: calc(20px + var(--safe-area-inset-right)); 
      }
