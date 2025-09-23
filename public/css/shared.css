@@ -17,6 +17,7 @@
     align-items: center;
     padding: 10px;
     box-sizing: border-box;
+    padding-bottom: calc(35px + var(--safe-area-inset-bottom));
 }
 
 .modal-overlay.visible {
@@ -27,9 +28,9 @@
     background-color: #fff;
     padding: 20px 30px;
     border-radius: 8px;
-    width: auto; /* Allow the modal to shrink to its content */
+    width: 100%; /* Allow the modal to shrink to its content */
     margin: 20px; /* Add a consistent margin on all sides */
-    max-width: 500px;
+ 
     max-height: calc(100vh - 40px); /* Ensure content doesn't overflow viewport with margins */
     overflow-y: auto;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
