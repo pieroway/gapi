@@ -17,7 +17,7 @@
     align-items: center;
     padding: 10px;
     box-sizing: border-box;
-    padding-bottom: calc(35px + var(--safe-area-inset-bottom));
+    padding-bottom: calc(15px + var(--safe-area-inset-bottom));
 }
 
 .modal-overlay.visible {
