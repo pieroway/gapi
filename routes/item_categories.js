@@ -6,7 +6,7 @@ const db = require('../db'); // Import the database connection pool
 // GET all item categories from the database
 router.get('/', async (req, res) => {
     try {
-        const [categories] = await db.query('SELECT id, name FROM item_categories ORDER BY id');
+        const [categories] = await db.query('SELECT id, name FROM gapi_item_categories ORDER BY id');
         res.json(categories);
     } catch (error) {
         console.error('Failed to fetch item categories:', error);

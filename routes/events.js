@@ -71,9 +71,9 @@ router.get('/', async (req, res) => {
       SELECT
           e.id, e.public_id, e.title, e.description, e.address, e.latitude, e.longitude,
           e.start_datetime, e.end_datetime, st.id as sale_type_id, st.name as sale_type_name,
-          (SELECT AVG(er.rating_value) FROM event_ratings er WHERE er.event_id = e.id) as average_rating
-      FROM events e
-      LEFT JOIN sale_types st ON e.sale_type_id = st.id
+          (SELECT AVG(er.rating_value) FROM gapi_event_ratings er WHERE er.event_id = e.id) as average_rating
+      FROM gapi_events e
+      LEFT JOIN gapi_sale_types st ON e.sale_type_id = st.id
       WHERE e.is_deleted = FALSE ORDER BY e.start_datetime DESC
     `;
     const [events] = await db.query(mainSql);
@@ -87,8 +87,8 @@ router.get('/', async (req, res) => {
     const placeholders = eventIds.map(() => '?').join(',');
 
     // Step 3: Fetch all related photos and categories in two efficient queries
-    const [photos] = await db.query(`SELECT event_id, file_path FROM event_photos WHERE event_id IN (${placeholders})`, eventIds);
-    const [categories] = await db.query(`SELECT eic.event_id, ic.id, ic.name FROM event_item_categories eic JOIN item_categories ic ON eic.category_id = ic.id WHERE eic.event_id IN (${placeholders})`, eventIds);
+    const [photos] = await db.query(`SELECT event_id, file_path FROM gapi_event_photos WHERE event_id IN (${placeholders})`, eventIds);
+    const [categories] = await db.query(`SELECT eic.event_id, ic.id, ic.name FROM gapi_event_item_categories eic JOIN gapi_item_categories ic ON eic.category_id = ic.id WHERE eic.event_id IN (${placeholders})`, eventIds);
 
     // Step 4: Map the related data back to each event
     const eventsById = events.reduce((acc, event) => {
@@ -166,7 +166,7 @@ router.post('/', upload.array('photos', MAX_PHOTOS), async (req, res) => {
     const edit_guid = uuidv4();
 
     const eventSql = `
-      INSERT INTO events (public_id, edit_guid, title, description, address, latitude, longitude, start_datetime, end_datetime, sale_type_id)
+      INSERT INTO gapi_events (public_id, edit_guid, title, description, address, latitude, longitude, start_datetime, end_datetime, sale_type_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const [eventResult] = await connection.execute(eventSql, [
@@ -177,14 +177,14 @@ router.post('/', upload.array('photos', MAX_PHOTOS), async (req, res) => {
     // --- 2. Insert into `event_item_categories` junction table ---
     if (item_categories && item_categories.length > 0) {
       const categoryValues = item_categories.map(catId => [newEventId, catId]);
-      const categorySql = 'INSERT INTO event_item_categories (event_id, category_id) VALUES ?';
+      const categorySql = 'INSERT INTO gapi_event_item_categories (event_id, category_id) VALUES ?';
       await connection.query(categorySql, [categoryValues]);
     }
 
     // --- 3. Insert into `event_photos` table ---
     let photoPaths = [];
     if (req.files && req.files.length > 0) {
-      photoPaths = req.files.map(file => `/uploads/${file.filename}`);
+      photoPaths = req.files.map(file => `uploads/${file.filename}`);
       const photoValues = photoPaths.map(path => [newEventId, path]);
       const photoSql = 'INSERT INTO event_photos (event_id, file_path) VALUES ?';
       await connection.query(photoSql, [photoValues]);
@@ -195,8 +195,8 @@ router.post('/', upload.array('photos', MAX_PHOTOS), async (req, res) => {
 
     // --- 4. Construct and return the new event object for the client ---
     // This part is for client-side convenience, so it doesn't have to re-fetch.
-    const [saleTypeRows] = await connection.execute('SELECT id, name FROM sale_types WHERE id = ?', [sale_type_id]);
-    const [categoryRows] = await connection.execute('SELECT id, name FROM item_categories WHERE id IN (?)', [item_categories]);
+    const [saleTypeRows] = await connection.execute('SELECT id, name FROM gapi_sale_types WHERE id = ?', [sale_type_id]);
+    const [categoryRows] = await connection.execute('SELECT id, name FROM gapi_item_categories WHERE id IN (?)', [item_categories]);
 
     const newEventForClient = {
       public_id: public_id,
@@ -224,7 +224,7 @@ router.get('/edit/:guid', async (req, res) => {
   const { guid } = req.params;
   try {
     // 1. Fetch the main event data using the secure edit_guid
-    const [eventRows] = await db.query('SELECT * FROM events WHERE edit_guid = ?', [guid]);
+    const [eventRows] = await db.query('SELECT * FROM gapi_events WHERE edit_guid = ?', [guid]);
 
     if (eventRows.length === 0) {
       return res.status(404).json({ message: 'Event not found.' });
@@ -234,11 +234,11 @@ router.get('/edit/:guid', async (req, res) => {
     const eventId = event.id;
 
     // 2. Fetch related photos
-    const [photoRows] = await db.query('SELECT file_path FROM event_photos WHERE event_id = ?', [eventId]);
+    const [photoRows] = await db.query('SELECT file_path FROM gapi_event_photos WHERE event_id = ?', [eventId]);
     event.photos = photoRows.map(p => p.file_path);
 
     // 3. Fetch related category IDs for populating the form
-    const [categoryRows] = await db.query('SELECT category_id FROM event_item_categories WHERE event_id = ?', [eventId]);
+    const [categoryRows] = await db.query('SELECT category_id FROM gapi_event_item_categories WHERE event_id = ?', [eventId]);
     event.item_categories = categoryRows.map(c => c.category_id);
 
     res.json(event);
@@ -347,7 +347,7 @@ router.post('/:id/ratings', async (req, res) => {
     }
 
     // Find the internal ID of the event from its public ID
-    const [eventRows] = await db.query('SELECT id FROM events WHERE public_id = ?', [public_id]);
+    const [eventRows] = await db.query('SELECT id FROM gapi_events WHERE public_id = ?', [public_id]);
 
     if (eventRows.length === 0) {
       return res.status(404).json({ message: 'Event not found.' });
@@ -355,7 +355,7 @@ router.post('/:id/ratings', async (req, res) => {
     const eventId = eventRows[0].id;
 
     // Insert the new rating into the database
-    const sql = 'INSERT INTO event_ratings (event_id, rating_value) VALUES (?, ?)';
+    const sql = 'INSERT INTO gapi_event_ratings (event_id, rating_value) VALUES (?, ?)';
     await db.execute(sql, [eventId, rating]);
 
     res.status(201).json({ message: 'Rating submitted successfully.' });
