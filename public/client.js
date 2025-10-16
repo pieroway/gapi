@@ -83,8 +83,8 @@
                 const maxTitles = 5;
                 const titles = cluster.markers
                     .slice(0, maxTitles)
-                    .map(m => {
-                        const event = allEvents.find(e => e.id === m.eventId);
+                .map((m) => {
+                    const event = allEvents.find(e => e.public_id === m.eventId);
                         const escapedTitle = event ? event.title.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
                         return event ? `<li>${escapedTitle}</li>` : '';
                     })
@@ -287,13 +287,15 @@
         }
 
         // Update the UI for the detail panel button if it's open for this event
-        if (detailPanel.classList.contains('open') && currentlySelectedEventForDebug?.id === eventId) {
+        if (detailPanel.classList.contains('open') && currentlySelectedEventForDebug?.public_id === eventId) {
             const detailFavoriteBtn = document.getElementById('detail-favorite-btn');
-            detailFavoriteBtn.classList.toggle('active', isNowFavorite);
+            if (detailFavoriteBtn) detailFavoriteBtn.classList.toggle('active', isNowFavorite);
         }
     };
 
-    const toggleFavorite = (eventId) => {
+    const toggleFavorite = (event) => {
+        if (!event || !event.public_id) return;
+        const eventId = event.public_id;
         let favorites = getFavorites();
         const isCurrentlyFavorite = favorites.includes(eventId);
         const isNowFavorite = !isCurrentlyFavorite;
@@ -427,7 +429,7 @@
     // --- Report Event Logic ---
     function openReportModal(event) {
         reportEventTitle.textContent = event.title;
-        reportEventIdInput.value = event.id;
+        reportEventIdInput.value = event.public_id;
         reportForm.reset();
         reportDetailsGroup.style.display = 'none';
         reportDetailsGroup.querySelector('textarea').required = false;
@@ -453,7 +455,7 @@
     });
 
     reportForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Prevent default form submission
         const submitBtn = document.getElementById('submit-report-btn');
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting...';
@@ -461,8 +463,8 @@
         const eventId = reportEventIdInput.value;
         const formData = new FormData(reportForm);
         const payload = {
-            event_id: eventId, // Add event ID to the payload
-            reason: formData.get('reason'),
+            public_id: eventId, // Use public_id for the API
+            reason: formData.get('reason') || 'unknown',
             details: formData.get('details') || ''
         };
 
@@ -1142,18 +1144,34 @@
         activeMarker = markerToActivate;
     }
 
-    function openDetailPanel(eventId) {
+    async function openDetailPanel(eventId) {
         elementThatOpenedDetailPanel = document.activeElement; // Store focus before opening
-        const event = allEvents.find(e => e.id === eventId);
-        if (!event) return;
+
+        // Show loading state immediately
+        detailTitle.textContent = 'Loading...';
+        detailContent.innerHTML = '<div class="spinner-large"></div>';
+        detailPanel.classList.add('open');
+        document.body.classList.add('detail-panel-visible');
+
+        let event;
+        try {
+            const response = await fetch(`/api/events/${eventId}`);
+            if (!response.ok) throw new Error('Event not found');
+            event = await response.json();
+        } catch (error) {
+            detailTitle.textContent = 'Error';
+            detailContent.innerHTML = `<p class="error-message">${error.message}</p>`;
+            return;
+        }
+
         currentlySelectedEventForDebug = event;
         updateDebugOverlay();
 
         // Set up the favorite button in the detail panel
         const detailFavoriteBtn = document.getElementById('detail-favorite-btn');
-        detailFavoriteBtn.classList.toggle('active', isFavorite(event.id));
+        detailFavoriteBtn.classList.toggle('active', isFavorite(event.public_id));
         detailFavoriteBtn.onclick = () => {
-            toggleFavorite(event.id);
+            toggleFavorite(event);
         };
 
         // Pan map to center the marker in the visible area
@@ -1206,6 +1224,25 @@
                 </div>`;
         }
 
+        const commentsHtml = event.comments && event.comments.length > 1 ? `
+            <div class="comments-section">
+                <h3>Comments</h3>
+                ${event.comments.map(comment => `
+                    <div class="comment">
+                        <p class="comment-text">${comment.comment_text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                        <p class="comment-meta">Posted on ${new Date(comment.created_at).toLocaleString()}</p>
+                    </div>
+                `).join('')}
+                Add your own comment now.
+            </div>
+        ` : 
+        `<div class="comments-section">
+                <h3>Comments</h3>
+                No comments yet.  Add a comment here.
+         </div>
+        `; 
+        // If not comments, user will be prompted to add a comment.
+
         const saleTypePill = event.sale_type_details ? `<span class="mini-pill sale-type-pill-mini">${event.sale_type_details.name}</span>` : '';
         const categoryPills = (event.item_category_details || []).map(category => {
             return category ? `<span class="mini-pill">${category.name}</span>` : '';
@@ -1229,6 +1266,7 @@
                         </div>
                         <p>${event.description}</p>
                         <div class="mini-pills-container" style="margin-top: 15px;">${saleTypePill}${categoryPills}</div>
+                        ${commentsHtml}
                         <div class="detail-actions">
                             <button id="add-to-calendar-btn" title="Add to Calendar">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -1265,12 +1303,8 @@
         if (!isDesktop()) {
             listPanel.classList.add('detail-open');
         }
-        detailPanel.classList.add('open');
         detailPanel.setAttribute('aria-hidden', 'false');
         listPanel.setAttribute('aria-hidden', 'true');
-
-        // Add class to body when detail panel is visible
-        document.body.classList.add('detail-panel-visible');
 
 
         // Move focus to the panel after the transition
@@ -1294,7 +1328,7 @@
             'VERSION:2.0',
             'PRODID:-//GarageSaleMap//EN',
             'BEGIN:VEVENT',
-            `UID:${event.id}@garagesalemap.com`,
+            `UID:${event.public_id}@garagesalemap.com`,
             `DTSTAMP:${formatIcsDate(new Date())}`,
             `DTSTART:${formatIcsDate(startDate)}`,
             `DTEND:${formatIcsDate(endDate)}`,
@@ -1315,7 +1349,7 @@
     }
 
     function shareEvent(event) {
-        const eventUrl = `${window.location.origin}${window.location.pathname}?event=${event.id}`;
+        const eventUrl = `${window.location.origin}${window.location.pathname}?event=${event.public_id}`;
         const shareData = {
             title: `Garage Sale: ${event.title}`,
             text: `Check out this garage sale: ${event.description.substring(0, 100)}...`,
@@ -1525,7 +1559,7 @@
         // 1. Apply primary filter (Sale Type or Favorites)
         if (selectedSaleType === 'favorites') {
             const favoriteIds = getFavorites();
-            filtered = filtered.filter(event => favoriteIds.includes(event.id));
+            filtered = filtered.filter(event => favoriteIds.includes(event.public_id));
         } else if (selectedSaleType !== 'all') {
             filtered = filtered.filter(event => event.sale_type_id === parseInt(selectedSaleType));
         }
@@ -1647,7 +1681,7 @@
         filteredEvents.forEach(event => {
             // Add event card to list
             const card = createEventCard(event);
-            card.addEventListener('click', () => openDetailPanel(event.id));
+            card.addEventListener('click', () => openDetailPanel(event.public_id));
             eventsContainer.appendChild(card);
 
             // Add marker to map
@@ -1668,11 +1702,11 @@
                 });
                 marker.defaultContent = pin.element; // Store for hover/active state changes
 
-                marker.addListener('click', () => {
-                    openDetailPanel(event.id);
-                    scrollToEventCard(event.id);
+                marker.addListener('gmp-click', () => {
+                    openDetailPanel(event.public_id);
+                    scrollToEventCard(event.public_id);
                 });
-                marker.eventId = event.id;
+                marker.eventId = event.public_id;
                 allMarkers.push(marker);
 
                 bounds.extend(position);
@@ -2012,10 +2046,10 @@
 
             // Handle deep-linking from a shared URL
             if (eventIdFromUrl) {
-                const eventToOpen = allEvents.find(e => e.id == eventIdFromUrl);
+                const eventToOpen = allEvents.find(e => e.public_id == eventIdFromUrl);
                 if (eventToOpen) {
                     setTimeout(() => {
-                        openDetailPanel(eventToOpen.id);
+                        openDetailPanel(eventToOpen.public_id);
                         const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                         window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
                     }, 500);
@@ -2079,14 +2113,14 @@
     }
     function createEventCard(event) {
         const card = document.createElement('div');
-        card.className = 'card';
-        card.dataset.eventId = event.id;
+        card.className = 'card'; 
+        card.setAttribute('data-event-id', event.public_id);
         card.setAttribute('role', 'button');
         card.setAttribute('tabindex', '0');
         card.setAttribute('aria-label', `View details for ${event.title}`);
 
         const favoriteButtonHtml = `
-                    <button class="favorite-btn ${isFavorite(event.id) ? 'active' : ''}" aria-label="Toggle favorite">
+                    <button class="favorite-btn ${isFavorite(event.public_id) ? 'active' : ''}" aria-label="Toggle favorite">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </button>
                 `;
@@ -2137,19 +2171,19 @@
         if (favBtn) {
             favBtn.addEventListener('click', (e) => {
                 e.stopPropagation(); // Prevent card click from firing
-                toggleFavorite(event.id);
+                toggleFavorite(event);
             });
         }
 
         card.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault(); // Prevent spacebar from scrolling
-                openDetailPanel(event.id);
+                openDetailPanel(event.public_id);
             }
         });
 
         card.addEventListener('mouseenter', () => {
-            const marker = allMarkers.find(m => m.eventId === event.id);
+            const marker = allMarkers.find(m => m.eventId === event.public_id);
             if (marker) {
                 setHoveredMarker(marker);
             }

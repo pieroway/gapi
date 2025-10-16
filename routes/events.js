@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
 const path = require('path');
 const events = require('../data/events');
+const fs = require('fs').promises;
 const db = require('../db'); // Import the database connection pool
 
 // --- Multer Configuration ---
@@ -119,31 +120,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Update an event by public ID (for Admin)
-router.put('/:id', (req, res) => {
-  const { id } = req.params;
-  const eventIndex = events.findIndex(event => event.id === id);
-  if (eventIndex === -1) {
-    return res.status(404).json({ message: 'Event not found' });
-  }
-  // Exclude read-only fields from being updated
-  const { id: bodyId, guid, ratings, comments, ...updateData } = req.body;
-  const updatedEvent = { ...events[eventIndex], ...updateData };
-  events[eventIndex] = updatedEvent;
-  res.json(populateEventDetails(updatedEvent));
-});
-
-// Soft delete an event by public ID (for Admin)
-router.delete('/:id', (req, res) => {
-  const { id } = req.params;
-  const eventIndex = events.findIndex(event => event.id === id);
-  if (eventIndex === -1) {
-    return res.status(404).json({ message: 'Event not found' });
-  }
-  events[eventIndex].is_deleted = true;
-  res.status(204).send();
-});
-
 // --- Creator/Admin Routes ---
 
 // Create a new event
@@ -182,11 +158,11 @@ router.post('/', upload.array('photos', MAX_PHOTOS), async (req, res) => {
     }
 
     // --- 3. Insert into `event_photos` table ---
-    let photoPaths = [];
+    let uploadedPhotoPaths = [];
     if (req.files && req.files.length > 0) {
-      photoPaths = req.files.map(file => `uploads/${file.filename}`);
-      const photoValues = photoPaths.map(path => [newEventId, path]);
-      const photoSql = 'INSERT INTO event_photos (event_id, file_path) VALUES ?';
+      uploadedPhotoPaths = req.files.map(file => `uploads/${file.filename}`);
+      const photoValues = uploadedPhotoPaths.map(p => [newEventId, p]);
+      const photoSql = 'INSERT INTO gapi_event_photos (event_id, file_path) VALUES ?';
       await connection.query(photoSql, [photoValues]);
     }
 
@@ -204,7 +180,7 @@ router.post('/', upload.array('photos', MAX_PHOTOS), async (req, res) => {
       title, description, address, latitude, longitude, start_datetime, end_datetime,
       sale_type_details: saleTypeRows[0] || null,
       item_category_details: categoryRows,
-      photos: photoPaths,
+      photos: uploadedPhotoPaths,
       average_rating: 0 // New events have no ratings yet
     };
 
@@ -250,90 +226,223 @@ router.get('/edit/:guid', async (req, res) => {
 });
 
 // Update an event
-router.put('/edit/:guid', (req, res) => {
+router.put('/edit/:guid', upload.array('photos', MAX_PHOTOS), async (req, res) => {
   const { guid } = req.params;
-  const eventIndex = events.findIndex(event => event.guid === guid);
-  if (eventIndex === -1) {
-    return res.status(404).json({ message: 'Event not found' });
+  let connection;
+
+  try {
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    // 1. Parse incoming data
+    const eventData = JSON.parse(req.body.eventData);
+    const {
+      title, description, address, latitude, longitude,
+      start_datetime, end_datetime, sale_type_id,
+      item_categories, existingPhotos = []
+    } = eventData;
+
+    // --- Validation ---
+    if (!title || !description || !address || latitude === undefined || longitude === undefined || !start_datetime || !end_datetime || !sale_type_id || !item_categories) {
+      return res.status(400).json({ message: 'Missing required fields.' });
+    }
+
+    // 2. Get the event's internal ID and verify it exists
+    const [eventRows] = await connection.query('SELECT id FROM gapi_events WHERE edit_guid = ? AND is_deleted = FALSE', [guid]);
+    if (eventRows.length === 0) {
+      await connection.rollback(); // No need to proceed
+      return res.status(404).json({ message: 'Event not found or has been deleted.' });
+    }
+    const eventId = eventRows[0].id;
+
+    // 3. Update the main event details in `gapi_events`
+    const updateSql = `
+      UPDATE gapi_events SET
+        title = ?, description = ?, address = ?, latitude = ?, longitude = ?,
+        start_datetime = ?, end_datetime = ?, sale_type_id = ?
+      WHERE id = ?
+    `;
+    await connection.execute(updateSql, [title, description, address, latitude, longitude, start_datetime, end_datetime, sale_type_id, eventId]);
+
+    // 4. Update categories: Delete old, insert new
+    await connection.execute('DELETE FROM gapi_event_item_categories WHERE event_id = ?', [eventId]);
+    if (item_categories && item_categories.length > 0) {
+      const categoryValues = item_categories.map(catId => [eventId, catId]);
+      await connection.query('INSERT INTO gapi_event_item_categories (event_id, category_id) VALUES ?', [categoryValues]);
+    }
+
+    // 5. Update photos
+    // 5a. Find photos to delete
+    const [currentPhotos] = await connection.query('SELECT file_path FROM gapi_event_photos WHERE event_id = ?', [eventId]);
+    const photosToDelete = currentPhotos.filter(p => !existingPhotos.includes(p.file_path));
+
+    if (photosToDelete.length > 0) {
+      const pathsToDelete = photosToDelete.map(p => p.file_path);
+      await connection.query('DELETE FROM gapi_event_photos WHERE event_id = ? AND file_path IN (?)', [eventId, pathsToDelete]);
+      // Asynchronously delete files from the filesystem
+      for (const photo of photosToDelete) {
+        fs.unlink(path.join(__dirname, '..', 'public', photo.file_path)).catch(err => console.error(`Failed to delete file: ${photo.file_path}`, err));
+      }
+    }
+
+    // 5b. Add new photos
+    if (req.files && req.files.length > 0) {
+      const newPhotoPaths = req.files.map(file => `uploads/${file.filename}`);
+      const photoValues = newPhotoPaths.map(p => [eventId, p]);
+      await connection.query('INSERT INTO gapi_event_photos (event_id, file_path) VALUES ?', [photoValues]);
+    }
+
+    await connection.commit();
+    res.status(200).json({ message: 'Event updated successfully.' });
+
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error(`Failed to update event with guid ${guid}:`, error);
+    res.status(500).json({ message: 'Internal server error while updating event.' });
+  } finally {
+    if (connection) connection.release();
   }
-  const updatedEvent = { ...events[eventIndex], ...req.body };
-  events[eventIndex] = updatedEvent;
-  res.json(updatedEvent);
 });
 
 // Soft delete an event
-router.delete('/edit/:guid', (req, res) => {
+router.delete('/edit/:guid', async (req, res) => {
   const { guid } = req.params;
-  const eventIndex = events.findIndex(event => event.guid === guid);
-  if (eventIndex === -1) {
-    return res.status(404).json({ message: 'Event not found' });
+  try {
+    const [result] = await db.execute(
+      'UPDATE gapi_events SET is_deleted = TRUE WHERE edit_guid = ?',
+      [guid]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Event not found or no change needed.' });
+    }
+    res.status(204).send();
+  } catch (error) {
+    console.error(`Failed to delete event with guid ${guid}:`, error);
+    res.status(500).json({ message: 'Internal server error while deleting event.' });
   }
-  events[eventIndex].is_deleted = true;
-  res.status(204).send();
 });
 
 // Undelete an event
-router.post('/edit/:guid/undelete', (req, res) => {
+router.post('/edit/:guid/undelete', async (req, res) => {
   const { guid } = req.params;
-  const eventIndex = events.findIndex(event => event.guid === guid);
-  if (eventIndex === -1) {
-    return res.status(404).json({ message: 'Event not found' });
+  try {
+    const [result] = await db.execute(
+      'UPDATE gapi_events SET is_deleted = FALSE WHERE edit_guid = ?',
+      [guid]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Event not found or no change needed.' });
+    }
+    res.status(200).json({ message: 'Event restored successfully.' });
+  } catch (error) {
+    console.error(`Failed to undelete event with guid ${guid}:`, error);
+    res.status(500).json({ message: 'Internal server error while restoring event.' });
   }
-  events[eventIndex].is_deleted = false;
-  res.json(events[eventIndex]);
 });
 
 // Add a photo to an event
-router.post('/edit/:guid/photos', upload.single('photo'), (req, res) => {
-  const { guid } = req.params;
-  const eventIndex = events.findIndex(event => event.guid === guid);
-  if (eventIndex === -1) {
-    return res.status(404).json({ message: 'Event not found' });
-  }
-
-  if (!req.file) {
-    return res.status(400).json({ message: 'Error: No file selected or invalid file type.' });
-  }
-
-  const photoPath = `/uploads/${req.file.filename}`;
-  events[eventIndex].photos.push(photoPath);
-  res.status(200).json({
-    message: 'File uploaded successfully',
-    filePath: photoPath,
-    event: events[eventIndex]
-  });
+// Note: This is a simplified version. A full implementation would handle multiple uploads
+// and associate them with an event within a transaction.
+router.post('/edit/:guid/photos', upload.single('photo'), async (req, res) => {
+    const { guid } = req.params;
+    if (!req.file) {
+        return res.status(400).json({ message: 'Error: No file selected or invalid file type.' });
+    }
+    try {
+        const [eventRows] = await db.query('SELECT id FROM gapi_events WHERE edit_guid = ?', [guid]);
+        if (eventRows.length === 0) {
+            return res.status(404).json({ message: 'Event not found.' });
+        }
+        const eventId = eventRows[0].id;
+        const photoPath = `uploads/${req.file.filename}`;
+        await db.execute('INSERT INTO gapi_event_photos (event_id, file_path) VALUES (?, ?)', [eventId, photoPath]);
+        res.status(201).json({ message: 'Photo added successfully.', filePath: photoPath });
+    } catch (error) {
+        console.error(`Failed to add photo for event guid ${guid}:`, error);
+        res.status(500).json({ message: 'Internal server error while adding photo.' });
+    }
 });
 
 
 // --- Public Routes with Dynamic IDs ---
 
 // Get a single event by ID
-router.get('/:id', (req, res) => {
-  const { id } = req.params;
-  const event = events.find(event => event.id === id);
-  if (!event || event.is_deleted || event.to_be_deleted) {
-    return res.status(404).json({ message: 'Event not found' });
+router.get('/:id', async (req, res) => {
+  const { id: public_id } = req.params;
+  try {
+    const mainSql = `
+      SELECT
+          e.id, e.public_id, e.title, e.description, e.address, e.latitude, e.longitude,
+          e.start_datetime, e.end_datetime, st.id as sale_type_id, st.name as sale_type_name,
+          (SELECT AVG(er.rating_value) FROM gapi_event_ratings er WHERE er.event_id = e.id) as average_rating
+      FROM gapi_events e
+      LEFT JOIN gapi_sale_types st ON e.sale_type_id = st.id
+      WHERE e.public_id = ? AND e.is_deleted = FALSE
+    `;
+    const [eventRows] = await db.query(mainSql, [public_id]);
+
+    if (eventRows.length === 0) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    const event = eventRows[0];
+    const eventId = event.id;
+
+    const [photos] = await db.query('SELECT file_path FROM gapi_event_photos WHERE event_id = ?', [eventId]);
+    const [categories] = await db.query('SELECT ic.id, ic.name FROM gapi_event_item_categories eic JOIN gapi_item_categories ic ON eic.category_id = ic.id WHERE eic.event_id = ?', [eventId]);
+    const [comments] = await db.query('SELECT comment_text, created_at FROM gapi_event_comments WHERE event_id = ? ORDER BY created_at DESC', [eventId]);
+
+    const result = {
+      public_id: event.public_id,
+      title: event.title,
+      description: event.description,
+      address: event.address,
+      latitude: parseFloat(event.latitude),
+      longitude: parseFloat(event.longitude),
+      start_datetime: event.start_datetime,
+      end_datetime: event.end_datetime,
+      sale_type_details: { id: event.sale_type_id, name: event.sale_type_name },
+      photos: photos.map(p => p.file_path),
+      average_rating: event.average_rating || 0,
+      item_category_details: categories,
+      comments: comments
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error(`Failed to fetch event ${public_id}:`, error);
+    res.status(500).json({ message: 'Internal server error while fetching event.' });
   }
-  const { ratings, ...eventData } = event;
-  const populatedEvent = populateEventDetails(eventData);
-  res.json({
-    ...populatedEvent,
-    average_rating: getAverageRating(ratings),
-  });
 });
 
 // Flag an event as ended
-router.post('/:id/flag-ended', (req, res) => {
-  const { id } = req.params;
-  const eventIndex = events.findIndex(event => event.id === id);
-  if (eventIndex === -1) {
-    return res.status(404).json({ message: 'Event not found' });
+router.post('/:id/flag-ended', async (req, res) => {
+  const { id: public_id } = req.params;
+  try {
+    // Increment the flag count
+    const [updateResult] = await db.execute(
+      'UPDATE gapi_events SET ended_early_flags = ended_early_flags + 1 WHERE public_id = ?',
+      [public_id]
+    );
+
+    if (updateResult.affectedRows === 0) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+
+    // Check if the event should be soft-deleted
+    const [eventRows] = await db.query('SELECT ended_early_flags FROM gapi_events WHERE public_id = ?', [public_id]);
+    const flags = eventRows[0].ended_early_flags;
+
+    if (flags >= 3) {
+      await db.execute('UPDATE gapi_events SET is_deleted = TRUE WHERE public_id = ?', [public_id]);
+      res.status(200).json({ message: 'Flag submitted. Event has been marked as ended.' });
+    } else {
+      res.status(200).json({ message: `Flag submitted. ${3 - flags} more flag(s) needed to mark as ended.` });
+    }
+  } catch (error) {
+    console.error(`Failed to flag event ${public_id}:`, error);
+    res.status(500).json({ message: 'Internal server error while flagging event.' });
   }
-  events[eventIndex].ended_early_flags++;
-  if (events[eventIndex].ended_early_flags >= 3) {
-    events[eventIndex].to_be_deleted = true;
-  }
-  res.json(events[eventIndex]);
 });
 
 // Add a rating to an event
@@ -367,26 +476,28 @@ router.post('/:id/ratings', async (req, res) => {
 });
 
 // Add a comment to an event
-router.post('/:id/comments', (req, res) => {
-  const { id } = req.params;
+router.post('/:id/comments', async (req, res) => {
+  const { id: public_id } = req.params;
   const { comment } = req.body;
 
-  if (!comment || typeof comment !== 'string') {
-    return res.status(400).json({ message: 'Comment must be a non-empty string' });
+  try {
+    if (!comment || typeof comment !== 'string' || comment.trim() === '') {
+      return res.status(400).json({ message: 'Comment must be a non-empty string.' });
+    }
+
+    const [eventRows] = await db.query('SELECT id FROM gapi_events WHERE public_id = ?', [public_id]);
+    if (eventRows.length === 0) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+    const eventId = eventRows[0].id;
+
+    const [result] = await db.execute('INSERT INTO gapi_event_comments (event_id, comment_text) VALUES (?, ?)', [eventId, comment]);
+
+    res.status(201).json({ id: result.insertId, event_id: eventId, comment_text: comment });
+  } catch (error) {
+    console.error(`Failed to add comment for event ${public_id}:`, error);
+    res.status(500).json({ message: 'Internal server error while adding comment.' });
   }
-
-  const eventIndex = events.findIndex(event => event.id === id);
-  if (eventIndex === -1) {
-    return res.status(404).json({ message: 'Event not found' });
-  }
-
-  const newComment = {
-    text: comment,
-    timestamp: new Date().toISOString(),
-  };
-
-  events[eventIndex].comments.push(newComment);
-  res.status(201).json(events[eventIndex]);
 });
 
 module.exports = router;
