@@ -10,9 +10,12 @@
 const mysql = require('mysql2/promise');
 
 // Create a connection pool. The pool will manage individual connections.
+// When running inside Docker, process.env.DB_HOST should be the name of the
+// MySQL service (e.g., 'gapi-db'). For local development outside of Docker,
+// it would typically be 'localhost' or '127.0.0.1'.
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
@@ -21,5 +24,15 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-module.exports = pool;
+// Test the connection on startup to provide immediate feedback.
+pool.getConnection()
+  .then(connection => {
+    console.log('Successfully connected to the MySQL database.');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('Error connecting to the MySQL database:', err.message);
+    console.error('Please check your .env file or Docker environment variables (DB_HOST, DB_USER, etc.)');
+  });
 
+module.exports = pool;

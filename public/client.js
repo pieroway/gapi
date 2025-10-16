@@ -1753,6 +1753,8 @@
 
 
     // --- API and Map Logic ---
+    // The API is served from the same origin as the front-end.
+    // We use relative paths to make requests.
     const eventsApiUrl = '/api/events';
     const categoriesApiUrl = '/api/item_categories';
     const saleTypesApiUrl = '/api/sale_types';
@@ -1821,34 +1823,49 @@
             }
         });
 
+        // Helper function to wait for the inputElement to be ready.
+        const waitForInputElement = (element, timeout = 2000) => {
+            return new Promise((resolve, reject) => {
+                const startTime = Date.now();
+                const interval = setInterval(() => {
+                    if (element.inputElement) {
+                        clearInterval(interval);
+                        resolve(element.inputElement);
+                    } else if (Date.now() - startTime > timeout) {
+                        clearInterval(interval);
+                        reject(new Error("PlaceAutocompleteElement.inputElement did not become available in time."));
+                    }
+                }, 50); // Check every 50ms
+            });
+        };
+
         // Use whenDefined to reliably wait for the web component to be ready.
-        // This is more robust than requestAnimationFrame.
-        customElements.whenDefined(autocompleteElement.localName).then(() => {
-            const newAddressInput = autocompleteElement.inputElement;
-            if (!newAddressInput) {
-                console.error("PlaceAutocompleteElement.inputElement is not available. Address field cannot be initialized.");
-                return;
+        customElements.whenDefined(autocompleteElement.localName).then(async () => {
+            try {
+                const newAddressInput = await waitForInputElement(autocompleteElement);
+
+                 // Transfer necessary attributes from the old (now detached) input to the new one.
+                 newAddressInput.id = originalInputReference.id;
+                 newAddressInput.name = originalInputReference.name;
+                 newAddressInput.required = originalInputReference.required;
+                 newAddressInput.placeholder = originalInputReference.placeholder;
+ 
+                 // Update the module-scoped variable to point to the new, active input element.
+                 eventAddressInput = newAddressInput;
+ 
+                 // Update the array used for real-time validation to use the new input.
+                 const validationIndex = fieldsForRealtimeValidation.indexOf(originalInputReference);
+                 if (validationIndex > -1) {
+                     fieldsForRealtimeValidation[validationIndex] = eventAddressInput;
+                 }
+ 
+                 // Add listeners to the new input element.
+                 eventAddressInput.addEventListener('input', () => { submissionCoordinates = null; });
+                 eventAddressInput.addEventListener('input', validateForm);
+                 eventAddressInput.addEventListener('change', validateForm);
+            } catch (error) {
+                console.error(error.message);
             }
-
-            // Transfer necessary attributes from the old (now detached) input to the new one.
-            newAddressInput.id = originalInputReference.id;
-            newAddressInput.name = originalInputReference.name;
-            newAddressInput.required = originalInputReference.required;
-            newAddressInput.placeholder = originalInputReference.placeholder;
-
-            // Update the module-scoped variable to point to the new, active input element.
-            eventAddressInput = newAddressInput;
-
-            // Update the array used for real-time validation to use the new input.
-            const validationIndex = fieldsForRealtimeValidation.indexOf(originalInputReference);
-            if (validationIndex > -1) fieldsForRealtimeValidation[validationIndex] = eventAddressInput;
-
-            // Add listeners to the new input element.
-            eventAddressInput.addEventListener('input', () => { submissionCoordinates = null; });
-            eventAddressInput.addEventListener('input', validateForm);
-            eventAddressInput.addEventListener('change', validateForm);
-        }).catch(error => {
-            console.error("Error waiting for PlaceAutocompleteElement:", error);
         });
 
         // --- Map Interaction Listeners to disable 'follow me' mode ---
