@@ -126,48 +126,84 @@ router.get('/', async (req, res) => {
 router.post('/', upload.array('photos', MAX_PHOTOS), async (req, res) => {
   let connection;
   try {
+    console.log('Received request to create a new event.');
     const eventData = JSON.parse(req.body.eventData);
     const { title, description, address, latitude, longitude, start_datetime, end_datetime, sale_type_id, item_categories } = eventData;
 
     // --- Validation ---
-    if (!title || !description || !address || latitude === undefined || longitude === undefined || !start_datetime || !end_datetime || !sale_type_id || !item_categories || item_categories.length === 0) {
-      return res.status(400).json({ message: 'Missing required fields.' });
+    console.log('Validating event data...');
+    const missingFields = [];
+    if (!title) missingFields.push('title');
+    if (!description) missingFields.push('description');
+    if (!address) missingFields.push('address');
+    // latitude and longitude can be 0, so we check for undefined
+    if (latitude === undefined) missingFields.push('latitude');
+    if (longitude === undefined) missingFields.push('longitude');
+    if (!start_datetime) missingFields.push('start_datetime');
+    if (!end_datetime) missingFields.push('end_datetime');
+    if (!sale_type_id) missingFields.push('sale_type_id');
+    if (!item_categories || !Array.isArray(item_categories) || item_categories.length === 0) {
+      missingFields.push('item_categories');
     }
 
+    if (missingFields.length > 0) {
+      // Return a detailed error message and a list of the invalid fields.
+      console.warn('Validation failed. Missing fields:', missingFields);
+      const message = `Missing or invalid required fields: ${missingFields.join(', ')}.`;
+      return res.status(400).json({ message, fields: missingFields });
+    }
+    console.log('Validation successful.');
+
     connection = await db.getConnection();
-    await connection.beginTransaction();
+    await connection.beginTransaction(); 
+    console.log('Database transaction started.');
 
     // --- 1. Insert into `events` table ---
     const public_id = uuidv4();
     const edit_guid = uuidv4();
+
+    // Convert ISO 8601 strings to MySQL DATETIME format (YYYY-MM-DD HH:MM:SS)
+    // The .slice(0, 19) gets the date and time part, and .replace('T', ' ') swaps the 'T' for a space.
+    const mysql_start_datetime = new Date(start_datetime).toISOString().slice(0, 19).replace('T', ' ');
+    const mysql_end_datetime = new Date(end_datetime).toISOString().slice(0, 19).replace('T', ' ');
+
+    console.log(`Converted start_datetime to: ${mysql_start_datetime}`);
+    console.log(`Converted end_datetime to: ${mysql_end_datetime}`);
 
     const eventSql = `
       INSERT INTO gapi_events (public_id, edit_guid, title, description, address, latitude, longitude, start_datetime, end_datetime, sale_type_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const [eventResult] = await connection.execute(eventSql, [
-      public_id, edit_guid, title, description, address, latitude, longitude, start_datetime, end_datetime, sale_type_id
+      public_id, edit_guid, title, description, address, latitude, longitude, mysql_start_datetime, mysql_end_datetime, sale_type_id
     ]);
     const newEventId = eventResult.insertId;
+    console.log(`Inserted into gapi_events with new ID: ${newEventId}`);
 
     // --- 2. Insert into `event_item_categories` junction table ---
     if (item_categories && item_categories.length > 0) {
       const categoryValues = item_categories.map(catId => [newEventId, catId]);
       const categorySql = 'INSERT INTO gapi_event_item_categories (event_id, category_id) VALUES ?';
       await connection.query(categorySql, [categoryValues]);
+      console.log(`Inserted ${categoryValues.length} categories for event ID ${newEventId}.`);
     }
 
     // --- 3. Insert into `event_photos` table ---
     let uploadedPhotoPaths = [];
     if (req.files && req.files.length > 0) {
+      console.log(`Processing ${req.files.length} uploaded photos.`);
       uploadedPhotoPaths = req.files.map(file => `uploads/${file.filename}`);
       const photoValues = uploadedPhotoPaths.map(p => [newEventId, p]);
       const photoSql = 'INSERT INTO gapi_event_photos (event_id, file_path) VALUES ?';
       await connection.query(photoSql, [photoValues]);
+      console.log(`Inserted ${photoValues.length} photos for event ID ${newEventId}.`);
+    } else {
+      console.log('No photos were uploaded for this event.');
     }
 
     // --- Commit Transaction ---
     await connection.commit();
+    console.log('Database transaction committed successfully.');
 
     // --- 4. Construct and return the new event object for the client ---
     // This part is for client-side convenience, so it doesn't have to re-fetch.
@@ -187,9 +223,20 @@ router.post('/', upload.array('photos', MAX_PHOTOS), async (req, res) => {
     res.status(201).json(newEventForClient);
 
   } catch (error) {
-    if (connection) await connection.rollback();
-    console.error('Failed to create event:', error);
-    res.status(500).json({ message: 'Internal server error while creating event.' });
+    if (connection) await connection.rollback(); // Rollback on any error
+
+    // Log the full technical error for server-side debugging
+    console.error('Failed to create event:', {
+      message: error.message,
+      code: error.code, // e.g., ER_NO_REFERENCED_ROW_2
+      sqlMessage: error.sqlMessage // The detailed message from the DB
+    });
+
+    // Check for specific, known database errors to give a better client-facing message.
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({ message: 'Invalid data provided. One of the selected categories or the sale type does not exist.' });
+    }
+    res.status(500).json({ message: 'An unexpected internal server error occurred while creating the event.' });
   } finally {
     if (connection) connection.release();
   }
