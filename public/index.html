@@ -17,9 +17,9 @@
 
 </head>
 
-<body>
+<body style="overflow: hidden;">
 
-    <div id="desktop-only-view" style="display: flex;position: fixed;top: 0px;left: 0px;width: 100%;height: 100%;background-color: white;z-index: 1000;justify-content: center;align-items: center;">
+    <div id="desktop-only-view" style="display: none;position: fixed;top: 0px;left: 0px;width: 100%;height: 100%;background-color: white;z-index: 1000;justify-content: center;align-items: center;">
         <div style="text-align: center;">
             <h1>This experience is designed for mobile.</h1>
             <p>Please scan the QR code with your phone to continue.</p>
@@ -353,14 +353,14 @@
                 const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
                 // 3. A simple check for a mobile device based on user agent
-                const isConsideredMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || navigator.maxTouchPoints > 0;
+                const isConsideredMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobi/i.test(navigator.userAgent) || navigator.maxTouchPoints > 0;
                 console.log(`Is mobile device: ${isConsideredMobile}`, `Is local dev: ${isLocalDev}`);
 
                 // --- Desktop vs. Mobile View ---
                 const appWrapper = document.getElementById('app-wrapper');
                 const desktopView = document.getElementById('desktop-only-view');
 
-                // Only enforce mobile-only view if it's NOT a mobile device AND it's NOT local development.
+                // Enforce mobile-only view by showing desktop message if it's NOT a mobile device AND it's NOT local development.
                 if (!isConsideredMobile && !isLocalDev) {
                     // On desktop, show the QR code message and hide the app.
                     if (appWrapper) appWrapper.style.display = 'none';
