@@ -220,7 +220,7 @@
  }
 
  .pills-container {
-     background-color: #ffffff;
+     /* background-color: #ffffff; */
      padding-block: 5px; padding-inline: 20px;
      white-space: nowrap;
      overflow-x: auto;

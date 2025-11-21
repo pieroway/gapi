@@ -58,6 +58,7 @@ const settingsBtn = document.getElementById("settings-btn");
 const settingsModal = document.getElementById("settings-modal");
 const closeSettingsBtn = document.getElementById("close-settings-btn");
 const mapTypeRadios = document.querySelectorAll('input[name="map-type"]');
+const themeRadios = document.querySelectorAll('input[name="theme-type"]');
 const debugToggle = document.getElementById("debug-toggle");
 const zoomLevelSlider = document.getElementById("zoom-level-slider");
 const zoomLevelValue = document.getElementById("zoom-level-value");
@@ -149,6 +150,7 @@ class CustomClusterRenderer {
 
 const CLUSTERING_KEY = "eventsMapClusteringEnabled";
 const MAP_TYPE_KEY = "eventsMapType";
+const THEME_KEY = "eventsMapTheme";
 const DEBUG_OVERLAY_KEY = "eventsMapDebugOverlayEnabled";
 const ZOOM_LEVEL_KEY = "eventsMapDefaultZoom";
 // Keys for persisting UI state
@@ -193,6 +195,17 @@ if (isDesktop()) {
 const savedZoom = localStorage.getItem(ZOOM_LEVEL_KEY) || "12";
 zoomLevelSlider.value = savedZoom;
 zoomLevelValue.textContent = savedZoom;
+
+// Load and apply the saved theme preference
+const savedTheme = localStorage.getItem(THEME_KEY) || "glass";
+const themeStylesheet = document.getElementById("theme-stylesheet");
+if (themeStylesheet) {
+  themeStylesheet.href = `/css/themes/${savedTheme}.css`;
+}
+const themeRadioToCheck = document.querySelector(`input[name="theme-type"][value="${savedTheme}"]`);
+if (themeRadioToCheck) {
+  themeRadioToCheck.checked = true;
+}
 
 // Load and apply saved list panel state (desktop only)
 if (isDesktop()) {
@@ -1021,6 +1034,17 @@ mapTypeRadios.forEach((radio) => {
       map.setMapTypeId(newMapType);
     }
     localStorage.setItem(MAP_TYPE_KEY, newMapType);
+  });
+});
+
+themeRadios.forEach((radio) => {
+  radio.addEventListener("change", (e) => {
+    const newTheme = e.target.value;
+    const themeStylesheet = document.getElementById("theme-stylesheet");
+    if (themeStylesheet) {
+      themeStylesheet.href = `/css/themes/${newTheme}.css`;
+    }
+    localStorage.setItem(THEME_KEY, newTheme);
   });
 });
 
@@ -2021,10 +2045,8 @@ async function refreshEvents() {
 // --- API and Map Logic ---
 // The API is served from the same origin as the front-end.
 
-async function initMap() {
+async function initializeMap() {
   const { Map } = await google.maps.importLibrary("maps");
-  const categoriesApiUrl = "/api/item_categories";
-  const saleTypesApiUrl = "/api/sale_types";
   const markerLibrary = await google.maps.importLibrary("marker");
   AdvancedMarkerElement = markerLibrary.AdvancedMarkerElement;
   PinElement = markerLibrary.PinElement;
@@ -2041,6 +2063,7 @@ async function initMap() {
     10
   );
   map = new Map(document.getElementById("map"), {
+    mapId: "GAPI_MAP_ID", // This is required for Advanced Markers
     center: { lat: 45.345, lng: -75.76 }, // Default to Ottawa
     zoom: defaultZoom,
     mapId: "GAPI_MAP_ID", // This is required for Advanced Markers
@@ -2132,8 +2155,8 @@ async function initMap() {
 
   // Fetch categories and sale types, then events
   Promise.all([
-    fetch(saleTypesApiUrl).then((res) => res.json()),
-    fetch(categoriesApiUrl).then((res) => res.json()),
+    fetch("/api/sale_types").then((res) => res.json()),
+    fetch("/api/item_categories").then((res) => res.json()),
     fetch(config.eventsApiUrl).then((res) => res.json()),
   ])
     .then(([saleTypes, categories, events]) => {
@@ -2254,8 +2277,14 @@ async function initMap() {
     
     initAutocomplete();
 
-}
+};
 
+// Expose the initialization function to the global window object
+// so the Google Maps callback can find and execute it.
+window.initMap = initializeMap;
+
+// The Google Maps script will now call window.initMap, which in turn
+// calls our async initializeMap function.
 function initAutocomplete() {
     autocomplete = new google.maps.places.Autocomplete(
       document.getElementById("event-address-automcomplete"),

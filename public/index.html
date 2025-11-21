@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/css/client.css">
     <link rel="stylesheet" href="/css/mobile.css">
     <link rel="stylesheet" href="/css/logo.css">
+    <link id="theme-stylesheet" rel="stylesheet" href="/css/themes/glass.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#007bff">
     <meta name="mobile-web-app-capable" content="yes">
@@ -16,45 +17,7 @@
     <meta name="mobile-web-app-title" content="Events Map">
 
 </head>
-
 <style>
-    /* --- iOS Glass Effect Styles --- */
-
-    :root {
-        /* Define variables for the glass effect for easy customization */
-        --glass-background-color: rgba(242, 242, 247, 0.8);
-        /* A light, semi-transparent color typical of iOS */
-        --glass-blur-amount: 15px;
-        --glass-border-color: rgba(255, 255, 255, 0.4);
-        --glass-border-radius: 20px;
-        /* iOS uses larger corner radii */
-    }
-
-    /* Apply the glass effect to panels and modals */
-    .panel,
-    .modal-content {
-        background-color: var(--glass-background-color);
-        backdrop-filter: blur(var(--glass-blur-amount));
-        -webkit-backdrop-filter: blur(var(--glass-blur-amount));
-        /* For Safari */
-        border: 1px solid var(--glass-border-color);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Style the bottom navigation bar */
-    #bottom-nav {
-        background-color: var(--glass-background-color);
-        backdrop-filter: blur(var(--glass-blur-amount));
-        -webkit-backdrop-filter: blur(var(--glass-blur-amount));
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-        /* A subtle top border for separation */
-    }
-
-    /* Override the default panel radius for a more modern look */
-    .panel {
-        border-radius: var(--glass-border-radius) var(--glass-border-radius) 0 0;
-    }
-
     .pills-container {
         /* background-color: #ffffff; */
         padding-block: 5px;
@@ -369,6 +332,15 @@
                         </div>
                     </div>
                     <div class="settings-item">
+                        <label>Theme</label>
+                        <div class="segmented-control">
+                            <input type="radio" id="theme-glass" name="theme-type" value="glass" checked>
+                            <label for="theme-glass">Glass</label>
+                            <input type="radio" id="theme-standard" name="theme-type" value="standard">
+                            <label for="theme-standard">Standard</label>
+                        </div>
+                    </div>
+                    <div class="settings-item">
                         <label for="debug-toggle">Show Debug Info</label>
                         <div class="toggle-switch">
                             <input type="checkbox" id="debug-toggle" class="toggle-switch-checkbox">
@@ -658,9 +630,9 @@
       Set the Google Maps API key here.
       The 'callback=initMap' will automatically call the initMap function once the API is ready.
     -->
-    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-pNE-VhST7g0544fnA6iPWA-Ask5YKxc&libraries=marker,places&callback=initMap"></script>
     <script src="/markercluster.js" defer></script>
     <script src="/client.js" defer></script>
+    <script defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-pNE-VhST7g0544fnA6iPWA-Ask5YKxc&libraries=marker,places&callback=initMap"></script>
 
 </body>
 
