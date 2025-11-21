@@ -97,8 +97,11 @@
  /* Make the header sticky and the content scrollable */
  #detail-panel .panel-header {
     flex-shrink: 0; /* Prevent header from shrinking */
-    background-color: #fff; /* Cover content during scroll */
     border-bottom: 1px solid #eee;
+    /* Apply glass effect to the header to make it consistent. */
+    background-color: var(--glass-background-color, #fff); /* Use theme variable with a fallback */
+    backdrop-filter: blur(var(--glass-blur-amount, 10px));
+    -webkit-backdrop-filter: blur(var(--glass-blur-amount, 10px));
  }
 
  #detail-panel .panel-content {
@@ -106,6 +109,15 @@
     display: block; /* Override display:flex to allow normal block scrolling */
  }
  
+ /* Style the submission modal header to match other panels */
+ #submission-modal .panel-header {
+    flex-shrink: 0;
+    cursor: default;
+    margin-bottom: 0;
+    padding-block: 15px;
+    border-bottom: 1px solid #eee;
+ }
+
  .panel-handle {
      position: absolute;
      top: 10px;
@@ -1504,7 +1516,6 @@
         max-height: 100%;
         margin: 0;
         box-shadow: none;
-        border-bottom-left-radius: 20px;
-        border-bottom-right-radius: 20px;
+        border-radius: 20px;
     }
 }
