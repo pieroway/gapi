@@ -1995,7 +1995,7 @@ async function refreshEvents() {
   }
 
   try {
-    const response = await fetch(eventsApiUrl);
+    const response = await fetch(config.eventsApiUrl);
     if (!response.ok) {
       throw new Error("Failed to fetch updated events.");
     }
@@ -2023,8 +2023,6 @@ async function refreshEvents() {
 
 async function initMap() {
   const { Map } = await google.maps.importLibrary("maps");
-  // We use relative paths to make requests.
-  const eventsApiUrl = "/api/events";
   const categoriesApiUrl = "/api/item_categories";
   const saleTypesApiUrl = "/api/sale_types";
   const markerLibrary = await google.maps.importLibrary("marker");
@@ -2136,7 +2134,7 @@ async function initMap() {
   Promise.all([
     fetch(saleTypesApiUrl).then((res) => res.json()),
     fetch(categoriesApiUrl).then((res) => res.json()),
-    fetch(eventsApiUrl).then((res) => res.json()),
+    fetch(config.eventsApiUrl).then((res) => res.json()),
   ])
     .then(([saleTypes, categories, events]) => {
       allSaleTypes = saleTypes;

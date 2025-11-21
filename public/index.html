@@ -17,6 +17,56 @@
 
 </head>
 
+<style>
+    /* --- iOS Glass Effect Styles --- */
+
+    :root {
+        /* Define variables for the glass effect for easy customization */
+        --glass-background-color: rgba(242, 242, 247, 0.8);
+        /* A light, semi-transparent color typical of iOS */
+        --glass-blur-amount: 15px;
+        --glass-border-color: rgba(255, 255, 255, 0.4);
+        --glass-border-radius: 20px;
+        /* iOS uses larger corner radii */
+    }
+
+    /* Apply the glass effect to panels and modals */
+    .panel,
+    .modal-content {
+        background-color: var(--glass-background-color);
+        backdrop-filter: blur(var(--glass-blur-amount));
+        -webkit-backdrop-filter: blur(var(--glass-blur-amount));
+        /* For Safari */
+        border: 1px solid var(--glass-border-color);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Style the bottom navigation bar */
+    #bottom-nav {
+        background-color: var(--glass-background-color);
+        backdrop-filter: blur(var(--glass-blur-amount));
+        -webkit-backdrop-filter: blur(var(--glass-blur-amount));
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        /* A subtle top border for separation */
+    }
+
+    /* Override the default panel radius for a more modern look */
+    .panel {
+        border-radius: var(--glass-border-radius) var(--glass-border-radius) 0 0;
+    }
+
+    .pills-container {
+        /* background-color: #ffffff; */
+        padding-block: 5px;
+        padding-inline: 20px;
+        white-space: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        /* For Firefox */
+    }
+</style>
+
 <body style="overflow: hidden;">
 
     <div id="desktop-only-view" style="display: none;position: fixed;top: 0px;left: 0px;width: 100%;height: 100%;background-color: white;z-index: 1000;justify-content: center;align-items: center;">
@@ -339,9 +389,14 @@
             </div>
         </div>
     </div>
-
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+            // Global API configuration
+            const config = {
+                eventsApiUrl: '/api/events',
+                // Add other API endpoints here as needed
+            };        
+            
+            document.addEventListener('DOMContentLoaded', () => {
             /**
              * Checks if the web app is running on a mobile device and/or in standalone "app mode".
              */
@@ -352,19 +407,25 @@
                 // 2. Check for local development environment
                 const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-                // 3. A simple check for a mobile device based on user agent
-                const isConsideredMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobi/i.test(navigator.userAgent) || navigator.maxTouchPoints > 0;
-                console.log(`Is mobile device: ${isConsideredMobile}`, `Is local dev: ${isLocalDev}`);
+                // 3. Determine if the view should be treated as mobile.
+                let isMobileView = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobi/i.test(navigator.userAgent) || navigator.maxTouchPoints > 0;
+
+                // For local development, also consider it mobile if the window is narrow (like responsive dev tools).
+                if (isLocalDev && window.innerWidth <= 768) {
+                    isMobileView = true;
+                }
+
+                console.log(`Is mobile view: ${isMobileView}`, `Is local dev: ${isLocalDev}`);
 
                 // --- Desktop vs. Mobile View ---
                 const appWrapper = document.getElementById('app-wrapper');
                 const desktopView = document.getElementById('desktop-only-view');
 
-                // Enforce mobile-only view by showing desktop message if it's NOT a mobile device AND it's NOT local development.
-                if (!isConsideredMobile && !isLocalDev) {
+                // If not in a mobile view, show the QR code and hide the app.
+                if (!isMobileView) {
                     // On desktop, show the QR code message and hide the app.
-                    if (appWrapper) appWrapper.style.display = 'none';
-                    if (desktopView) desktopView.style.display = 'block';
+                    appWrapper.style.display = 'none';
+                    desktopView.style.display = 'flex'; // Use flex to center content
                 }
 
                 // Apply classes to the body based on the detected environment
