@@ -918,6 +918,55 @@
     margin-top: 0; /* Remove space above the date */
  }
 
+ .user-owned-comment {
+    background-color: #e7f3ff; /* A light blue highlight */
+    border-left: 3px solid #007bff;
+    padding: 10px;
+    margin-left: -10px;
+    margin-right: -10px;
+    border-radius: 4px;
+ }
+
+ .add-comment-link {
+    display: block;
+    margin-top: 15px;
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 600;
+ }
+
+ .add-comment-link:hover {
+    text-decoration: underline;
+ }
+
+ .comment-form-container {
+    margin-top: 15px;
+ }
+
+ .comment-input-wrapper textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    resize: vertical;
+ }
+
+ .comment-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+ }
+
+ #comment-word-counter {
+    font-size: 0.8rem;
+    color: #6c757d;
+ }
+
  #qr-code-container {
      position: absolute;
      inset-block-end: 20px;

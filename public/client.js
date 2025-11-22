@@ -158,6 +158,7 @@ const LIST_PANEL_COLLAPSED_KEY = "eventsMapListPanelCollapsed";
 const DEBUG_COLLAPSED_KEY = "eventsMapDebugCollapsed";
 const DEBUG_POSITION_KEY = "eventsMapDebugPosition";
 const LIST_PANEL_WIDTH_KEY = "eventsMapListPanelWidth";
+const USER_ID_KEY = "eventsMapUserId";
 
 // Load and apply the saved clustering preference
 const savedClusteringPref = localStorage.getItem(CLUSTERING_KEY);
@@ -221,6 +222,14 @@ if (isDesktop()) {
       "--list-panel-width",
       savedWidth
     );
+}
+
+// --- User Identification ---
+let currentUserId = localStorage.getItem(USER_ID_KEY);
+if (!currentUserId) {
+    // Generate a simple unique ID for anonymous tracking of user's own comments
+    currentUserId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem(USER_ID_KEY, currentUserId);
 }
 
 // Set initial body class for logo shrinking based on panel state
@@ -1371,7 +1380,7 @@ async function openDetailPanel(eventId) {
                 ${event.comments
                   .map(
                     (comment) => `
-                    <div class="comment">
+                    <div class="comment ${comment.user_id === currentUserId ? 'user-owned-comment' : ''}">
                         <p class="comment-text">${comment.comment_text
                           .replace(/</g, "&lt;")
                           .replace(/>/g, "&gt;")}</p>
@@ -1382,7 +1391,7 @@ async function openDetailPanel(eventId) {
                 `
                   )
                   .join("")}
-                Add your own comment now.
+                <a href="#" class="add-comment-link">Add your own comment now.</a>
             </div>
         `
       : `<div class="comments-section">
@@ -1455,6 +1464,14 @@ async function openDetailPanel(eventId) {
   // Set up the slider after the HTML is in the DOM
   setupImageSlider(detailContent.querySelector(".detail-slider"));
 
+  // Set up the "Add Comment" link
+  const addCommentLink = detailContent.querySelector('.add-comment-link');
+  if (addCommentLink) {
+      addCommentLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          showCommentForm(addCommentLink.parentElement, event.public_id);
+      });
+  }
   const directionsBtn = document.getElementById("directions-btn");
   if (directionsBtn) {
     directionsBtn.addEventListener("click", () => {
@@ -1487,6 +1504,107 @@ async function openDetailPanel(eventId) {
     detailBackButton.focus();
   }, 400); // Should match CSS transition duration
 }
+
+function showCommentForm(container, eventId) {
+    container.innerHTML = `
+        <div class="comment-form-container">
+            <div class="comment-input-wrapper">
+                <textarea id="comment-textarea" placeholder="Enter your comment..." maxlength="1200"></textarea>
+            </div>
+            <div class="comment-form-footer">
+                <span id="comment-word-counter">0 / 200 words</span>
+                <div class="comment-form-actions">
+                    <button id="cancel-comment-btn" class="btn-secondary">Cancel</button>
+                    <button id="submit-comment-btn" class="btn-primary">Submit</button>
+                </div>
+            </div>
+            <div id="comment-error-message" class="error-message" style="display: none;"></div>
+        </div>
+    `;
+
+    const textarea = document.getElementById('comment-textarea');
+    const wordCounter = document.getElementById('comment-word-counter');
+    const submitBtn = document.getElementById('submit-comment-btn');
+    const cancelBtn = document.getElementById('cancel-comment-btn');
+    const errorMessage = document.getElementById('comment-error-message');
+
+    const profanityList = ["badword", "profanity", "example"]; // Add your list of inappropriate words here
+
+    const validateComment = () => {
+        const text = textarea.value;
+        const words = text.trim().split(/\s+/).filter(Boolean);
+        const wordCount = words.length;
+
+        wordCounter.textContent = `${wordCount} / 200 words`;
+
+        let isValid = true;
+        let errorText = '';
+
+        // Check for profanity
+        const foundProfanity = words.filter(word => profanityList.includes(word.toLowerCase()));
+        if (foundProfanity.length > 0) {
+            errorText = `Please remove inappropriate language: ${[...new Set(foundProfanity)].join(', ')}`;
+            isValid = false;
+        }
+
+        // Check word count
+        if (wordCount > 200) {
+            errorText = 'Comment exceeds 200 words.';
+            isValid = false;
+            wordCounter.classList.add('error');
+        } else {
+            wordCounter.classList.remove('error');
+        }
+
+        submitBtn.disabled = !isValid;
+        errorMessage.textContent = errorText;
+        errorMessage.style.display = errorText ? 'block' : 'none';
+    };
+
+    textarea.addEventListener('input', validateComment);
+
+    cancelBtn.addEventListener('click', () => {
+        // Re-render the detail panel to restore the original state
+        openDetailPanel(eventId);
+    });
+
+    submitBtn.addEventListener('click', async () => {
+        const commentText = textarea.value.trim();
+        if (!commentText) return;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        try {
+            const response = await fetch(`/api/events/${eventId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    comment_text: commentText,
+                    user_id: currentUserId 
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to post comment.');
+            }
+
+            // Comment posted successfully, re-open the detail panel to show the new comment
+            openDetailPanel(eventId);
+
+        } catch (error) {
+            console.error('Error submitting comment:', error);
+            errorMessage.textContent = error.message;
+            errorMessage.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit';
+        }
+    });
+
+    textarea.focus();
+}
+
 
 function handleAddToCalendar(event) {
   const formatIcsDate = (date) => {
