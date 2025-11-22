@@ -118,6 +118,19 @@
     border-bottom: 1px solid #eee;
  }
 
+ /* Ensure all form inputs in the submission modal fill the available width without overflowing. */
+ #submission-modal .form-group input[type="text"],
+ #submission-modal .form-group input[type="datetime-local"],
+ #submission-modal .form-group textarea,
+ #submission-modal .form-group select {
+    width: 100%;
+    box-sizing: border-box; /* Include padding and border in the element's total width */
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+ }
+
  .panel-handle {
      position: absolute;
      top: 10px;
