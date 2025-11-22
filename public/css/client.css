@@ -102,10 +102,10 @@
  #detail-panel .panel-header {
     flex-shrink: 0; /* Prevent header from shrinking */
     border-bottom: 1px solid #eee;
-    /* Apply glass effect to the header to make it consistent. */
-    background-color: var(--glass-background-color, #fff); /* Use theme variable with a fallback */
-    backdrop-filter: blur(var(--glass-blur-amount, 10px));
-    -webkit-backdrop-filter: blur(var(--glass-blur-amount, 10px));
+    /* Apply theme variables to the header to make it consistent. */
+    background-color: var(--theme-panel-bg, #fff); /* Use theme variable with a fallback */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
  }
 
  #detail-panel .panel-content {
@@ -350,7 +350,7 @@
      padding-inline: 20px;
      padding-top: 0;
      /* Add padding to the bottom to account for the nav bar's height */
-     padding-bottom: calc(var(--bottom-nav-height) + 20px);
+     padding-bottom: calc(var(--bottom-nav-height) + 10px);
      margin-top: 20px;
  }
 
@@ -1112,8 +1112,6 @@
     inset-inline-end: 0;
     height: 60px;
     height: var(--bottom-nav-height);
-    border-top: 1px solid #e0e0e0;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.08); 
     justify-content: space-around;
     display: flex; /* Display by default for mobile-first. */
     align-items: stretch; /* Make buttons fill the height */
