@@ -7,15 +7,15 @@
     --theme-nav-bg: var(--theme-panel-bg);
     --theme-nav-border: rgba(255, 255, 255, 0.5);
     --theme-panel-radius: 20px;
-    --theme-blur-radius: 45px;
+    --theme-blur-radius: 2px;
 }
 
 /* Apply the glass effect to panels and modals */
 .panel,
 .modal-content {
     background-color: var(--theme-panel-bg);
-    backdrop-filter: blur(--theme-blur-radius);
-    -webkit-backdrop-filter: blur(--theme-blur-radius);
+    backdrop-filter: blur(var(--theme-blur-radius));
+    -webkit-backdrop-filter: blur(var(--theme-blur-radius));
     border: 1px solid var(--theme-nav-border);
     box-shadow: var(--theme-panel-shadow);
 }
@@ -23,8 +23,8 @@
 /* Style the bottom navigation bar */
 #bottom-nav {
     background-color: var(--theme-nav-bg);
-    backdrop-filter: blur(--theme-blur-radius);
-    -webkit-backdrop-filter: blur(--theme-blur-radius);
+    backdrop-filter: blur(var(--theme-blur-radius));
+    -webkit-backdrop-filter: blur(var(--theme-blur-radius));
     border-top: 1px solid var(--theme-nav-border);
 }
 
