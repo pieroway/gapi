@@ -200,6 +200,7 @@ zoomLevelValue.textContent = savedZoom;
 const savedTheme = localStorage.getItem(THEME_KEY) || "glass";
 const themeStylesheet = document.getElementById("theme-stylesheet");
 if (themeStylesheet) {
+  document.body.className = savedTheme + '-theme';
   themeStylesheet.href = `/css/themes/${savedTheme}.css`;
 }
 const themeRadioToCheck = document.querySelector(`input[name="theme-type"][value="${savedTheme}"]`);
@@ -1043,6 +1044,7 @@ themeRadios.forEach((radio) => {
     const themeStylesheet = document.getElementById("theme-stylesheet");
     if (themeStylesheet) {
       themeStylesheet.href = `/css/themes/${newTheme}.css`;
+      document.body.className = newTheme + '-theme';
     }
     localStorage.setItem(THEME_KEY, newTheme);
   });
@@ -1408,7 +1410,7 @@ async function openDetailPanel(eventId) {
 
   detailContent.innerHTML = `
                     ${imageHtml}
-                    <div style="padding: 0 5px;">
+                    <div class="detail-text-content">
                         <p><strong>When:</strong> ${formatEventDate(
                           event.start_datetime,
                           event.end_datetime

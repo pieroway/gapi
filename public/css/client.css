@@ -103,8 +103,8 @@
     flex-shrink: 0; /* Prevent header from shrinking */
     border-bottom: 1px solid #eee;
     /* Apply theme variables to the header to make it consistent. */
-    background-color: var(--theme-panel-bg, #fff); /* Use theme variable with a fallback */
-    backdrop-filter: blur(20px);
+    /* background-color: var(--theme-panel-bg, #fff); */ /* Use theme variable with a fallback */
+    /* backdrop-filter: blur(20px); */
     -webkit-backdrop-filter: blur(20px);
  }
 
@@ -350,7 +350,7 @@
      padding-inline: 20px;
      padding-top: 0;
      /* Add padding to the bottom to account for the nav bar's height */
-     padding-bottom: calc(var(--bottom-nav-height) + 10px);
+     padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-inset-bottom, 0px) + 20px);
      margin-top: 20px;
  }
 
@@ -470,6 +470,18 @@
      gap: 10px;
  }
 
+ /* Override for detail action buttons to give them a solid background */
+ .detail-actions button {
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+ }
+ 
+ .detail-actions button:hover {
+    background-color: #f8f9fa; /* A slightly off-white for hover */
+    border-color: #007bff;
+    color: #007bff;
+ }
+ 
  #add-to-calendar-btn {
      display: inline-flex;
      align-items: center;
@@ -858,9 +870,25 @@
  #detail-content {
      padding: 20px;
      overflow-y: scroll;
+     /* Add padding to the bottom to account for the nav bar's height and safe area */
+     padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-inset-bottom, 0px) + 20px);
      padding-top: 0px;
  }
 
+ /* A container for the text content within the detail panel to improve legibility on glass backgrounds. */
+ .detail-text-content {
+    background-color: rgba(255, 255, 255, 0.85); /* A more opaque white */
+    padding: 15px;
+    margin: 15px 0; /* Remove horizontal margin to match photo width */
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+ }
+ 
+ /* When using the standard theme, this box should just blend in. */
+ .standard-theme .detail-text-content {
+    background-color: transparent;
+    border-color: transparent;
+ }
  #qr-code-container {
      position: absolute;
      inset-block-end: 20px;
