@@ -111,9 +111,10 @@ body {
     }
 
     #list-panel.detail-open {
-        /* Keep the list panel visible, but prevent interaction */
+        /* Hide the list panel when the detail panel is open */
+        opacity: 0;
+        visibility: hidden;
         pointer-events: none;
-        transform: none !important; /* Prevent scaling down */
     }
 
     /* Detail panel slides up from the bottom, slightly taller than the list panel */

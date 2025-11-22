@@ -68,8 +68,9 @@
  }
 
  #list-panel.detail-open {
-     transform: scale(0.95);
-     border-radius: 16px;
+    /* When detail panel opens, slide the list panel off the bottom of the screen. */
+    transform: translateY(100%);
+    visibility: hidden;
  }
 
  #list-panel.open .panel-header {
@@ -462,9 +463,9 @@
  }
 
  .detail-actions {
-     margin-top: 20px;
-     padding-top: 15px;
-     border-top: 1px solid #eee;
+    /* margin-top: 20px; */
+    /* padding-top: 15px; */
+    /* border-top: 1px solid #eee; */
      display: flex;
      justify-content: center;
      gap: 10px;
@@ -889,6 +890,34 @@
     background-color: transparent;
     border-color: transparent;
  }
+
+ /* --- Comment Section Styles --- */
+ .comments-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+ }
+
+ .comments-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+ }
+
+ .comment {
+    margin-bottom: 15px;
+ }
+
+ .comment .comment-text {
+    margin-top: 0;
+    margin-bottom: 2px; /* Reduce space below the comment text */
+ }
+
+ .comment-meta {
+    font-size: 0.75rem; /* Make the font smaller */
+    color: #6c757d; /* Make the text color lighter */
+    margin-top: 0; /* Remove space above the date */
+ }
+
  #qr-code-container {
      position: absolute;
      inset-block-end: 20px;
