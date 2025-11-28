@@ -1373,7 +1373,7 @@ async function openDetailPanel(eventId) {
   }
 
   const commentsHtml =
-    event.comments && event.comments.length > 1
+    event.comments && event.comments.length >= 1
       ? `
             <div class="comments-section">
                 <h3>Comments</h3>
@@ -1394,9 +1394,9 @@ async function openDetailPanel(eventId) {
                 <a href="#" class="add-comment-link">Add your own comment now.</a>
             </div>
         `
-      : `<div class="comments-section">
+      : `<div class="comments-section ">
                 <h3>Comments</h3>
-                No comments yet.  Add a comment here.
+                No comments yet.  <span class="add-comment-link">Add your own comment now.</span> 
          </div>
         `;
   // If not comments, user will be prompted to add a comment.
@@ -1590,8 +1590,44 @@ function showCommentForm(container, eventId) {
                 throw new Error(errorData.message || 'Failed to post comment.');
             }
 
-            // Comment posted successfully, re-open the detail panel to show the new comment
-            openDetailPanel(eventId);
+            const newComment = await response.json();
+            
+            // Optimistically add the comment to the UI immediately
+            const commentsSection = container.closest('.comments-section');
+            if (commentsSection) {
+                const newCommentHtml = `
+                    <div class="comment user-owned-comment">
+                        <p class="comment-text">${commentText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                        <p class="comment-meta">Posted on ${new Date().toLocaleString()}</p>
+                    </div>
+                `;
+                
+                // Find the h3 heading
+                const heading = commentsSection.querySelector('h3');
+                if (heading) {
+                    // Check if there's a "No comments yet" message to replace
+                    const noCommentsMsg = commentsSection.textContent.includes('No comments yet');
+                    
+                    if (noCommentsMsg) {
+                        // Replace the "No comments yet" text with the new comment
+                        // Clear everything after the h3 and add the comment
+                        const elementsAfterH3 = Array.from(commentsSection.children).slice(1);
+                        elementsAfterH3.forEach(el => el.remove());
+                        heading.insertAdjacentHTML('afterend', newCommentHtml);
+                    } else {
+                        // Insert the new comment right after the h3 (at the top of the list)
+                        heading.insertAdjacentHTML('afterend', newCommentHtml);
+                    }
+                }
+                
+                // Replace the form with the "Add comment" link again
+                container.innerHTML = '<a href="#" class="add-comment-link">Add your own comment now.</a>';
+                const newAddCommentLink = container.querySelector('.add-comment-link');
+                newAddCommentLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showCommentForm(container, eventId);
+                });
+            }
 
         } catch (error) {
             console.error('Error submitting comment:', error);

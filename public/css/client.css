@@ -105,7 +105,7 @@
     border-bottom: 1px solid #eee;
     /* Apply theme variables to the header to make it consistent. */
     /* background-color: var(--theme-panel-bg, #fff); */ /* Use theme variable with a fallback */
-    /* backdrop-filter: blur(20px); */
+    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
  }
 

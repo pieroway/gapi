@@ -20,7 +20,11 @@ router.get('/', (req, res) => {
 });
 
 // POST a new report
-router.post('/', (req, res) => {
+router.post('/', (req, res, next) => {
+  // Note: reportLimiter is already applied in index.js for this route
+  // This is just a placeholder for consistency
+  next();
+}, (req, res) => {
     const { event_id, reason, details } = req.body;
 
     if (!event_id || !reason) {
@@ -42,7 +46,15 @@ router.post('/', (req, res) => {
 });
 
 // DELETE a report (Dismiss)
-router.delete('/:id', (req, res) => {
+router.delete('/:id', (req, res, next) => {
+  // Apply write operations rate limiter
+  const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
+  if (writeOperationsLimiter) {
+    writeOperationsLimiter(req, res, next);
+  } else {
+    next();
+  }
+}, (req, res) => {
   const { id } = req.params;
   reports = reports.filter(r => r.id !== id);
   res.status(204).send();

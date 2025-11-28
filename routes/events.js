@@ -123,7 +123,24 @@ router.get('/', async (req, res) => {
 // --- Creator/Admin Routes ---
 
 // Create a new event
-router.post('/', upload.array('photos', MAX_PHOTOS), async (req, res) => {
+router.post('/', (req, res, next) => {
+  // Apply write operations rate limiter
+  const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
+  if (writeOperationsLimiter) {
+    writeOperationsLimiter(req, res, (err) => {
+      if (err) return next(err);
+      // Apply upload rate limiter
+      const uploadLimiter = req.app.locals.uploadLimiter;
+      if (uploadLimiter) {
+        uploadLimiter(req, res, next);
+      } else {
+        next();
+      }
+    });
+  } else {
+    next();
+  }
+}, upload.array('photos', MAX_PHOTOS), async (req, res) => {
   let connection;
   try {
     console.log('Received request to create a new event.');
@@ -273,7 +290,24 @@ router.get('/edit/:guid', async (req, res) => {
 });
 
 // Update an event
-router.put('/edit/:guid', upload.array('photos', MAX_PHOTOS), async (req, res) => {
+router.put('/edit/:guid', (req, res, next) => {
+  // Apply write operations rate limiter
+  const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
+  if (writeOperationsLimiter) {
+    writeOperationsLimiter(req, res, (err) => {
+      if (err) return next(err);
+      // Apply upload rate limiter if files are being uploaded
+      const uploadLimiter = req.app.locals.uploadLimiter;
+      if (uploadLimiter) {
+        uploadLimiter(req, res, next);
+      } else {
+        next();
+      }
+    });
+  } else {
+    next();
+  }
+}, upload.array('photos', MAX_PHOTOS), async (req, res) => {
   const { guid } = req.params;
   let connection;
 
@@ -352,7 +386,15 @@ router.put('/edit/:guid', upload.array('photos', MAX_PHOTOS), async (req, res) =
 });
 
 // Soft delete an event
-router.delete('/edit/:guid', async (req, res) => {
+router.delete('/edit/:guid', (req, res, next) => {
+  // Apply write operations rate limiter
+  const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
+  if (writeOperationsLimiter) {
+    writeOperationsLimiter(req, res, next);
+  } else {
+    next();
+  }
+}, async (req, res) => {
   const { guid } = req.params;
   try {
     const [result] = await db.execute(
@@ -370,7 +412,15 @@ router.delete('/edit/:guid', async (req, res) => {
 });
 
 // Undelete an event
-router.post('/edit/:guid/undelete', async (req, res) => {
+router.post('/edit/:guid/undelete', (req, res, next) => {
+  // Apply write operations rate limiter
+  const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
+  if (writeOperationsLimiter) {
+    writeOperationsLimiter(req, res, next);
+  } else {
+    next();
+  }
+}, async (req, res) => {
   const { guid } = req.params;
   try {
     const [result] = await db.execute(
@@ -390,7 +440,23 @@ router.post('/edit/:guid/undelete', async (req, res) => {
 // Add a photo to an event
 // Note: This is a simplified version. A full implementation would handle multiple uploads
 // and associate them with an event within a transaction.
-router.post('/edit/:guid/photos', upload.single('photo'), async (req, res) => {
+router.post('/edit/:guid/photos', (req, res, next) => {
+  // Apply write operations and upload rate limiters
+  const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
+  if (writeOperationsLimiter) {
+    writeOperationsLimiter(req, res, (err) => {
+      if (err) return next(err);
+      const uploadLimiter = req.app.locals.uploadLimiter;
+      if (uploadLimiter) {
+        uploadLimiter(req, res, next);
+      } else {
+        next();
+      }
+    });
+  } else {
+    next();
+  }
+}, upload.single('photo'), async (req, res) => {
     const { guid } = req.params;
     if (!req.file) {
         return res.status(400).json({ message: 'Error: No file selected or invalid file type.' });
@@ -437,7 +503,7 @@ router.get('/:id', async (req, res) => {
 
     const [photos] = await db.query('SELECT file_path FROM gapi_event_photos WHERE event_id = ?', [eventId]);
     const [categories] = await db.query('SELECT ic.id, ic.name FROM gapi_event_item_categories eic JOIN gapi_item_categories ic ON eic.category_id = ic.id WHERE eic.event_id = ?', [eventId]);
-    const [comments] = await db.query('SELECT comment_text, created_at FROM gapi_event_comments WHERE event_id = ? ORDER BY created_at DESC', [eventId]);
+    const [comments] = await db.query('SELECT comment_text, user_id, created_at FROM gapi_event_comments WHERE event_id = ? ORDER BY created_at DESC', [eventId]);
 
     const result = {
       public_id: event.public_id,
@@ -463,7 +529,15 @@ router.get('/:id', async (req, res) => {
 });
 
 // Flag an event as ended
-router.post('/:id/flag-ended', async (req, res) => {
+router.post('/:id/flag-ended', (req, res, next) => {
+  // Apply write operations rate limiter
+  const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
+  if (writeOperationsLimiter) {
+    writeOperationsLimiter(req, res, next);
+  } else {
+    next();
+  }
+}, async (req, res) => {
   const { id: public_id } = req.params;
   try {
     // Increment the flag count
@@ -493,7 +567,15 @@ router.post('/:id/flag-ended', async (req, res) => {
 });
 
 // Add a rating to an event
-router.post('/:id/ratings', async (req, res) => {
+router.post('/:id/ratings', (req, res, next) => {
+  // Apply write operations rate limiter
+  const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
+  if (writeOperationsLimiter) {
+    writeOperationsLimiter(req, res, next);
+  } else {
+    next();
+  }
+}, async (req, res) => {
   const { id: public_id } = req.params;
   const { rating } = req.body;
 
@@ -523,12 +605,20 @@ router.post('/:id/ratings', async (req, res) => {
 });
 
 // Add a comment to an event
-router.post('/:id/comments', async (req, res) => {
+router.post('/:id/comments', (req, res, next) => {
+  // Apply write operations rate limiter
+  const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
+  if (writeOperationsLimiter) {
+    writeOperationsLimiter(req, res, next);
+  } else {
+    next();
+  }
+}, async (req, res) => {
   const { id: public_id } = req.params;
-  const { comment } = req.body;
+  const { comment_text, user_id } = req.body;
 
   try {
-    if (!comment || typeof comment !== 'string' || comment.trim() === '') {
+    if (!comment_text || typeof comment_text !== 'string' || comment_text.trim() === '') {
       return res.status(400).json({ message: 'Comment must be a non-empty string.' });
     }
 
@@ -538,9 +628,9 @@ router.post('/:id/comments', async (req, res) => {
     }
     const eventId = eventRows[0].id;
 
-    const [result] = await db.execute('INSERT INTO gapi_event_comments (event_id, comment_text) VALUES (?, ?)', [eventId, comment]);
+    const [result] = await db.execute('INSERT INTO gapi_event_comments (event_id, comment_text, user_id) VALUES (?, ?, ?)', [eventId, comment_text, user_id || null]);
 
-    res.status(201).json({ id: result.insertId, event_id: eventId, comment_text: comment });
+    res.status(201).json({ id: result.insertId, event_id: eventId, comment_text: comment_text, user_id: user_id });
   } catch (error) {
     console.error(`Failed to add comment for event ${public_id}:`, error);
     res.status(500).json({ message: 'Internal server error while adding comment.' });
