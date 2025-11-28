@@ -101,12 +101,12 @@
  /* --- Detail Panel Layout --- */
  /* Make the header sticky and the content scrollable */
  #detail-panel .panel-header {
-    flex-shrink: 0; /* Prevent header from shrinking */
-    border-bottom: 1px solid #eee;
-    /* Apply theme variables to the header to make it consistent. */
-    /* background-color: var(--theme-panel-bg, #fff); */ /* Use theme variable with a fallback */
-    backdrop-filter: blur(20px);
+    flex-shrink: 0;
+    /* border-bottom: 1px solid #eee; */
+    /* background-color: var(--theme-panel-bg, #fff); */
+    /* backdrop-filter: blur(20px); */
     -webkit-backdrop-filter: blur(20px);
+    padding-bottom: 20px;
  }
 
  #detail-panel .panel-content {
@@ -1109,6 +1109,7 @@
      background-size: cover;
      background-position: center;
      background-repeat: no-repeat;
+     padding-top: 15px;
  }
 
  .slider-btn {
