@@ -62,6 +62,8 @@ const themeRadios = document.querySelectorAll('input[name="theme-type"]');
 const debugToggle = document.getElementById("debug-toggle");
 const zoomLevelSlider = document.getElementById("zoom-level-slider");
 const zoomLevelValue = document.getElementById("zoom-level-value");
+const panDurationSlider = document.getElementById("pan-duration-slider");
+const panDurationValue = document.getElementById("pan-duration-value");
 const navEventsBtn = document.getElementById("nav-events-btn");
 const navRefreshBtn = document.getElementById("nav-refresh-btn");
 const navAddBtn = document.getElementById("nav-add-btn");
@@ -153,6 +155,7 @@ const MAP_TYPE_KEY = "eventsMapType";
 const THEME_KEY = "eventsMapTheme";
 const DEBUG_OVERLAY_KEY = "eventsMapDebugOverlayEnabled";
 const ZOOM_LEVEL_KEY = "eventsMapDefaultZoom";
+const PAN_DURATION_KEY = "eventsMapPanDuration";
 // Keys for persisting UI state
 const LIST_PANEL_COLLAPSED_KEY = "eventsMapListPanelCollapsed";
 const DEBUG_COLLAPSED_KEY = "eventsMapDebugCollapsed";
@@ -196,6 +199,13 @@ if (isDesktop()) {
 const savedZoom = localStorage.getItem(ZOOM_LEVEL_KEY) || "12";
 zoomLevelSlider.value = savedZoom;
 zoomLevelValue.textContent = savedZoom;
+
+// Load and apply the saved pan duration preference
+const savedPanDuration = localStorage.getItem(PAN_DURATION_KEY) || "1500";
+if (panDurationSlider) {
+  panDurationSlider.value = savedPanDuration;
+  panDurationValue.textContent = savedPanDuration;
+}
 
 // Load and apply the saved theme preference
 const savedTheme = localStorage.getItem(THEME_KEY) || "glass";
@@ -244,6 +254,9 @@ const urlParams = new URLSearchParams(window.location.search);
 const eventIdFromUrl = urlParams.get("event");
 
 let isListPanelOpen = false;
+// Flag: detail panel was opened directly from a map pin (not via the list).
+// When true, closeDetailPanel() removes the pan offset instead of keeping it.
+let openedDetailFromPin = false;
 let allEvents = [];
 let allMarkers = [];
 let allCategories = [];
@@ -1077,6 +1090,15 @@ zoomLevelSlider.addEventListener("change", () => {
   localStorage.setItem(ZOOM_LEVEL_KEY, newZoom);
 });
 
+if (panDurationSlider) {
+  panDurationSlider.addEventListener("input", () => {
+    panDurationValue.textContent = panDurationSlider.value;
+  });
+  panDurationSlider.addEventListener("change", () => {
+    localStorage.setItem(PAN_DURATION_KEY, panDurationSlider.value);
+  });
+}
+
 /**
  * Closes the list panel, removes the map pan offset, and re-centres the map
  * on the last selected pin (if any) so it appears in the full visible map area.
@@ -1374,18 +1396,28 @@ async function openDetailPanel(eventId) {
       map.setZoom(14);
     } else {
       lastSelectedPosition = position;
-      smoothPanTo(position, 300, () => {
-        // After centering, pan the map so the pin is centered in the *visible* map area,
-        // Only zoom in if the map is currently zoomed out too far.
+      // Calculate the pixel offset needed to keep the pin visible above the
+      // bottom panel (75 vh tall). Convert the pixel offset to a lat/lng delta
+      // so we can bake it into the single smoothPanTo call — no second panBy.
+      const panOffsetPx = Math.round(window.innerHeight * 0.75 / 2);
+      const projection = map.getProjection();
+      let adjustedPosition = position;
+      if (projection) {
+        const scale = Math.pow(2, map.getZoom());
+        const worldPoint = projection.fromLatLngToPoint(
+          new google.maps.LatLng(position.lat, position.lng)
+        );
+        const offsetPoint = new google.maps.Point(
+          worldPoint.x,
+          worldPoint.y + panOffsetPx / scale
+        );
+        const offsetLatLng = projection.fromPointToLatLng(offsetPoint);
+        adjustedPosition = { lat: offsetLatLng.lat(), lng: offsetLatLng.lng() };
+      }
+      smoothPanTo(adjustedPosition, undefined, () => {
         if (map.getZoom() < 13) {
           map.setZoom(13);
         }
-        // accounting for the detail panel that slides up from the bottom.
-        const mapHeight = mapElement.offsetHeight;
-        const detailPanelHeight = detailPanel.offsetHeight;
-        const overlap = mapHeight + detailPanelHeight - window.innerHeight;
-        const panOffset = overlap > 0 ? overlap / 2 : 0;
-        map.panBy(0, panOffset);
       });
     }
   }
@@ -1513,14 +1545,17 @@ async function openDetailPanel(eventId) {
   // Set up the slider after the HTML is in the DOM
   setupImageSlider(detailContent.querySelector(".detail-slider"));
 
-  // Set up the "Add Comment" link
-  const addCommentLink = detailContent.querySelector('.add-comment-link');
-  if (addCommentLink) {
-      addCommentLink.addEventListener('click', (e) => {
-          e.preventDefault();
-          showCommentForm(addCommentLink.parentElement, event.public_id);
-      });
-  }
+  // Set up the "Add Comment" link — use event delegation so it works
+  // regardless of whether the link is an <a> or a <span>, and survives
+  // any DOM mutations made by showCommentForm.
+  detailContent.addEventListener('click', (e) => {
+      const link = e.target.closest('.add-comment-link');
+      if (!link) return;
+      e.preventDefault();
+      // Prevent opening a second form if one is already present
+      if (detailContent.querySelector('#comment-form-wrapper')) return;
+      showCommentForm(link, event.public_id);
+  });
   const directionsBtn = document.getElementById("directions-btn");
   if (directionsBtn) {
     directionsBtn.addEventListener("click", () => {
@@ -1555,7 +1590,10 @@ async function openDetailPanel(eventId) {
 }
 
 function showCommentForm(container, eventId) {
-    container.innerHTML = `
+    // Hide the existing link/content and append the form after it
+    const formWrapper = document.createElement('div');
+    formWrapper.id = 'comment-form-wrapper';
+    formWrapper.innerHTML = `
         <div class="comment-form-container">
             <div class="comment-input-wrapper">
                 <textarea id="comment-textarea" placeholder="Enter your comment..." maxlength="1200"></textarea>
@@ -1571,11 +1609,15 @@ function showCommentForm(container, eventId) {
         </div>
     `;
 
-    const textarea = document.getElementById('comment-textarea');
-    const wordCounter = document.getElementById('comment-word-counter');
-    const submitBtn = document.getElementById('submit-comment-btn');
-    const cancelBtn = document.getElementById('cancel-comment-btn');
-    const errorMessage = document.getElementById('comment-error-message');
+    // Hide the link that triggered the form and insert the form after it
+    container.style.display = 'none';
+    container.parentElement.insertBefore(formWrapper, container.nextSibling);
+
+    const textarea = formWrapper.querySelector('#comment-textarea');
+    const wordCounter = formWrapper.querySelector('#comment-word-counter');
+    const submitBtn = formWrapper.querySelector('#submit-comment-btn');
+    const cancelBtn = formWrapper.querySelector('#cancel-comment-btn');
+    const errorMessage = formWrapper.querySelector('#comment-error-message');
 
     const profanityList = ["badword", "profanity", "example"]; // Add your list of inappropriate words here
 
@@ -1613,8 +1655,9 @@ function showCommentForm(container, eventId) {
     textarea.addEventListener('input', validateComment);
 
     cancelBtn.addEventListener('click', () => {
-        // Re-render the detail panel to restore the original state
-        openDetailPanel(eventId);
+        // Remove the form and restore the link
+        formWrapper.remove();
+        container.style.display = '';
     });
 
     submitBtn.addEventListener('click', async () => {
@@ -1630,7 +1673,7 @@ function showCommentForm(container, eventId) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     comment_text: commentText,
-                    user_id: currentUserId 
+                    user_id: currentUserId
                 }),
             });
 
@@ -1639,49 +1682,46 @@ function showCommentForm(container, eventId) {
                 throw new Error(errorData.message || 'Failed to post comment.');
             }
 
-            const newComment = await response.json();
-            
-            // Optimistically add the comment to the UI immediately
+            // Success — inject the new comment directly into the comments section
             const commentsSection = container.closest('.comments-section');
             if (commentsSection) {
-                const newCommentHtml = `
-                    <div class="comment user-owned-comment">
-                        <p class="comment-text">${commentText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
-                        <p class="comment-meta">Posted on ${new Date().toLocaleString()}</p>
-                    </div>
+                const newCommentEl = document.createElement('div');
+                newCommentEl.className = 'comment user-owned-comment';
+                newCommentEl.innerHTML = `
+                    <p class="comment-text">${commentText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                    <p class="comment-meta">Posted on ${new Date().toLocaleString()}</p>
                 `;
-                
-                // Find the h3 heading
+
                 const heading = commentsSection.querySelector('h3');
-                if (heading) {
-                    // Check if there's a "No comments yet" message to replace
-                    const noCommentsMsg = commentsSection.textContent.includes('No comments yet');
-                    
-                    if (noCommentsMsg) {
-                        // Replace the "No comments yet" text with the new comment
-                        // Clear everything after the h3 and add the comment
-                        const elementsAfterH3 = Array.from(commentsSection.children).slice(1);
-                        elementsAfterH3.forEach(el => el.remove());
-                        heading.insertAdjacentHTML('afterend', newCommentHtml);
-                    } else {
-                        // Insert the new comment right after the h3 (at the top of the list)
-                        heading.insertAdjacentHTML('afterend', newCommentHtml);
+
+                // Remove any "No comments yet" text nodes / spans
+                Array.from(commentsSection.childNodes).forEach(node => {
+                    if (
+                        (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) ||
+                        (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'H3' && node.tagName !== 'DIV' && node.tagName !== 'A')
+                    ) {
+                        node.remove();
                     }
-                }
-                
-                // Replace the form with the "Add comment" link again
-                container.innerHTML = '<a href="#" class="add-comment-link">Add your own comment now.</a>';
-                const newAddCommentLink = container.querySelector('.add-comment-link');
-                newAddCommentLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    showCommentForm(container, eventId);
                 });
+
+                // Insert the new comment right after the h3
+                if (heading) {
+                    heading.insertAdjacentElement('afterend', newCommentEl);
+                } else {
+                    commentsSection.prepend(newCommentEl);
+                }
             }
+
+            // Remove the form and restore the "Add comment" link
+            formWrapper.remove();
+            container.style.display = '';
 
         } catch (error) {
             console.error('Error submitting comment:', error);
-            errorMessage.textContent = error.message;
+            const userFacingMessage = error.message || 'An unexpected error occurred. Please try again.';
+            errorMessage.textContent = `Failed to post comment: ${userFacingMessage}`;
             errorMessage.style.display = 'block';
+            errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             submitBtn.disabled = false;
             submitBtn.textContent = 'Submit';
         }
@@ -1810,12 +1850,21 @@ function closeDetailPanel() {
   document.body.classList.remove("detail-panel-visible");
   document.body.classList.remove("detail-panel-sliding-off");
 
-  // On mobile, keep the list-panel-visible class (and its map pan offset)
-  // unless the list panel itself is also closed.  The list stays open
-  // underneath the detail panel, so dismissing the detail should simply
-  // reveal the list — the map should NOT shift back down.
+  // On mobile, decide whether to keep or remove the pan offset:
+  // - If the detail was opened from a pin tap (openedDetailFromPin), remove
+  //   the offset immediately since there is no list panel to reveal.
+  // - If the list IS open underneath, keep the offset so the map stays shifted.
+  // - If neither panel is open, remove the offset.
   if (!isDesktop()) {
-    if (!listPanel.classList.contains("open")) {
+    if (openedDetailFromPin) {
+      // Pin-tap case: remove offset and re-centre on the pin.
+      document.body.classList.remove("list-panel-visible");
+      if (lastSelectedPosition) {
+        smoothPanTo(lastSelectedPosition);
+        lastSelectedPosition = null;
+      }
+      openedDetailFromPin = false;
+    } else if (!listPanel.classList.contains("open")) {
       document.body.classList.remove("list-panel-visible");
     }
     // If the list IS open, do NOT remove list-panel-visible — the offset stays.
@@ -1999,7 +2048,7 @@ function getFilteredEvents() {
     );
   } else if (selectedSaleType !== "all") {
     filtered = filtered.filter(
-      (event) => event.sale_type_id === parseInt(selectedSaleType)
+      (event) => event.sale_type_details?.id === parseInt(selectedSaleType)
     );
   }
 
@@ -2007,8 +2056,8 @@ function getFilteredEvents() {
   if (selectedCategory !== "all") {
     filtered = filtered.filter(
       (event) =>
-        event.item_categories &&
-        event.item_categories.includes(parseInt(selectedCategory))
+        event.item_category_details &&
+        event.item_category_details.some(cat => cat.id === parseInt(selectedCategory))
     );
   }
   if (searchTerm) {
@@ -2168,6 +2217,13 @@ function filterAndDisplayEvents() {
       marker.defaultContent = pin.element; // Store for hover/active state changes
 
       marker.addListener("gmp-click", () => {
+        // On mobile, when a pin is tapped directly (not via the list),
+        // open the detail panel with the pan offset applied but WITHOUT
+        // pre-opening the list panel.
+        if (!isDesktop() && !listPanel.classList.contains("open")) {
+          openedDetailFromPin = true;
+          document.body.classList.add("list-panel-visible"); // apply offset only
+        }
         openDetailPanel(event.public_id);
         scrollToEventCard(event.public_id);
       });
@@ -2524,41 +2580,59 @@ function initAutocomplete() {
     });
 }
 
+/**
+ * Easing function — ease-in-out cubic.
+ * Returns a value in [0,1] for a given progress in [0,1].
+ */
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
 
+/**
+ * Smoothly pans the map in a straight line from its current centre to
+ * `position` over `duration` milliseconds, then calls `callback` (if any).
+ *
+ * Latitude and longitude are interpolated linearly (straight-line path in
+ * geographic coordinates), with an ease-in-out cubic applied to the timing
+ * so the motion feels natural rather than mechanical.
+ */
+function smoothPanTo(position, duration = parseInt(localStorage.getItem(PAN_DURATION_KEY) || "1500", 10), callback) {
+  const center = map.getCenter();
+  const startLat = center.lat();
+  const startLng = center.lng();
+  const endLat = position.lat;
+  const endLng = position.lng;
 
-function smoothPanTo(position, duration = 300, callback) {
-  const start = {
-    lat: map.getCenter().lat(),
-    lng: map.getCenter().lng(),
-  };
-  const end = {
-    lat: position.lat,
-    lng: position.lng,
-  };
+  // Cancel any in-progress animation
+  if (smoothPanTo._rafId) {
+    cancelAnimationFrame(smoothPanTo._rafId);
+    smoothPanTo._rafId = null;
+  }
 
   let startTime = null;
 
   function animate(currentTime) {
-    if (startTime === null) {
-      startTime = currentTime;
-    }
+    if (startTime === null) startTime = currentTime;
 
-    const timeElapsed = currentTime - startTime;
-    const progress = Math.min(timeElapsed / duration, 1);
+    const elapsed = currentTime - startTime;
+    const rawProgress = Math.min(elapsed / duration, 1);
+    const t = easeInOutCubic(rawProgress);
 
-    const lat = start.lat + (end.lat - start.lat) * progress;
-    const lng = start.lng + (end.lng - start.lng) * progress;
+    // Both lat and lng use the same eased t — this guarantees a straight line
+    map.setCenter({
+      lat: startLat + (endLat - startLat) * t,
+      lng: startLng + (endLng - startLng) * t,
+    });
 
-    map.setCenter({ lat, lng });
-
-    if (progress < 1) {
-      requestAnimationFrame(animate);
+    if (rawProgress < 1) {
+      smoothPanTo._rafId = requestAnimationFrame(animate);
     } else {
+      smoothPanTo._rafId = null;
       if (callback) callback();
     }
   }
 
-  requestAnimationFrame(animate);
+  smoothPanTo._rafId = requestAnimationFrame(animate);
 }
 
 function getMarkerPosition(marker) {

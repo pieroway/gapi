@@ -100,12 +100,11 @@
  /* --- Detail Panel Layout --- */
  /* Make the header sticky and the content scrollable */
  #detail-panel .panel-header {
-    /* flex-shrink: 0; */
     /* border-bottom: 1px solid #eee; */
     /* background-color: var(--theme-panel-bg, #fff); */
     /* backdrop-filter: blur(20px); */
-    /* -webkit-backdrop-filter: blur(20px);
-    padding-bottom: 20px; */
+    /* -webkit-backdrop-filter: blur(20px); */
+    /* padding-bottom: 20px; */
  }
 
  #detail-panel .panel-content {
@@ -825,6 +824,12 @@
       /* Match the list panel's open height so the detail panel rises to the same level */
       height: 75vh;
       z-index: 3;
+      /* Use a fixed bottom position so the panel always anchors to the
+         bottom of the viewport regardless of whether the list panel is open. */
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
       transform: translateY(100%);
       /* Move completely out of view */
       visibility: hidden;
