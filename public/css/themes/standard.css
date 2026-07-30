@@ -17,10 +17,11 @@
     border: 1px solid transparent; /* Prevents layout shift when switching from glass theme */
 }
 
-/* Style the bottom navigation bar with a solid background */
+/* Style the floating pill navigation bar with a solid background */
 #bottom-nav {
     background-color: var(--theme-nav-bg);
-    border-top: 1px solid var(--theme-nav-border);
+    /* border-top is removed — the pill has no flat edge */
+    border: 1px solid var(--theme-nav-border);
 }
 
 /* Use the default panel radius */

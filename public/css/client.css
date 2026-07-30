@@ -68,9 +68,8 @@
  }
 
  #list-panel.detail-open {
-    /* When detail panel opens, slide the list panel off the bottom of the screen. */
-    transform: translateY(100%);
-    visibility: hidden;
+    /* Keep the list panel visible underneath the detail panel.
+       The detail panel slides over it at the same height. */
  }
 
  #list-panel.open .panel-header {
@@ -822,18 +821,18 @@
      color: white;
  }
 
- #detail-panel {
-     height: 80vh;
-     /* Changed from 100vh */
-     z-index: 3;
-     transform: translateY(100%);
-     /* Move completely out of view */
-     visibility: hidden;
-     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-     border-start-start-radius: 16px;
-     border-start-end-radius: 16px;
-     transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
- }
+  #detail-panel {
+      /* Match the list panel's open height so the detail panel rises to the same level */
+      height: 75vh;
+      z-index: 3;
+      transform: translateY(100%);
+      /* Move completely out of view */
+      visibility: hidden;
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+      border-start-start-radius: 16px;
+      border-start-end-radius: 16px;
+      transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
+  }
 
  #detail-panel.open {
      transform: translateY(0);
@@ -1211,18 +1210,52 @@
      }
  }
 
- /* --- Bottom Navigation Bar --- */
+ /* --- Bottom Navigation Bar (floating rounded pill) --- */
+
+ /*
+  * When any sliding panel is visible, animate the pill downward and fade it out.
+  * The body gets .list-panel-visible or .detail-panel-visible from client.js.
+  */
+ body.list-panel-visible #bottom-nav,
+ body.detail-panel-visible #bottom-nav,
+ body.submission-modal-visible #bottom-nav,
+ body.settings-modal-visible #bottom-nav {
+    transform: translateX(-50%) translateY(30px);
+    opacity: 0;
+    pointer-events: none;
+ }
+
  #bottom-nav {
     position: fixed;
-    inset-block-end: 0;
-    inset-inline-start: 0;
-    inset-inline-end: 0;
-    height: 60px;
+    /* Float above the bottom edge with a gap */
+    inset-block-end: 16px;
+    /* Centre horizontally and constrain width so it looks like a pill */
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    /* Smooth animation for show/hide when panels open/close */
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
+                opacity 0.35s ease;
+    width: max-content;
+    min-width: 260px;
+    max-width: calc(100% - 40px); /* 20px margin each side */
     height: var(--bottom-nav-height);
     justify-content: space-around;
-    display: flex; /* Display by default for mobile-first. */
-    align-items: stretch; /* Make buttons fill the height */
+    display: flex;
+    align-items: stretch;
     z-index: 999;
+    /* Pill shape */
+    border-radius: 999px;
+    /* Subtle shadow so it floats above the map */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18), 0 1px 6px rgba(0, 0, 0, 0.10);
+    /* Clip children to the rounded corners */
+    overflow: hidden;
+    /* Remove the flat border-top that the themes add */
+    border-top: none !important;
+    /* Extra inset padding so the first/last buttons don't butt up against the pill edges */
+    padding-inline: 12px;
+    /* Safe-area-aware bottom offset */
+    bottom: calc(40px + var(--safe-area-inset-bottom, 0px));
+    inset-block-end: unset;
  }
 
  .nav-btn {
@@ -1234,10 +1267,13 @@
     gap: 2px;
     background: none;
     border: none;
-    padding: 5px 0;
+    /* Horizontal padding widens each button tap target; extra top padding lifts content */
+    padding: 10px 28px 5px;
     cursor: pointer;
     color: #666;
     transition: color 0.2s, transform 0.1s ease-out;
+    /* Prevent buttons from shrinking below their content */
+    white-space: nowrap;
  }
 
  /* Add a subtle "tap" animation when a nav button is pressed. */

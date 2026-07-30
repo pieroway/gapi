@@ -20,12 +20,13 @@
     box-shadow: var(--theme-panel-shadow);
 }
 
-/* Style the bottom navigation bar */
+/* Style the floating pill navigation bar */
 #bottom-nav {
     background-color: var(--theme-nav-bg);
-    backdrop-filter: blur(var(--theme-blur-radius));
-    -webkit-backdrop-filter: blur(var(--theme-blur-radius));
-    border-top: 1px solid var(--theme-nav-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    /* border-top is removed — the pill has no flat edge */
+    border: 1px solid var(--theme-nav-border);
 }
 
 /* Override the default panel radius for a more modern look */

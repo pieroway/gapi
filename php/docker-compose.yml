@@ -25,6 +25,10 @@ services:
       # Mount api/ folder for live editing during development
       # (comment this out for a production-like test)
       - ./api:/var/www/html/api
+      # Mount public/ folder for live frontend editing — changes show up on
+      # browser refresh without needing to rebuild the Docker image.
+      # Comment this out for a production-like test.
+      - ../public:/var/www/html
     depends_on:
       db:
         condition: service_healthy

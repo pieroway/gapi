@@ -1019,15 +1019,18 @@ window.addEventListener("resize", () => {
 // --- Settings Modal Logic ---
 settingsBtn.addEventListener("click", () => {
   settingsModal.classList.add("visible");
+  document.body.classList.add("settings-modal-visible");
 });
 
 closeSettingsBtn.addEventListener("click", () => {
   settingsModal.classList.remove("visible");
+  document.body.classList.remove("settings-modal-visible");
 });
 
 settingsModal.addEventListener("click", (e) => {
   if (e.target === settingsModal) {
     settingsModal.classList.remove("visible");
+    document.body.classList.remove("settings-modal-visible");
   }
 });
 
@@ -1074,6 +1077,38 @@ zoomLevelSlider.addEventListener("change", () => {
   localStorage.setItem(ZOOM_LEVEL_KEY, newZoom);
 });
 
+/**
+ * Closes the list panel, removes the map pan offset, and re-centres the map
+ * on the last selected pin (if any) so it appears in the full visible map area.
+ * This is the single authoritative place to hide the list panel on mobile.
+ */
+function hideListPanel() {
+  listPanel.classList.remove("open");
+  listPanel.classList.remove("detail-open");
+  document.body.classList.remove("list-panel-visible");
+  isListPanelOpen = false;
+
+  // Re-centre on the last selected pin now that the full map is visible.
+  if (!isDesktop() && lastSelectedPosition) {
+    smoothPanTo(lastSelectedPosition);
+    lastSelectedPosition = null;
+  }
+}
+
+/**
+ * Returns the vertical pan offset (in pixels) needed to keep the map's
+ * visible centre clear of the bottom panel.  The panel height is the same
+ * for both the list panel and the detail panel (75 vh), so we can use
+ * whichever element is currently visible.
+ */
+function getPanelPanOffset() {
+  if (isDesktop()) return 0;
+  const panelHeight = listPanel.offsetHeight; // same as detailPanel.offsetHeight
+  const mapHeight = mapElement.offsetHeight;
+  const overlap = mapHeight + panelHeight - window.innerHeight;
+  return overlap > 0 ? overlap / 2 : 0;
+}
+
 // --- Bottom Navigation Logic ---
 if (navEventsBtn) {
   navEventsBtn.addEventListener("click", () => {
@@ -1085,6 +1120,11 @@ if (navEventsBtn) {
         listPanel.classList.add("open");
         document.body.classList.add("list-panel-visible");
         isListPanelOpen = true;
+        // Apply the same pan offset so the map centre stays above the panel
+        if (!isDesktop()) {
+          const panOffset = getPanelPanOffset();
+          if (panOffset > 0) map.panBy(0, panOffset);
+        }
       }
       return;
     }
@@ -1093,6 +1133,13 @@ if (navEventsBtn) {
     listPanel.classList.toggle("open");
     isListPanelOpen = listPanel.classList.contains("open");
     document.body.classList.toggle("list-panel-visible", isListPanelOpen);
+
+    // When the list panel opens, shift the map up so the current centre
+    // stays visible above the panel (mirrors the detail-panel behaviour).
+    if (!isDesktop() && isListPanelOpen) {
+      const panOffset = getPanelPanOffset();
+      if (panOffset > 0) map.panBy(0, panOffset);
+    }
   });
 }
 if (navRefreshBtn) {
@@ -1204,10 +1251,8 @@ const onPanelTouchEnd = () => {
   listPanel.style.transition = ""; // Re-enable CSS transition for snapping
 
   if (!wasPanelDragged) {
-    // It was a tap on the header
-    listPanel.classList.remove("open");
-    document.body.classList.remove("list-panel-visible");
-    isListPanelOpen = false;
+    // It was a tap on the header — close the list panel
+    hideListPanel();
   } else {
     const panelHeight = listPanel.offsetHeight;
     const transformMatrix = new WebKitCSSMatrix(
@@ -1219,6 +1264,10 @@ const onPanelTouchEnd = () => {
     isListPanelOpen = currentY < panelHeight / 3;
     listPanel.classList.toggle("open", isListPanelOpen);
     document.body.classList.toggle("list-panel-visible", isListPanelOpen);
+    if (!isListPanelOpen) {
+      // Panel was dragged closed — remove the offset
+      document.body.classList.remove("list-panel-visible");
+    }
   }
   // Let CSS handle the final position by removing the inline style
   listPanel.style.transform = "";
@@ -1761,11 +1810,19 @@ function closeDetailPanel() {
   document.body.classList.remove("detail-panel-visible");
   document.body.classList.remove("detail-panel-sliding-off");
 
-  // On mobile, pan back to the actual center of the last selected marker
-  if (!isDesktop() && lastSelectedPosition) {
-    smoothPanTo(lastSelectedPosition);
-    lastSelectedPosition = null; // Clear after use
+  // On mobile, keep the list-panel-visible class (and its map pan offset)
+  // unless the list panel itself is also closed.  The list stays open
+  // underneath the detail panel, so dismissing the detail should simply
+  // reveal the list — the map should NOT shift back down.
+  if (!isDesktop()) {
+    if (!listPanel.classList.contains("open")) {
+      document.body.classList.remove("list-panel-visible");
+    }
+    // If the list IS open, do NOT remove list-panel-visible — the offset stays.
   }
+
+  // Do NOT pan here — panning back to the last pin happens in hideListPanel()
+  // when the list panel is closed, so the pin re-centres in the full map.
 
   // Deactivate any highlighted marker
   setActiveMarker(null);
@@ -2222,8 +2279,11 @@ async function initializeMap() {
     mapId: "GAPI_MAP_ID", // This is required for Advanced Markers
     center: { lat: 45.345, lng: -75.76 }, // Default to Ottawa
     zoom: defaultZoom,
-    mapId: "GAPI_MAP_ID", // This is required for Advanced Markers
     disableDefaultUI: true,
+    // 'greedy' lets one finger pan the map on mobile (default 'cooperative'
+    // requires two fingers so the page can still scroll, but this is a
+    // full-screen app so there is nothing to scroll past).
+    gestureHandling: "greedy",
   });
 
   highlightedPinElement = new PinElement({

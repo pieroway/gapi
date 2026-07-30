@@ -17,14 +17,17 @@ RUN docker-php-ext-install pdo pdo_mysql
 # This sets AllowOverride All for the web root
 RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
+# Add an explicit <Directory> block for the web root in the default vhost
+# so that AllowOverride All is guaranteed even when the volume mount
+# replaces the directory that apache2.conf's generic block covers.
+RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html\n\n\t<Directory /var/www/html>\n\t\tOptions -Indexes +FollowSymLinks\n\t\tAllowOverride All\n\t\tRequire all granted\n\t</Directory>|' /etc/apache2/sites-available/000-default.conf
+
 # Copy the PHP API files into the web root
 COPY php/api/ /var/www/html/api/
 
-# Copy the .htaccess routing file
-COPY php/.htaccess /var/www/html/.htaccess
-
-# Copy the public frontend files (HTML, CSS, JS, images)
-# Build context is the project root, so public/ is accessible here
+# Copy the public frontend files (HTML, CSS, JS, images).
+# public/.htaccess is included here — it lives in public/ so it is also
+# present when the folder is deployed directly to cPanel shared hosting.
 COPY public/ /var/www/html/
 
 # Copy and set up the entrypoint script
