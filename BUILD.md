@@ -2,9 +2,125 @@
 
 ## Overview
 
-This project now has a complete build process that creates an optimized distributable package with minified frontend assets and organized backend files.
+This project has a complete build process that creates optimized distributable packages with minified frontend assets and organized backend files.
 
-## Quick Start
+There are **two separate build targets**:
+
+| Target | Script | Output | Stack |
+|---|---|---|---|
+| Node.js/Express | `npm run build` | `dist/` | Node.js + MySQL |
+| **PHP/Apache** | `npm run build:php` | `dist-php/` | PHP + MySQL + Apache |
+
+---
+
+## PHP Build (Recommended for Shared Hosting)
+
+### Quick Start
+
+```bash
+# Normal build — creates dist-php/
+npm run build:php
+
+# Build AND reset the database (wipe all data, re-seed from initializedb.sql)
+npm run build:php:reset
+
+# Bash version (Linux/Mac/Git Bash) — same options
+bash php/build.sh
+bash php/build.sh --reset-db
+```
+
+### Database Reset Option
+
+The `--reset-db` flag is the key feature of the PHP build script. It:
+
+1. Builds the `dist-php/` distributable (same as a normal build)
+2. Stops all PHP Docker containers (`docker compose down`)
+3. **Deletes the `db_data` and `uploads_data` Docker volumes** — this wipes all data
+4. Rebuilds the Docker images and restarts the containers
+5. MySQL automatically re-runs `php/initializedb.sql` on first boot, restoring the seed data
+
+> ⚠️ **Warning:** `--reset-db` permanently deletes all database records and uploaded photos stored in Docker volumes. Use it only when you want a clean slate.
+
+```bash
+# Via npm
+npm run build:php:reset
+
+# Via Node.js directly
+node build-php.js --reset-db
+node build-php.js -r          # shorthand
+
+# Via bash (Linux/Mac/Git Bash)
+bash php/build.sh --reset-db
+bash php/build.sh -r
+
+# Manual Docker commands (equivalent)
+docker compose -f php/docker-compose.yml down -v
+docker compose -f php/docker-compose.yml up --build
+```
+
+### PHP Distributable Structure
+
+```
+dist-php/
+├── .gitignore                 # Excludes credentials & uploads
+├── .htaccess                  # Apache URL routing (mod_rewrite)
+├── initializedb.sql           # Database schema + seed data
+├── Dockerfile                 # PHP/Apache Docker image
+├── docker-compose.yml         # Docker Compose config
+├── docker-entrypoint.sh       # Injects DB env vars at container start
+├── README.md                  # PHP deployment guide
+├── LICENSE
+├── api/
+│   ├── config.php             # DB credentials + shared helpers
+│   ├── events.php             # All /api/events/* routes
+│   ├── sale_types.php         # GET /api/sale_types
+│   ├── item_categories.php    # GET /api/item_categories
+│   └── reports.php            # All /api/reports/* routes
+└── public/                    # Optimised frontend assets
+    ├── index.html             # Minified main page
+    ├── admin.html             # Minified admin page
+    ├── client.js              # Minified client code
+    ├── service-worker.js      # Minified service worker
+    ├── markercluster.js       # Minified marker clustering
+    ├── manifest.json          # PWA manifest
+    ├── css/                   # Minified stylesheets
+    │   └── themes/            # Minified theme files
+    ├── images/                # Images (logo, etc.)
+    └── uploads/               # Upload directory structure
+```
+
+### PHP Deployment
+
+#### Option A — Docker (local development)
+
+```bash
+# Start (from project root)
+docker compose -f php/docker-compose.yml up --build
+
+# Stop
+docker compose -f php/docker-compose.yml down
+
+# Reset database (wipe all data and re-seed)
+npm run build:php:reset
+# — or manually —
+docker compose -f php/docker-compose.yml down -v
+docker compose -f php/docker-compose.yml up --build
+```
+
+Visit **http://localhost:8080** once the containers are healthy.
+
+#### Option B — Shared Hosting (cPanel / Plesk)
+
+1. Upload the contents of `dist-php/` to your web root (`public_html/`)
+2. Edit `api/config.php` with your MySQL credentials
+3. Import `initializedb.sql` via phpMyAdmin
+4. Ensure `uploads/` is writable: `chmod 755 public_html/uploads`
+
+---
+
+## Node.js Build
+
+### Quick Start
 
 To build the distributable files:
 

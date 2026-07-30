@@ -1,0 +1,60 @@
+services:
+
+  # ---------------------------------------------------------------
+  # PHP/Apache web application
+  # ---------------------------------------------------------------
+  app:
+    build:
+      context: ..          # Build context is the project root so we can
+                           # access both php/ and public/ folders
+      dockerfile: php/Dockerfile
+    container_name: gapi-php
+    ports:
+      - "8080:80"          # Visit http://localhost:8080 in your browser
+    environment:
+      # These override the hardcoded values in api/config.php at runtime.
+      # The entrypoint script (below) writes them into config.php on startup.
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: gapi_user
+      DB_PASSWORD: gapi_password
+      DB_NAME: gapi
+    volumes:
+      # Mount uploads folder so photos persist between container restarts
+      - uploads_data:/var/www/html/uploads
+      # Mount api/ folder for live editing during development
+      # (comment this out for a production-like test)
+      - ./api:/var/www/html/api
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------
+  # MySQL database
+  # ---------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    container_name: gapi-php-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: gapi
+      MYSQL_USER: gapi_user
+      MYSQL_PASSWORD: gapi_password
+    volumes:
+      # Persist database data between container restarts
+      - db_data:/var/lib/mysql
+      # Auto-run the schema SQL on first startup
+      - ./initializedb.sql:/docker-entrypoint-initdb.d/initializedb.sql:ro
+    ports:
+      - "3308:3306"        # Exposed on 3308 to avoid conflict with other containers on 3307
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "gapi_user", "-pgapi_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  uploads_data:

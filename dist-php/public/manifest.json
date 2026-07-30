@@ -1,0 +1,9 @@
+{
+  "name": "Upcoming Events Map",
+  "short_name": "EventsMap",
+  "start_url": "/client.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "icons": []
+}

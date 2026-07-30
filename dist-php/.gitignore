@@ -1,0 +1,4 @@
+# PHP distributable — do not commit credentials
+api/config.php
+uploads/*
+!uploads/.gitkeep

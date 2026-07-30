@@ -1,0 +1,35 @@
+# =================================================================
+# Garage Sale Finder - Apache URL Routing
+# =================================================================
+# This file replaces the Express.js routing in index.js.
+# It requires mod_rewrite to be enabled on your Apache server
+# (it is enabled by default on virtually all shared hosting).
+# =================================================================
+
+Options -Indexes
+RewriteEngine On
+
+# --- Security: Block direct access to PHP files in /api/ ---
+# Users should never hit api/*.php directly; all requests go through
+# the clean /api/... URLs rewritten below.
+RewriteRule ^api/config\.php$ - [F,L]
+
+# --- API Routes ---
+# Route /api/events* to api/events.php
+RewriteRule ^api/events(/.*)?$ api/events.php [QSA,L]
+
+# Route /api/sale_types to api/sale_types.php
+RewriteRule ^api/sale_types(/.*)?$ api/sale_types.php [QSA,L]
+
+# Route /api/item_categories to api/item_categories.php
+RewriteRule ^api/item_categories(/.*)?$ api/item_categories.php [QSA,L]
+
+# Route /api/reports* to api/reports.php
+RewriteRule ^api/reports(/.*)?$ api/reports.php [QSA,L]
+
+# --- SPA Fallback ---
+# For any request that is NOT a real file or directory,
+# serve index.html so the client-side app handles routing.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(?!api/).*$ index.html [L]

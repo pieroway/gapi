@@ -9,7 +9,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rimraf dist",
     "build": "node build.js",
-    "build:local": "node build.js && copy .env dist\\.env 2>nul || cp .env dist/.env 2>/dev/null || echo '.env not found'"
+    "build:local": "node build.js && copy .env dist\\.env 2>nul || cp .env dist/.env 2>/dev/null || echo '.env not found'",
+    "build:php": "node build-php.js",
+    "build:php:reset": "node build-php.js --reset-db",
+    "build:php:local": "node build-php.js && copy .env dist-php\\api\\config.php 2>nul || true"
   },
   "keywords": [],
   "author": "",
