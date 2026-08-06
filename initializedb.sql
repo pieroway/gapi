@@ -31,7 +31,7 @@ CREATE TABLE `gapi_events` (
   `public_id` VARCHAR(36) NOT NULL UNIQUE,
   `edit_guid` VARCHAR(36) NOT NULL UNIQUE,
   `title` VARCHAR(255) NOT NULL,
-  `description` TEXT,
+  `description` VARCHAR(2000),
   `address` VARCHAR(255) NOT NULL,
   `latitude` DECIMAL(10, 8) NOT NULL,
   `longitude` DECIMAL(11, 8) NOT NULL,
@@ -96,7 +96,7 @@ CREATE TABLE `gapi_event_ratings` (
 CREATE TABLE `gapi_event_comments` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `event_id` INT NOT NULL,
-  `comment_text` TEXT NOT NULL,
+  `comment_text` VARCHAR(1000) NOT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`event_id`) REFERENCES `gapi_events`(`id`) ON DELETE CASCADE
 );

@@ -27,8 +27,15 @@ router.post('/', (req, res, next) => {
 }, (req, res) => {
     const { event_id, reason, details } = req.body;
 
+    const VALID_REASONS = ['inaccurate', 'spam', 'inappropriate', 'cancelled', 'other'];
     if (!event_id || !reason) {
         return res.status(400).json({ message: 'Event ID and reason are required.' });
+    }
+    if (!VALID_REASONS.includes(reason)) {
+        return res.status(400).json({ message: `Invalid reason. Must be one of: ${VALID_REASONS.join(', ')}.` });
+    }
+    if (details && details.length > 1000) {
+        return res.status(400).json({ message: 'Details must be 1000 characters or fewer.' });
     }
     const eventExists = events.some(e => e.id === event_id);
     if (!eventExists) {

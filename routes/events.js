@@ -180,6 +180,16 @@ router.post('/', (req, res, next) => {
       const message = `Missing or invalid required fields: ${missingFields.join(', ')}.`;
       return res.status(400).json({ message, fields: missingFields });
     }
+
+    // --- Length validation ---
+    const lengthErrors = [];
+    if (title && title.length > 255) lengthErrors.push('title must be 255 characters or fewer');
+    if (description && description.length > 2000) lengthErrors.push('description must be 2000 characters or fewer');
+    if (address && address.length > 255) lengthErrors.push('address must be 255 characters or fewer');
+    if (lengthErrors.length > 0) {
+      return res.status(400).json({ message: lengthErrors.join('; ') + '.' });
+    }
+
     console.log('Validation successful.');
 
     connection = await db.getConnection();
@@ -341,6 +351,16 @@ router.put('/edit/:guid', validateGuid, (req, res, next) => {
     // --- Validation ---
     if (!title || !description || !address || latitude === undefined || longitude === undefined || !start_datetime || !end_datetime || !sale_type_id || !item_categories) {
       return res.status(400).json({ message: 'Missing required fields.' });
+    }
+
+    // --- Length validation ---
+    const putLengthErrors = [];
+    if (title && title.length > 255) putLengthErrors.push('title must be 255 characters or fewer');
+    if (description && description.length > 2000) putLengthErrors.push('description must be 2000 characters or fewer');
+    if (address && address.length > 255) putLengthErrors.push('address must be 255 characters or fewer');
+    if (putLengthErrors.length > 0) {
+      await connection.rollback();
+      return res.status(400).json({ message: putLengthErrors.join('; ') + '.' });
     }
 
     // 2. Get the event's internal ID and verify it exists
@@ -635,6 +655,9 @@ router.post('/:id/comments', (req, res, next) => {
   try {
     if (!comment_text || typeof comment_text !== 'string' || comment_text.trim() === '') {
       return res.status(400).json({ message: 'Comment must be a non-empty string.' });
+    }
+    if (comment_text.length > 1000) {
+      return res.status(400).json({ message: 'Comment must be 1000 characters or fewer.' });
     }
 
     const [eventRows] = await db.query('SELECT id FROM gapi_events WHERE public_id = ?', [public_id]);
