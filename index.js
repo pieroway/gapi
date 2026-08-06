@@ -55,12 +55,33 @@ app.get('/api/config', (req, res) => {
   res.json({ googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '' });
 });
 
+/**
+ * Admin authentication middleware.
+ * Checks for a valid Bearer token in the Authorization header.
+ * The expected token is set via the ADMIN_TOKEN environment variable.
+ */
+const requireAdmin = (req, res, next) => {
+  const adminToken = process.env.ADMIN_TOKEN;
+  if (!adminToken) {
+    // If no token is configured, block all admin access to be safe.
+    return res.status(503).json({ message: 'Admin access is not configured on this server.' });
+  }
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (token !== adminToken) {
+    return res.status(401).json({ message: 'Unauthorized. Invalid or missing admin token.' });
+  }
+  next();
+};
+
 // API Routes
 // Note: More specific routes must come before general ones
 app.use('/api/events', require('./routes/events'));
 app.use('/api/sale_types', require('./routes/sale_types'));
 app.use('/api/item_categories', require('./routes/item_categories'));
-app.use('/api/reports', reportLimiter, require('./routes/reports'));
+// Reports routes: POST (submit a report) is public; GET and DELETE require admin auth.
+app.post('/api/reports', reportLimiter, require('./routes/reports'));
+app.use('/api/reports', requireAdmin, require('./routes/reports'));
 
 // Export limiters for use in route files
 app.locals.writeOperationsLimiter = writeOperationsLimiter;

@@ -7,9 +7,138 @@
     <title>Admin - Reported Events</title>
     <link rel="stylesheet" href="/css/shared.css">
     <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        /* --- Login Overlay --- */
+        #login-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.6);
+            align-items: center;
+            justify-content: center;
+        }
+        #login-overlay.visible {
+            display: flex;
+        }
+        #login-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 36px 32px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        #login-box h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: #333;
+        }
+        #login-box p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        #login-password {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        #login-password.error {
+            border-color: #dc3545;
+        }
+        #login-error {
+            color: #dc3545;
+            font-size: 0.85rem;
+            display: none;
+        }
+        #login-remember {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        #login-submit {
+            padding: 10px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        #login-submit:hover { background: #0056b3; }
+
+        /* --- Sticky admin nav bar --- */
+        #admin-navbar {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 500;
+            background: #ffffff;
+            color: #333;
+            padding: 0 20px;
+            height: 56px;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+        }
+        #admin-navbar.visible { display: flex; }
+        /* Push page content below the fixed navbar */
+        body:has(#admin-navbar.visible) main {
+            padding-top: 30px;
+        }
+        #admin-navbar .navbar-title {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            color: #333;
+        }
+        #logout-btn {
+            padding: 6px 14px;
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        #logout-btn:hover { background: #b02a37; }
+    </style>
 </head>
 
 <body>
+
+    <!-- Login overlay -->
+    <div id="login-overlay" class="visible" role="dialog" aria-modal="true" aria-labelledby="login-title">
+        <div id="login-box">
+            <h2 id="login-title">🔒 Admin Login</h2>
+            <p>Enter your admin password to access the dashboard.</p>
+            <input type="password" id="login-password" placeholder="Admin password" autocomplete="current-password">
+            <div id="login-error">Incorrect password. Please try again.</div>
+            <label id="login-remember">
+                <input type="checkbox" id="remember-me-checkbox"> Remember me on this device
+            </label>
+            <button id="login-submit">Sign In</button>
+        </div>
+    </div>
+
+    <!-- Sticky admin navbar (shown after login) -->
+    <nav id="admin-navbar" aria-label="Admin navigation">
+        <span class="navbar-title">🛡️ Admin Dashboard</span>
+        <button id="logout-btn" title="Log out of admin panel">Log Out</button>
+    </nav>
+
     <main>
         <h1>Reported Events</h1>
         <div id="dashboard-container">
@@ -93,6 +222,122 @@
     </div>
 
     <script>
+        // =================================================================
+        // Admin Authentication
+        // =================================================================
+        const ADMIN_TOKEN_KEY = 'adminToken';
+        const ADMIN_TOKEN_SESSION_KEY = 'adminTokenSession';
+
+        /**
+         * Returns the stored admin token from localStorage (remember me)
+         * or sessionStorage (session only), or null if not found.
+         */
+        function getStoredToken() {
+            return localStorage.getItem(ADMIN_TOKEN_KEY) || sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY) || null;
+        }
+
+        /**
+         * Saves the token. If rememberMe is true, persists to localStorage;
+         * otherwise stores in sessionStorage only.
+         */
+        function saveToken(token, rememberMe) {
+            if (rememberMe) {
+                localStorage.setItem(ADMIN_TOKEN_KEY, token);
+                sessionStorage.removeItem(ADMIN_TOKEN_SESSION_KEY);
+            } else {
+                sessionStorage.setItem(ADMIN_TOKEN_SESSION_KEY, token);
+                localStorage.removeItem(ADMIN_TOKEN_KEY);
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem(ADMIN_TOKEN_KEY);
+            sessionStorage.removeItem(ADMIN_TOKEN_SESSION_KEY);
+        }
+
+        /**
+         * Returns fetch options with the Authorization header attached.
+         */
+        function adminFetchOptions(extraOptions = {}) {
+            const token = getStoredToken();
+            return {
+                ...extraOptions,
+                headers: {
+                    ...(extraOptions.headers || {}),
+                    'Authorization': `Bearer ${token}`
+                }
+            };
+        }
+
+        const loginOverlay = document.getElementById('login-overlay');
+        const loginPassword = document.getElementById('login-password');
+        const loginError = document.getElementById('login-error');
+        const loginSubmit = document.getElementById('login-submit');
+        const rememberMeCheckbox = document.getElementById('remember-me-checkbox');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        const adminNavbar = document.getElementById('admin-navbar');
+
+        function showLogin() {
+            loginOverlay.classList.add('visible');
+            adminNavbar.classList.remove('visible');
+            loginPassword.value = '';
+            loginError.style.display = 'none';
+            setTimeout(() => loginPassword.focus(), 100);
+        }
+
+        function hideLogin() {
+            loginOverlay.classList.remove('visible');
+            adminNavbar.classList.add('visible');
+        }
+
+        async function attemptLogin() {
+            const password = loginPassword.value.trim();
+            if (!password) return;
+
+            loginSubmit.disabled = true;
+            loginSubmit.textContent = 'Signing in...';
+
+            // Validate the token against the server by making a test request
+            try {
+                const res = await fetch('/api/reports', {
+                    headers: { 'Authorization': `Bearer ${password}` }
+                });
+
+                if (res.ok) {
+                    saveToken(password, rememberMeCheckbox.checked);
+                    hideLogin();
+                    // Kick off the main data load now that we're authenticated
+                    fetchInitialData();
+                } else {
+                    loginError.style.display = 'block';
+                    loginPassword.classList.add('error');
+                    loginPassword.select();
+                }
+            } catch (err) {
+                loginError.textContent = 'Could not reach the server. Please try again.';
+                loginError.style.display = 'block';
+            } finally {
+                loginSubmit.disabled = false;
+                loginSubmit.textContent = 'Sign In';
+            }
+        }
+
+        loginSubmit.addEventListener('click', attemptLogin);
+        loginPassword.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') attemptLogin();
+            loginPassword.classList.remove('error');
+            loginError.style.display = 'none';
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            clearToken();
+            showLogin();
+        });
+
+        // =================================================================
+        // Main Admin Logic
+        // =================================================================
         document.addEventListener('DOMContentLoaded', () => {
             const reportsContainer = document.getElementById('reports-container');
             const searchInput = document.getElementById('search-input');
@@ -147,7 +392,7 @@
             const debouncedFilter = debounce(() => {
                 currentPage = 1;
                 filterAndRenderReports();
-            }, 300); // Wait for 300ms of inactivity before filtering
+            }, 300);
 
             searchInput.addEventListener('input', debouncedFilter);
 
@@ -157,13 +402,9 @@
             });
 
             function updateDashboardStats() {
-                // Update total active events
                 document.getElementById('stat-total-events').textContent = totalActiveEvents;
-
-                // Update open reports
                 document.getElementById('stat-open-reports').textContent = allReports.length;
 
-                // Calculate and render reason breakdown
                 const reasonCounts = allReports.reduce((acc, report) => {
                     acc[report.reason] = (acc[report.reason] || 0) + 1;
                     return acc;
@@ -180,10 +421,9 @@
                 const maxCount = Math.max(...Object.values(reasonCounts));
 
                 Object.entries(reasonCounts)
-                    .sort(([, a], [, b]) => b - a) // Sort by count descending
+                    .sort(([, a], [, b]) => b - a)
                     .forEach(([reason, count]) => {
                         const barPercentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
-
                         const row = document.createElement('div');
                         row.className = 'chart-row';
                         row.innerHTML = `
@@ -199,16 +439,24 @@
             }
 
             async function fetchInitialData() {
+                reportsContainer.innerHTML = '<p class="loading">Loading reports...</p>';
                 try {
                     const [reportsRes, categoriesRes, saleTypesRes, eventsRes] = await Promise.all([
-                        fetch('/api/reports'),
+                        fetch('/api/reports', adminFetchOptions()),
                         fetch('/api/item_categories'),
                         fetch('/api/sale_types'),
                         fetch('/api/events')
                     ]);
 
+                    // If the reports request returns 401, the stored token is stale — show login again.
+                    if (reportsRes.status === 401) {
+                        clearToken();
+                        showLogin();
+                        return;
+                    }
+
                     if (!reportsRes.ok || !categoriesRes.ok || !saleTypesRes.ok || !eventsRes.ok) {
-                        throw new Error(`HTTP error during initial data fetch.`);
+                        throw new Error('HTTP error during initial data fetch.');
                     }
 
                     allReports = await reportsRes.json();
@@ -218,15 +466,16 @@
                     totalActiveEvents = allActiveEvents.length;
 
                     populateEditFormDropdowns();
+                    updateDashboardStats();
                     filterAndRenderReports();
                 } catch (error) {
-                    console.error("Failed to fetch initial data:", error);
+                    console.error('Failed to fetch initial data:', error);
                     reportsContainer.innerHTML = '<p class="no-reports">Could not load reports. Please try again later.</p>';
                 }
             }
 
             function renderReports(reports) {
-                reportsContainer.innerHTML = ''; // Clear previous content
+                reportsContainer.innerHTML = '';
 
                 if (reports.length === 0) {
                     reportsContainer.innerHTML = '<p class="no-reports">No reports match the current filters.</p>';
@@ -281,86 +530,56 @@
                 paginationContainer.innerHTML = '';
                 const pageCount = Math.ceil(reports.length / reportsPerPage);
 
-                if (pageCount <= 1) {
-                    return;
-                }
+                if (pageCount <= 1) return;
 
-                // Previous button
                 const prevButton = document.createElement('button');
                 prevButton.textContent = 'Previous';
                 prevButton.disabled = currentPage === 1;
                 prevButton.addEventListener('click', () => {
-                    if (currentPage > 1) {
-                        currentPage--;
-                        filterAndRenderReports();
-                    }
+                    if (currentPage > 1) { currentPage--; filterAndRenderReports(); }
                 });
                 paginationContainer.appendChild(prevButton);
 
-                // Smart pagination logic
                 const pagesToShow = new Set();
-                const window = 1; // Number of pages to show around the current page
-
+                const win = 1;
                 pagesToShow.add(1);
                 pagesToShow.add(pageCount);
-
-                for (let i = currentPage - window; i <= currentPage + window; i++) {
-                    if (i > 0 && i <= pageCount) {
-                        pagesToShow.add(i);
-                    }
+                for (let i = currentPage - win; i <= currentPage + win; i++) {
+                    if (i > 0 && i <= pageCount) pagesToShow.add(i);
                 }
 
                 const sortedPages = Array.from(pagesToShow).sort((a, b) => a - b);
-
                 let lastPage = 0;
                 sortedPages.forEach(page => {
                     if (page > lastPage + 1) {
                         const ellipsis = document.createElement('span');
                         ellipsis.textContent = '...';
-                        ellipsis.style.padding = '8px 6px';
-                        ellipsis.style.color = '#6c757d';
-                        ellipsis.style.userSelect = 'none';
+                        ellipsis.style.cssText = 'padding:8px 6px;color:#6c757d;user-select:none;';
                         paginationContainer.appendChild(ellipsis);
                     }
-
                     const pageButton = document.createElement('button');
                     pageButton.textContent = page;
-                    if (page === currentPage) {
-                        pageButton.classList.add('active');
-                    }
-                    pageButton.addEventListener('click', () => {
-                        currentPage = page;
-                        filterAndRenderReports();
-                    });
+                    if (page === currentPage) pageButton.classList.add('active');
+                    pageButton.addEventListener('click', () => { currentPage = page; filterAndRenderReports(); });
                     paginationContainer.appendChild(pageButton);
-
                     lastPage = page;
                 });
 
-                // Next button
                 const nextButton = document.createElement('button');
                 nextButton.textContent = 'Next';
                 nextButton.disabled = currentPage === pageCount;
                 nextButton.addEventListener('click', () => {
-                    if (currentPage < pageCount) {
-                        currentPage++;
-                        filterAndRenderReports();
-                    }
+                    if (currentPage < pageCount) { currentPage++; filterAndRenderReports(); }
                 });
                 paginationContainer.appendChild(nextButton);
             }
 
             async function handleDismiss(reportId) {
-                if (!confirm('Are you sure you want to dismiss this report? The event will remain active.')) {
-                    return;
-                }
-
+                if (!confirm('Are you sure you want to dismiss this report? The event will remain active.')) return;
                 try {
-                    const response = await fetch(`/api/reports/${reportId}`, { method: 'DELETE' });
-                    if (!response.ok) {
-                        throw new Error('Failed to dismiss report.');
-                    }
-                    // Remove the dismissed report from the main list and re-render
+                    const response = await fetch(`/api/reports/${reportId}`, adminFetchOptions({ method: 'DELETE' }));
+                    if (response.status === 401) { clearToken(); showLogin(); return; }
+                    if (!response.ok) throw new Error('Failed to dismiss report.');
                     allReports = allReports.filter(report => report.id !== reportId);
                     updateDashboardStats();
                     filterAndRenderReports();
@@ -371,16 +590,11 @@
             }
 
             async function handleDelete(eventId) {
-                if (!confirm('Are you sure you want to permanently DELETE this event? This action cannot be undone.')) {
-                    return;
-                }
-
+                if (!confirm('Are you sure you want to permanently DELETE this event? This action cannot be undone.')) return;
                 try {
-                    const response = await fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-                    if (!response.ok) {
-                        throw new Error('Failed to delete event.');
-                    }
-                    // Remove all reports for the deleted event from the main list and re-render
+                    const response = await fetch(`/api/events/${eventId}`, adminFetchOptions({ method: 'DELETE' }));
+                    if (response.status === 401) { clearToken(); showLogin(); return; }
+                    if (!response.ok) throw new Error('Failed to delete event.');
                     totalActiveEvents--;
                     allReports = allReports.filter(report => report.event.id !== eventId);
                     updateDashboardStats();
@@ -417,11 +631,9 @@
             }
 
             function openEditModal(event) {
-                // Format datetimes for input[type=datetime-local] which needs YYYY-MM-DDTHH:mm
                 const formatDateTimeLocal = (isoString) => {
                     if (!isoString) return '';
                     const date = new Date(isoString);
-                    // Adjust for timezone offset to display correctly in user's local time
                     date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
                     return date.toISOString().slice(0, 16);
                 };
@@ -442,14 +654,10 @@
                 editModal.classList.add('visible');
             }
 
-            cancelEditBtn.addEventListener('click', () => {
-                editModal.classList.remove('visible');
-            });
+            cancelEditBtn.addEventListener('click', () => editModal.classList.remove('visible'));
 
             editModal.addEventListener('click', (e) => {
-                if (e.target === editModal) {
-                    editModal.classList.remove('visible');
-                }
+                if (e.target === editModal) editModal.classList.remove('visible');
             });
 
             editForm.addEventListener('submit', async (e) => {
@@ -468,22 +676,20 @@
                 };
 
                 try {
-                    const response = await fetch(`/api/events/${eventId}`, {
+                    const response = await fetch(`/api/events/${eventId}`, adminFetchOptions({
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
-                    });
+                    }));
 
+                    if (response.status === 401) { clearToken(); showLogin(); return; }
                     if (!response.ok) throw new Error('Failed to update event.');
 
                     const updatedEvent = await response.json();
-                    // Update the event in the local state
                     allReports.forEach(report => {
-                        if (report.event.id === updatedEvent.id) {
-                            report.event = updatedEvent;
-                        }
+                        if (report.event.id === updatedEvent.id) report.event = updatedEvent;
                     });
-                    filterAndRenderReports(); // Re-render the list
+                    filterAndRenderReports();
                     editModal.classList.remove('visible');
                 } catch (error) {
                     console.error('Update error:', error);
@@ -491,9 +697,17 @@
                 }
             });
 
-            // Initial fetch
-            updateDashboardStats(); // Initial call to set structure
-            fetchInitialData();
+            // --- Boot sequence ---
+            // Check if we already have a stored token; if so, skip the login overlay.
+            const storedToken = getStoredToken();
+            if (storedToken) {
+                hideLogin();
+                fetchInitialData();
+            } else {
+                showLogin();
+                // Don't load data yet — wait until login succeeds.
+                reportsContainer.innerHTML = '';
+            }
         });
     </script>
 </body>
