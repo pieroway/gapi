@@ -47,29 +47,38 @@
      flex-direction: column;
  }
 
+ /* -------------------------------------------------------
+    Mobile: list-panel and detail-panel are styled like the
+    submission modal — a large rounded pill floating over
+    the bottom 75% of the screen with a margin on all sides.
+    They appear/disappear via the morph-open/morph-close
+    animation only (no slide transition).
+    ------------------------------------------------------- */
  #list-panel {
      flex-shrink: 0;
-     /* Prevent panel from shrinking */
-     height: 75vh;
-     /* Set to open height */
-     transform: translateY(100%);
-     /* Start hidden */
-     visibility: hidden;
-     transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
+     /* Hidden by default — shown via morph-open animation */
+     display: none;
      overflow: hidden;
-     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-     border-start-start-radius: 16px;
-     border-start-end-radius: 16px;
+     /* Pill shape with margin, matching the submission modal */
+     position: fixed;
+     bottom: 0;
+     left: 0;
+     right: 0;
+     height: 75vh;
+     margin: 10px;
+     margin-bottom: calc(10px + var(--safe-area-inset-bottom, 0px));
+     border-radius: 20px;
+     box-shadow: 0 5px 30px rgba(0, 0, 0, 0.25);
+     z-index: 1000;
  }
 
  #list-panel.open {
-     transform: translateY(0);
-     visibility: visible;
+     display: flex;
+     flex-direction: column;
  }
 
  #list-panel.detail-open {
-    /* Keep the list panel visible underneath the detail panel.
-       The detail panel slides over it at the same height. */
+    /* Keep the list panel visible underneath the detail panel. */
  }
 
  #list-panel.open .panel-header {
@@ -820,29 +829,26 @@
      color: white;
  }
 
+  /* Detail panel: same pill style as list panel — no slide transition */
   #detail-panel {
-      /* Match the list panel's open height so the detail panel rises to the same level */
       height: 75vh;
-      z-index: 3;
-      /* Use a fixed bottom position so the panel always anchors to the
-         bottom of the viewport regardless of whether the list panel is open. */
+      z-index: 1001; /* above list panel */
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      transform: translateY(100%);
-      /* Move completely out of view */
-      visibility: hidden;
-      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-      border-start-start-radius: 16px;
-      border-start-end-radius: 16px;
-      transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
+      /* Hidden by default — shown via morph-open animation */
+      display: none;
+      overflow: hidden;
+      margin: 10px;
+      margin-bottom: calc(10px + var(--safe-area-inset-bottom, 0px));
+      border-radius: 20px;
+      box-shadow: 0 5px 30px rgba(0, 0, 0, 0.25);
   }
 
  #detail-panel.open {
-     transform: translateY(0);
-     visibility: visible;
-     /* Show when open */
+     display: flex;
+     flex-direction: column;
  }
 
  #detail-back-button {
@@ -995,7 +1001,7 @@
      width: 100%;
      height: 100%;
      background-color: rgba(0, 0, 0, 0.6);
-     z-index: 11;
+     z-index: 2000;
      display: none;
      /* Hidden by default */
      justify-content: center;
@@ -1449,13 +1455,22 @@
      }
  
      #list-panel {
+         /* Desktop: restore to full-height side panel */
+         display: flex;
+         flex-direction: column;
          position: fixed;
          height: 100%;
+         width: var(--list-panel-width, 25%);
+         top: 0;
+         left: 0;
+         bottom: 0;
+         right: auto;
+         margin: 0;
+         border-radius: 0;
+         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
          transform: translateX(0);
          transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease;
          visibility: visible;
-         border-start-start-radius: 0px;
-         border-start-end-radius: 0px;
      }
  
      #list-panel.closed {
@@ -1469,14 +1484,24 @@
      }
  
      #detail-panel {
+         /* Desktop: restore to full-height side panel */
+         display: flex;
+         flex-direction: column;
          height: 100%;
-         inline-size: 25%;
+         width: var(--list-panel-width, 25%);
+         top: 0;
+         left: 0;
+         bottom: 0;
+         right: auto;
+         margin: 0;
+         border-radius: 0;
+         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
          transform: translateX(-100%);
          z-index: 4;
-         /* Ensure detail is on top */
      }
  
      #detail-panel.open {
+         display: flex;
          transform: translateX(0);
      }
  

@@ -50,6 +50,7 @@ jspm_packages/
 
 # Build output
 dist/
+dist-php/
 
 # TypeScript v1 declaration files
 typings/

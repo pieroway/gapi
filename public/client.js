@@ -1140,9 +1140,9 @@ if (navEventsBtn) {
       // Ensure the list panel is open after closing detail
       if (!listPanel.classList.contains("open")) {
         listPanel.classList.add("open");
+        morphOpen(listPanel, navEventsBtn);
         document.body.classList.add("list-panel-visible");
         isListPanelOpen = true;
-        // Apply the same pan offset so the map centre stays above the panel
         if (!isDesktop()) {
           const panOffset = getPanelPanOffset();
           if (panOffset > 0) map.panBy(0, panOffset);
@@ -1152,31 +1152,41 @@ if (navEventsBtn) {
     }
 
     // Otherwise, toggle the list panel.
+    const wasOpen = listPanel.classList.contains("open");
     listPanel.classList.toggle("open");
     isListPanelOpen = listPanel.classList.contains("open");
     document.body.classList.toggle("list-panel-visible", isListPanelOpen);
 
-    // When the list panel opens, shift the map up so the current centre
-    // stays visible above the panel (mirrors the detail-panel behaviour).
-    if (!isDesktop() && isListPanelOpen) {
-      const panOffset = getPanelPanOffset();
-      if (panOffset > 0) map.panBy(0, panOffset);
+    if (isListPanelOpen) {
+      morphOpen(listPanel, navEventsBtn);
+      if (!isDesktop()) {
+        const panOffset = getPanelPanOffset();
+        if (panOffset > 0) map.panBy(0, panOffset);
+      }
     }
   });
 }
 if (navRefreshBtn) {
   navRefreshBtn.addEventListener("click", () => {
-    refreshEventsBtn.click(); // Trigger the existing button's logic
+    refreshEventsBtn.click();
   });
 }
 if (navAddBtn) {
   navAddBtn.addEventListener("click", () => {
-    addEventBtn.click(); // Trigger the existing button's logic
+    // Capture origin before the modal becomes visible
+    const origin = navAddBtn;
+    addEventBtn.click();
+    // The modal is now visible — play the morph-open on its content
+    const modalContent = submissionModal.querySelector('.modal-content');
+    if (modalContent) morphOpen(modalContent, origin);
   });
 }
 if (navSettingsBtn) {
   navSettingsBtn.addEventListener("click", () => {
-    settingsBtn.click(); // Trigger the existing button's logic
+    const origin = navSettingsBtn;
+    settingsBtn.click();
+    const modalContent = settingsModal.querySelector('.modal-content');
+    if (modalContent) morphOpen(modalContent, origin);
   });
 }
 
@@ -1361,6 +1371,10 @@ async function openDetailPanel(eventId) {
   detailPanel.classList.add("open");
   document.body.classList.add("detail-panel-visible");
 
+  // Morph the detail panel in from the nav events button (or the active card)
+  const morphOrigin = navEventsBtn || elementThatOpenedDetailPanel;
+  morphOpen(detailPanel, morphOrigin);
+
   let event;
   try {
     const response = await fetch(`/api/events/${eventId}`);
@@ -1396,9 +1410,9 @@ async function openDetailPanel(eventId) {
       map.setZoom(14);
     } else {
       lastSelectedPosition = position;
-      // Calculate the pixel offset needed to keep the pin visible above the
-      // bottom panel (75 vh tall). Convert the pixel offset to a lat/lng delta
-      // so we can bake it into the single smoothPanTo call — no second panBy.
+
+      // Bake the panel offset into the pan target so the whole journey is
+      // one straight-line animation with no follow-up panBy.
       const panOffsetPx = Math.round(window.innerHeight * 0.75 / 2);
       const projection = map.getProjection();
       let adjustedPosition = position;
@@ -1414,6 +1428,7 @@ async function openDetailPanel(eventId) {
         const offsetLatLng = projection.fromPointToLatLng(offsetPoint);
         adjustedPosition = { lat: offsetLatLng.lat(), lng: offsetLatLng.lng() };
       }
+
       smoothPanTo(adjustedPosition, undefined, () => {
         if (map.getZoom() < 13) {
           map.setZoom(13);
@@ -1678,8 +1693,12 @@ function showCommentForm(container, eventId) {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to post comment.');
+                let errorMsg = 'Failed to post comment.';
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.message || errorMsg;
+                } catch (_) { /* non-JSON error body */ }
+                throw new Error(errorMsg);
             }
 
             // Success — inject the new comment directly into the comments section
@@ -2581,6 +2600,67 @@ function initAutocomplete() {
 }
 
 /**
+ * Applies the morph-from-pill animation to `el`, using `originEl` as the
+ * source pill.  The element must already be visible (display != none) before
+ * this is called so that its bounding rect is valid.
+ *
+ * @param {HTMLElement} el        - The panel or modal content element to animate.
+ * @param {HTMLElement} originEl  - The nav button / pill the animation grows from.
+ */
+function morphOpen(el, originEl) {
+  if (!el || !originEl) return;
+  const r = originEl.getBoundingClientRect();
+  el.style.setProperty('--morph-x', r.left + 'px');
+  el.style.setProperty('--morph-y', r.top  + 'px');
+  el.style.setProperty('--morph-w', r.width  + 'px');
+  el.style.setProperty('--morph-h', r.height + 'px');
+
+  // Suppress any existing CSS slide/transform transition so the clip-path
+  // morph animation is the only motion playing.
+  const prevTransition = el.style.transition;
+  el.style.transition = 'none';
+
+  el.classList.remove('morph-close');
+  // Force a reflow so the transition suppression and class removal take effect.
+  void el.offsetWidth;
+  el.classList.add('morph-open');
+
+  // Restore the transition after the morph animation ends.
+  el.addEventListener('animationend', () => {
+    el.style.transition = prevTransition;
+    el.classList.remove('morph-open');
+  }, { once: true });
+}
+
+/**
+ * Plays the morph-close animation on `el` (shrinks back toward `originEl`),
+ * then calls `onDone` when the animation finishes.
+ *
+ * @param {HTMLElement} el        - The panel or modal content element.
+ * @param {HTMLElement} originEl  - The nav button / pill to shrink back into.
+ * @param {Function}    [onDone]  - Optional callback after animation ends.
+ */
+function morphClose(el, originEl, onDone) {
+  if (!el) { if (onDone) onDone(); return; }
+  if (originEl) {
+    const r = originEl.getBoundingClientRect();
+    el.style.setProperty('--morph-x', r.left + 'px');
+    el.style.setProperty('--morph-y', r.top  + 'px');
+    el.style.setProperty('--morph-w', r.width  + 'px');
+    el.style.setProperty('--morph-h', r.height + 'px');
+  }
+  el.classList.remove('morph-open');
+  void el.offsetWidth;
+  el.classList.add('morph-close');
+  const cleanup = () => {
+    el.classList.remove('morph-close');
+    el.removeEventListener('animationend', cleanup);
+    if (onDone) onDone();
+  };
+  el.addEventListener('animationend', cleanup, { once: true });
+}
+
+/**
  * Easing function — ease-in-out cubic.
  * Returns a value in [0,1] for a given progress in [0,1].
  */
@@ -2597,17 +2677,17 @@ function easeInOutCubic(t) {
  * so the motion feels natural rather than mechanical.
  */
 function smoothPanTo(position, duration = parseInt(localStorage.getItem(PAN_DURATION_KEY) || "1500", 10), callback) {
+  // Cancel any in-progress animation so only one runs at a time.
+  if (smoothPanTo._rafId) {
+    cancelAnimationFrame(smoothPanTo._rafId);
+    smoothPanTo._rafId = null;
+  }
+
   const center = map.getCenter();
   const startLat = center.lat();
   const startLng = center.lng();
   const endLat = position.lat;
   const endLng = position.lng;
-
-  // Cancel any in-progress animation
-  if (smoothPanTo._rafId) {
-    cancelAnimationFrame(smoothPanTo._rafId);
-    smoothPanTo._rafId = null;
-  }
 
   let startTime = null;
 
@@ -2616,9 +2696,9 @@ function smoothPanTo(position, duration = parseInt(localStorage.getItem(PAN_DURA
 
     const elapsed = currentTime - startTime;
     const rawProgress = Math.min(elapsed / duration, 1);
+    // Both axes use the same eased t — guarantees a straight-line path.
     const t = easeInOutCubic(rawProgress);
 
-    // Both lat and lng use the same eased t — this guarantees a straight line
     map.setCenter({
       lat: startLat + (endLat - startLat) * t,
       lng: startLng + (endLng - startLng) * t,
@@ -2648,6 +2728,7 @@ function getMarkerPosition(marker) {
   }
   return null;
 }
+
 function createEventCard(event) {
   const card = document.createElement("div");
   card.className = "card";
