@@ -1,11 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4, validate: uuidValidate } = require('uuid');
 const multer = require('multer');
 const path = require('path');
 const events = require('../data/events');
 const fs = require('fs').promises;
 const db = require('../db'); // Import the database connection pool
+
+/**
+ * Middleware: validates that :guid is a well-formed UUID v4.
+ * Rejects anything that isn't before it ever touches the database.
+ */
+const validateGuid = (req, res, next) => {
+  if (!uuidValidate(req.params.guid)) {
+    return res.status(400).json({ message: 'Invalid event identifier.' });
+  }
+  next();
+};
 
 // --- Multer Configuration ---
 const storage = multer.diskStorage({
@@ -260,7 +271,7 @@ router.post('/', (req, res, next) => {
 });
 
 // Get event data for editing
-router.get('/edit/:guid', async (req, res) => {
+router.get('/edit/:guid', validateGuid, async (req, res) => {
   const { guid } = req.params;
   try {
     // 1. Fetch the main event data using the secure edit_guid
@@ -281,6 +292,10 @@ router.get('/edit/:guid', async (req, res) => {
     const [categoryRows] = await db.query('SELECT category_id FROM gapi_event_item_categories WHERE event_id = ?', [eventId]);
     event.item_categories = categoryRows.map(c => c.category_id);
 
+    // Strip internal fields before sending to client
+    delete event.id;          // internal integer PK — never expose
+    delete event.edit_guid;   // the secret itself — no need to echo it back
+
     res.json(event);
 
   } catch (error) {
@@ -290,7 +305,7 @@ router.get('/edit/:guid', async (req, res) => {
 });
 
 // Update an event
-router.put('/edit/:guid', (req, res, next) => {
+router.put('/edit/:guid', validateGuid, (req, res, next) => {
   // Apply write operations rate limiter
   const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
   if (writeOperationsLimiter) {
@@ -386,7 +401,7 @@ router.put('/edit/:guid', (req, res, next) => {
 });
 
 // Soft delete an event
-router.delete('/edit/:guid', (req, res, next) => {
+router.delete('/edit/:guid', validateGuid, (req, res, next) => {
   // Apply write operations rate limiter
   const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
   if (writeOperationsLimiter) {
@@ -412,7 +427,7 @@ router.delete('/edit/:guid', (req, res, next) => {
 });
 
 // Undelete an event
-router.post('/edit/:guid/undelete', (req, res, next) => {
+router.post('/edit/:guid/undelete', validateGuid, (req, res, next) => {
   // Apply write operations rate limiter
   const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
   if (writeOperationsLimiter) {
@@ -440,7 +455,7 @@ router.post('/edit/:guid/undelete', (req, res, next) => {
 // Add a photo to an event
 // Note: This is a simplified version. A full implementation would handle multiple uploads
 // and associate them with an event within a transaction.
-router.post('/edit/:guid/photos', (req, res, next) => {
+router.post('/edit/:guid/photos', validateGuid, (req, res, next) => {
   // Apply write operations and upload rate limiters
   const writeOperationsLimiter = req.app.locals.writeOperationsLimiter;
   if (writeOperationsLimiter) {
