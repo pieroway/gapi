@@ -19,10 +19,23 @@ const validateGuid = (req, res, next) => {
 };
 
 // --- Multer Configuration ---
+
+// Map validated MIME types to safe file extensions.
+// The extension is derived from the server-side MIME check, never from the
+// original filename supplied by the client (prevents shell.php.jpg attacks).
+const MIME_TO_EXT = {
+  'image/jpeg': '.jpg',
+  'image/jpg':  '.jpg',
+  'image/png':  '.png',
+  'image/gif':  '.gif'
+};
+
 const storage = multer.diskStorage({
   destination: './public/uploads/',
   filename: function(req, file, cb){
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+    // Use a UUID so the original filename is completely discarded.
+    const ext = MIME_TO_EXT[file.mimetype] || '.jpg';
+    cb(null, uuidv4() + ext);
   }
 });
 
