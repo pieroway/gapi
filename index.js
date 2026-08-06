@@ -83,6 +83,25 @@ app.use('/api/item_categories', require('./routes/item_categories'));
 app.post('/api/reports', reportLimiter, require('./routes/reports'));
 app.use('/api/reports', requireAdmin, require('./routes/reports'));
 
+// Admin-only hard-delete for events by public_id (bypasses the edit_guid requirement)
+app.delete('/api/admin/events/:public_id', requireAdmin, async (req, res) => {
+  const db = require('./db');
+  const { public_id } = req.params;
+  try {
+    const [result] = await db.execute(
+      'UPDATE gapi_events SET is_deleted = TRUE WHERE public_id = ?',
+      [public_id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+    res.status(204).send();
+  } catch (error) {
+    console.error(`Admin failed to delete event ${public_id}:`, error.message);
+    res.status(500).json({ message: 'Internal server error while deleting event.' });
+  }
+});
+
 // Export limiters for use in route files
 app.locals.writeOperationsLimiter = writeOperationsLimiter;
 app.locals.uploadLimiter = uploadLimiter;

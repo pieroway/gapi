@@ -101,6 +101,19 @@ CREATE TABLE `gapi_event_comments` (
   FOREIGN KEY (`event_id`) REFERENCES `gapi_events`(`id`) ON DELETE CASCADE
 );
 
+--
+-- Table structure for `reports`
+-- (User-submitted reports about events)
+--
+CREATE TABLE `gapi_reports` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `event_id` INT NOT NULL,
+  `reason` VARCHAR(50) NOT NULL,
+  `details` VARCHAR(1000),
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`event_id`) REFERENCES `gapi_events`(`id`) ON DELETE CASCADE
+);
+
 -- =================================================================
 -- INITIAL DATA POPULATION (LOOKUP TABLES)
 -- =================================================================

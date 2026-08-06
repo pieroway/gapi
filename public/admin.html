@@ -114,6 +114,11 @@
             cursor: pointer;
         }
         #logout-btn:hover { background: #b02a37; }
+
+        /* Google Places autocomplete dropdown must appear above the modal overlay */
+        .pac-container {
+            z-index: 10000 !important;
+        }
     </style>
 </head>
 
@@ -183,6 +188,8 @@
             <h2>Edit Event</h2>
             <form id="edit-event-form">
                 <input type="hidden" id="edit-event-id" name="id">
+                <input type="hidden" id="edit-event-lat" name="latitude">
+                <input type="hidden" id="edit-event-lng" name="longitude">
                 <div class="form-group">
                     <label for="edit-event-title">Title</label>
                     <input type="text" id="edit-event-title" name="title" required>
@@ -208,6 +215,11 @@
                 <div class="form-group">
                     <label for="edit-event-sale-type">Sale Type</label>
                     <select id="edit-event-sale-type" name="sale_type_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Photos</label>
+                    <div id="edit-event-photos-container" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+                    <p id="edit-event-no-photos" style="color:#999;font-size:0.85rem;display:none;">No photos for this event.</p>
                 </div>
                 <div class="form-group">
                     <label>Item Categories</label>
@@ -307,7 +319,6 @@
                 if (res.ok) {
                     saveToken(password, rememberMeCheckbox.checked);
                     hideLogin();
-                    // Kick off the main data load now that we're authenticated
                     fetchInitialData();
                 } else {
                     loginError.style.display = 'block';
@@ -512,15 +523,15 @@
                             <p><strong>Reported At:</strong> ${new Date(report.created_at).toLocaleString()}</p>
                         </div>
                         <div class="actions">
-                            <button class="btn-dismiss">Dismiss Report</button>
-                            <button class="btn-edit">Edit Event</button>
-                            <button class="btn-delete">Delete Event</button>
+                            <button class="btn-dismiss" aria-label="Dismiss Report — remove this report; the event stays live on the map">Dismiss Report</button>
+                            <button class="btn-edit" aria-label="Edit Event — fix event details such as title, address, or dates; the report stays open">Edit Event</button>
+                            <button class="btn-delete" aria-label="Delete Event — soft-delete this event; it will be removed from the public map immediately">Delete Event</button>
                         </div>
                     `;
 
                     card.querySelector('.btn-dismiss').addEventListener('click', () => handleDismiss(report.id));
                     card.querySelector('.btn-delete').addEventListener('click', () => handleDelete(report.event.id));
-                    card.querySelector('.btn-edit').addEventListener('click', () => openEditModal(report.event));
+                    card.querySelector('.btn-edit').addEventListener('click', () => openEditModal(report.event.edit_guid));
 
                     reportsContainer.appendChild(card);
                 });
@@ -592,7 +603,8 @@
             async function handleDelete(eventId) {
                 if (!confirm('Are you sure you want to permanently DELETE this event? This action cannot be undone.')) return;
                 try {
-                    const response = await fetch(`/api/events/${eventId}`, adminFetchOptions({ method: 'DELETE' }));
+                    // Use the admin-specific endpoint which accepts public_id and requires auth
+                    const response = await fetch(`/api/admin/events/${eventId}`, adminFetchOptions({ method: 'DELETE' }));
                     if (response.status === 401) { clearToken(); showLogin(); return; }
                     if (!response.ok) throw new Error('Failed to delete event.');
                     totalActiveEvents--;
@@ -630,7 +642,7 @@
                 });
             }
 
-            function openEditModal(event) {
+            async function openEditModal(editGuid) {
                 const formatDateTimeLocal = (isoString) => {
                     if (!isoString) return '';
                     const date = new Date(isoString);
@@ -638,20 +650,59 @@
                     return date.toISOString().slice(0, 16);
                 };
 
-                document.getElementById('edit-event-id').value = event.id;
-                document.getElementById('edit-event-title').value = event.title;
-                document.getElementById('edit-event-description').value = event.description;
-                document.getElementById('edit-event-address').value = event.address;
-                document.getElementById('edit-event-start').value = formatDateTimeLocal(event.start_datetime);
-                document.getElementById('edit-event-end').value = formatDateTimeLocal(event.end_datetime);
-                document.getElementById('edit-event-sale-type').value = event.sale_type_id;
+                try {
+                    // Fetch the full event data using the edit_guid — same endpoint the event author uses
+                    const res = await fetch(`/api/events/edit/${editGuid}`, adminFetchOptions());
+                    if (res.status === 401) { clearToken(); showLogin(); return; }
+                    if (!res.ok) throw new Error('Failed to fetch event data.');
+                    const event = await res.json();
 
-                const categoryCheckboxes = document.querySelectorAll('#edit-event-categories-container input[type="checkbox"]');
-                categoryCheckboxes.forEach(checkbox => {
-                    checkbox.checked = event.item_categories.includes(parseInt(checkbox.value));
-                });
+                    // Store the guid on the form so the submit handler can use it
+                    document.getElementById('edit-event-id').value = editGuid;
+                    document.getElementById('edit-event-lat').value = event.latitude;
+                    document.getElementById('edit-event-lng').value = event.longitude;
+                    document.getElementById('edit-event-title').value = event.title;
+                    document.getElementById('edit-event-description').value = event.description;
+                    document.getElementById('edit-event-address').value = event.address;
+                    document.getElementById('edit-event-start').value = formatDateTimeLocal(event.start_datetime);
+                    document.getElementById('edit-event-end').value = formatDateTimeLocal(event.end_datetime);
+                    document.getElementById('edit-event-sale-type').value = event.sale_type_id;
 
-                editModal.classList.add('visible');
+                    const categoryCheckboxes = document.querySelectorAll('#edit-event-categories-container input[type="checkbox"]');
+                    categoryCheckboxes.forEach(checkbox => {
+                        checkbox.checked = (event.item_categories || []).includes(parseInt(checkbox.value));
+                    });
+
+                    // Render photos with delete buttons
+                    const photosContainer = document.getElementById('edit-event-photos-container');
+                    const noPhotosMsg = document.getElementById('edit-event-no-photos');
+                    photosContainer.innerHTML = '';
+                    const photos = event.photos || [];
+                    if (photos.length === 0) {
+                        noPhotosMsg.style.display = 'block';
+                    } else {
+                        noPhotosMsg.style.display = 'none';
+                        photos.forEach(photoPath => {
+                            const wrapper = document.createElement('div');
+                            wrapper.style.cssText = 'position:relative;display:inline-block;';
+                            wrapper.dataset.photo = photoPath;
+                            wrapper.innerHTML = `
+                                <img src="/${photoPath}" alt="Event photo" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
+                                <button type="button" title="Remove photo" style="position:absolute;top:-6px;right:-6px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;padding:0;">✕</button>
+                            `;
+                            wrapper.querySelector('button').addEventListener('click', () => {
+                                wrapper.remove();
+                                if (photosContainer.children.length === 0) noPhotosMsg.style.display = 'block';
+                            });
+                            photosContainer.appendChild(wrapper);
+                        });
+                    }
+
+                    editModal.classList.add('visible');
+                } catch (error) {
+                    console.error('Failed to open edit modal:', error);
+                    alert('Could not load event data for editing.');
+                }
             }
 
             cancelEditBtn.addEventListener('click', () => editModal.classList.remove('visible'));
@@ -665,18 +716,28 @@
                 const eventId = document.getElementById('edit-event-id').value;
                 const formData = new FormData(editForm);
 
+                // Collect remaining (not-deleted) photo paths from the DOM
+                const remainingPhotos = Array.from(
+                    document.querySelectorAll('#edit-event-photos-container [data-photo]')
+                ).map(el => el.dataset.photo);
+
                 const payload = {
                     title: formData.get('title'),
                     description: formData.get('description'),
                     address: formData.get('address'),
+                    latitude: parseFloat(formData.get('latitude')),
+                    longitude: parseFloat(formData.get('longitude')),
                     start_datetime: new Date(formData.get('start_datetime')).toISOString(),
                     end_datetime: new Date(formData.get('end_datetime')).toISOString(),
                     sale_type_id: parseInt(formData.get('sale_type_id')),
-                    item_categories: formData.getAll('item_categories').map(id => parseInt(id))
+                    item_categories: formData.getAll('item_categories').map(id => parseInt(id)),
+                    existingPhotos: remainingPhotos
                 };
 
                 try {
-                    const response = await fetch(`/api/events/${eventId}`, adminFetchOptions({
+                    // eventId holds the edit_guid (set in openEditModal).
+                    // Send as JSON — the admin edit form has no file uploads.
+                    const response = await fetch(`/api/events/edit/${eventId}`, adminFetchOptions({
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
@@ -685,10 +746,19 @@
                     if (response.status === 401) { clearToken(); showLogin(); return; }
                     if (!response.ok) throw new Error('Failed to update event.');
 
-                    const updatedEvent = await response.json();
-                    allReports.forEach(report => {
-                        if (report.event.id === updatedEvent.id) report.event = updatedEvent;
-                    });
+                    // Update the cached report data async so the card reflects the new title/address/description
+                    const updatedEventRes = await fetch(`/api/events/edit/${eventId}`, adminFetchOptions());
+                    if (updatedEventRes.ok) {
+                        const updatedEvent = await updatedEventRes.json();
+                        allReports.forEach(report => {
+                            if (report.event.edit_guid === eventId) {
+                                report.event.title = updatedEvent.title;
+                                report.event.address = updatedEvent.address;
+                                report.event.description = updatedEvent.description;
+                            }
+                        });
+                    }
+
                     filterAndRenderReports();
                     editModal.classList.remove('visible');
                 } catch (error) {

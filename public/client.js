@@ -901,10 +901,10 @@ submissionForm.addEventListener("submit", async (e) => {
   // Append the JSON payload as a string. The server will need to parse this.
   submissionData.append("eventData", JSON.stringify(payload));
 
-  // Append photo files. Use 'photos' as the key for multiple files.
+  // Append photo files. Use 'photos[]' so PHP receives all files as an array.
   if (submissionPhotos.length > 0) {
     submissionPhotos.forEach((file) => {
-      submissionData.append("photos", file);
+      submissionData.append("photos[]", file);
     });
   }
 
