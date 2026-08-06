@@ -2574,6 +2574,26 @@ async function initializeMap() {
 // so the Google Maps callback can find and execute it.
 window.initMap = initializeMap;
 
+/**
+ * Fetches the Google Maps API key from the server, then dynamically injects
+ * the Maps script tag using the recommended `loading=async` pattern.
+ * This keeps the key out of the HTML source.
+ */
+fetch('/api/config')
+  .then(res => res.json())
+  .then(({ googleMapsApiKey }) => {
+    if (!googleMapsApiKey) {
+      console.error('Google Maps API key is not configured on the server.');
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=marker,places&callback=initMap&loading=async`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  })
+  .catch(err => console.error('Failed to load map configuration:', err));
+
 // The Google Maps script will now call window.initMap, which in turn
 // calls our async initializeMap function.
 function initAutocomplete() {

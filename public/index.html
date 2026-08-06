@@ -752,14 +752,9 @@
             });
         }
     </script>
-    <!-- 
-      Load the Google Maps API asynchronously. 
-      Set the Google Maps API key here.
-      The 'callback=initMap' will automatically call the initMap function once the API is ready.
-    -->
     <script src="/markercluster.js" defer></script>
     <script src="/client.js" defer></script>
-    <script defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeQ5ihrDqP23Sk3qUKi2D2oOfOD6z8GKU&libraries=marker,places&callback=initMap"></script>
+    <!-- Google Maps API is loaded dynamically by client.js after fetching the key from /api/config -->
 
 </body>
 

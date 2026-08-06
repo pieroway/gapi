@@ -50,6 +50,11 @@ app.use(express.static('public'));
 // Apply general rate limiting to all API routes
 app.use('/api/', apiLimiter);
 
+// Config endpoint — exposes only the public Google Maps API key to the client
+app.get('/api/config', (req, res) => {
+  res.json({ googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '' });
+});
+
 // API Routes
 // Note: More specific routes must come before general ones
 app.use('/api/events', require('./routes/events'));
