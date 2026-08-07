@@ -1234,13 +1234,86 @@ detailPanel.addEventListener("transitionend", () => {
   document.body.classList.remove("detail-panel-sliding-off");
 });
 
+// Geolocation watch ID — null until the user taps the button for the first time.
+let geoWatchId = null;
+
+// Set to a LatLngLiteral to use a fake location for testing on HTTP (no GPS).
+// Set to null to use real GPS.
+const FAKE_LOCATION = null;
+
+/**
+ * Starts (or restarts) geolocation tracking.
+ * Called from a user-gesture context so iOS Safari grants permission.
+ */
+function startLocationTracking() {
+  // TEMP: use fake location for testing on HTTP (no GPS on HTTP)
+  if (FAKE_LOCATION) {
+    updateUserLocationMarker(FAKE_LOCATION);
+    smoothPanTo(FAKE_LOCATION, 600, () => { if (map.getZoom() < 15) map.setZoom(15); });
+    return;
+  }
+
+  if (!navigator.geolocation) return;
+
+  // Get an immediate fix first (fast, works on iOS from a tap).
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+      updateUserLocationMarker(pos);
+      smoothPanTo(pos, 600, () => { if (map.getZoom() < 15) map.setZoom(15); });
+    },
+    (err) => console.warn('getCurrentPosition error:', err.code, err.message),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+
+  // Then start continuous tracking if not already running.
+  if (geoWatchId === null) {
+    geoWatchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+        updateUserLocationMarker(pos);
+        if (isFollowingUser) {
+          smoothPanTo(pos, 800);
+        }
+      },
+      (err) => console.warn('watchPosition error:', err.code, err.message),
+      { enableHighAccuracy: true }
+    );
+  }
+}
+
+/**
+ * Creates or moves the user-location dot marker.
+ * Also transitions the button to "location known, not following" state
+ * if we're not currently in following mode.
+ */
+function updateUserLocationMarker(pos) {
+  if (userLocationMarker) {
+    userLocationMarker.position = pos;
+  } else {
+    const dot = document.createElement('div');
+    dot.className = 'user-location-dot';
+    userLocationMarker = new AdvancedMarkerElement({
+      map: map,
+      position: pos,
+      content: dot,
+      title: 'Your Location',
+      zIndex: google.maps.Marker.MAX_ZINDEX + 1,
+    });
+  }
+  // Once we have a fix, show the "location known" state on the button
+  // (blue icon, white bg) unless we're actively following.
+  if (!isFollowingUser) {
+    centerLocationButton.classList.remove('following');
+    centerLocationButton.classList.add('location-known');
+  }
+}
+
 centerLocationButton.addEventListener("click", () => {
   isFollowingUser = true;
+  centerLocationButton.classList.remove('location-known');
   centerLocationButton.classList.add("following");
-  const userPos = getMarkerPosition(userLocationMarker);
-  if (userPos) {
-    smoothPanTo(userPos, 300, () => map.setZoom(15));
-  }
+  startLocationTracking();
 });
 
 // --- Mobile Panel Drag-to-Open/Close ---
@@ -2402,47 +2475,10 @@ async function initializeMap() {
     updateDebugOverlay();
   });
 
-  // Add user location tracking
-  if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(
-      (position) => {
-        const pos = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-
-        if (userLocationMarker) {
-          userLocationMarker.position = pos;
-        } else {
-          const dot = document.createElement("div");
-          dot.className = "user-location-dot";
-          userLocationMarker = new AdvancedMarkerElement({
-            map: map,
-            position: pos,
-            content: dot,
-            title: "Your Location",
-            zIndex: google.maps.Marker.MAX_ZINDEX + 1, // Ensures it's always on top
-          });
-          // Initially, don't follow, just center once.
-          smoothPanTo(pos, 300, () => map.setZoom(15));
-        }
-
-        if (isFollowingUser) {
-          smoothPanTo(pos);
-        }
-      },
-      () => {
-        // Handle location error
-        console.log("Error: The Geolocation service failed.");
-      },
-      {
-        enableHighAccuracy: true,
-      }
-    );
-  } else {
-    // Browser doesn't support Geolocation
-    console.log("Error: Your browser doesn't support geolocation.");
-  }
+  // Geolocation is now triggered on demand by the center-location button tap
+  // (see startLocationTracking / updateUserLocationMarker above).
+  // This avoids the iOS Safari issue where auto-triggered watchPosition is
+  // silently blocked because it isn't inside a user-gesture handler.
 
   // Fetch categories and sale types, then events
   Promise.all([

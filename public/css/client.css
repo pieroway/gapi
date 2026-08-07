@@ -1186,17 +1186,6 @@
      background-color: #ffffff;
  }
 
- .user-location-dot {
-     width: 12px;
-     height: 12px;
-     border-radius: 50%;
-     background-color: #007aff;
-     border: 3px solid #fff;
-     box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
-     transform: translate(-50%, -50%);
-     animation: pulse 2s infinite;
- }
-
  @keyframes spin {
      0% {
          transform: rotate(0deg);
@@ -1385,6 +1374,50 @@
      inset-block-start: 16px;
      inset-inline-end: 10px;
      z-index: 10;
+     transition: background-color 0.2s, box-shadow 0.2s;
+ }
+
+ /* State 2: location known, not following — blue icon on white bg */
+ #center-location-button.location-known svg {
+     stroke: #007bff;
+     fill: rgba(0, 123, 255, 0.1);
+ }
+
+ /* State 3: following — white icon on blue bg */
+ #center-location-button.following {
+     background-color: #007bff;
+     box-shadow: 0 2px 8px rgba(0, 123, 255, 0.5);
+ }
+ #center-location-button.following svg {
+     stroke: #fff;
+     fill: rgba(255, 255, 255, 0.15);
+ }
+
+ /* Google Maps-style blue location dot */
+ .user-location-dot {
+     width: 18px;
+     height: 18px;
+     background-color: #4285F4;
+     border: 3px solid #fff;
+     border-radius: 50%;
+     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+     position: relative;
+ }
+ .user-location-dot::after {
+     content: '';
+     position: absolute;
+     top: 50%;
+     left: 50%;
+     transform: translate(-50%, -50%) scale(1);
+     width: 36px;
+     height: 36px;
+     background: rgba(66, 133, 244, 0.2);
+     border-radius: 50%;
+     animation: location-pulse 2s ease-out infinite;
+ }
+ @keyframes location-pulse {
+     0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+     100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
  }
 
  /* Desktop Layout */
