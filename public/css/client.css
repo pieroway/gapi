@@ -1369,13 +1369,19 @@
  .gm-style-iw-c:has(.cluster-info-window) button[aria-label="Close"] {
     display: none !important;
  }
- #center-location-button {
-     position: fixed;
-     inset-block-start: 16px;
-     inset-inline-end: 10px;
-     z-index: 10;
-     transition: background-color 0.2s, box-shadow 0.2s;
- }
+  #center-location-button {
+      position: fixed;
+      inset-block-start: 16px;
+      inset-inline-end: 10px;
+      z-index: 10;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s, box-shadow 0.2s;
+  }
 
  /* State 2: location known, not following — blue icon on white bg */
  #center-location-button.location-known svg {

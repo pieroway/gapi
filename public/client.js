@@ -1310,6 +1310,11 @@ function updateUserLocationMarker(pos) {
 }
 
 centerLocationButton.addEventListener("click", () => {
+  // Warn if not on HTTPS (geolocation is blocked by browsers on HTTP)
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    alert('Location access requires a secure connection (HTTPS). Please visit this site using https://');
+    return;
+  }
   isFollowingUser = true;
   centerLocationButton.classList.remove('location-known');
   centerLocationButton.classList.add("following");
