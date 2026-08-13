@@ -15,6 +15,9 @@ RewriteEngine On
 RewriteRule ^api/config\.php$ - [F,L]
 
 # --- API Routes ---
+# Route /api/config to api/maps_config.php (Google Maps key)
+RewriteRule ^api/config$ api/maps_config.php [QSA,L]
+
 # Route /api/events* to api/events.php
 RewriteRule ^api/events(/.*)?$ api/events.php [QSA,L]
 

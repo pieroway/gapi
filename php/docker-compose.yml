@@ -19,6 +19,8 @@ services:
       DB_USER: gapi_user
       DB_PASSWORD: gapi_password
       DB_NAME: gapi
+      # Google Maps API key — set this to your key (or use a .env file)
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
     volumes:
       # Mount uploads folder so photos persist between container restarts
       - uploads_data:/var/www/html/uploads

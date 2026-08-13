@@ -99,7 +99,7 @@ echo ""
 info "[3/7] Copying PHP backend files..."
 
 # API PHP files
-for f in php/api/config.php php/api/events.php php/api/sale_types.php \
+for f in php/api/config.php php/api/maps_config.php php/api/events.php php/api/sale_types.php \
           php/api/item_categories.php php/api/reports.php; do
   if [[ -f "$f" ]]; then
     cp "$f" "dist-php/api/$(basename "$f")"
