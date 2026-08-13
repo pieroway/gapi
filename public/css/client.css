@@ -1,3 +1,7 @@
+ :root {
+    --bottom-nav-height: 60px; /* Define the height of the bottom navigation bar */
+ }
+
  html,
  body {
      height: 100%;
@@ -43,29 +47,38 @@
      flex-direction: column;
  }
 
+ /* -------------------------------------------------------
+    Mobile: list-panel and detail-panel are styled like the
+    submission modal — a large rounded pill floating over
+    the bottom 75% of the screen with a margin on all sides.
+    They appear/disappear via the morph-open/morph-close
+    animation only (no slide transition).
+    ------------------------------------------------------- */
  #list-panel {
      flex-shrink: 0;
-     /* Prevent panel from shrinking */
-     height: 75vh;
-     /* Set to open height */
-     transform: translateY(100%);
-     /* Start hidden */
-     visibility: hidden;
-     transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
+     /* Hidden by default — shown via morph-open animation */
+     display: none;
      overflow: hidden;
-     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-     border-start-start-radius: 16px;
-     border-start-end-radius: 16px;
+     /* Pill shape with margin, matching the submission modal */
+     position: fixed;
+     bottom: 0;
+     left: 0;
+     right: 0;
+     height: 75vh;
+     margin: 10px;
+     margin-bottom: calc(10px + var(--safe-area-inset-bottom, 0px));
+     border-radius: 20px;
+     box-shadow: 0 5px 30px rgba(0, 0, 0, 0.25);
+     z-index: 1000;
  }
 
  #list-panel.open {
-     transform: translateY(0);
-     visibility: visible;
+     display: flex;
+     flex-direction: column;
  }
 
  #list-panel.detail-open {
-     transform: scale(0.95);
-     border-radius: 16px;
+    /* Keep the list panel visible underneath the detail panel. */
  }
 
  #list-panel.open .panel-header {
@@ -96,9 +109,11 @@
  /* --- Detail Panel Layout --- */
  /* Make the header sticky and the content scrollable */
  #detail-panel .panel-header {
-    flex-shrink: 0; /* Prevent header from shrinking */
-    background-color: #fff; /* Cover content during scroll */
-    border-bottom: 1px solid #eee;
+    /* border-bottom: 1px solid #eee; */
+    /* background-color: var(--theme-panel-bg, #fff); */
+    /* backdrop-filter: blur(20px); */
+    /* -webkit-backdrop-filter: blur(20px); */
+    /* padding-bottom: 20px; */
  }
 
  #detail-panel .panel-content {
@@ -106,6 +121,28 @@
     display: block; /* Override display:flex to allow normal block scrolling */
  }
  
+ /* Style the submission modal header to match other panels */
+ #submission-modal .panel-header {
+    flex-shrink: 0;
+    cursor: default;
+    margin-bottom: 0;
+    padding-block: 15px;
+    border-bottom: 1px solid #eee;
+ }
+
+ /* Ensure all form inputs in the submission modal fill the available width without overflowing. */
+ #submission-modal .form-group input[type="text"],
+ #submission-modal .form-group input[type="datetime-local"],
+ #submission-modal .form-group textarea,
+ #submission-modal .form-group select {
+    width: 100%;
+    box-sizing: border-box; /* Include padding and border in the element's total width */
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+ }
+
  .panel-handle {
      position: absolute;
      top: 10px;
@@ -220,7 +257,7 @@
  }
 
  .pills-container {
-     background-color: #ffffff;
+     /* background-color: #ffffff; */
      padding-block: 5px; padding-inline: 20px;
      white-space: nowrap;
      overflow-x: auto;
@@ -318,7 +355,10 @@
  #events-container {
      flex-grow: 1;
      overflow-y: auto;
-     padding: 0 20px 20px;
+     padding-inline: 20px;
+     padding-top: 0;
+     /* Add padding to the bottom to account for the nav bar's height */
+     padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-inset-bottom, 0px) + 20px);
      margin-top: 20px;
  }
 
@@ -430,14 +470,26 @@
  }
 
  .detail-actions {
-     margin-top: 20px;
-     padding-top: 15px;
-     border-top: 1px solid #eee;
+    /* margin-top: 20px; */
+    /* padding-top: 15px; */
+    /* border-top: 1px solid #eee; */
      display: flex;
      justify-content: center;
      gap: 10px;
  }
 
+ /* Override for detail action buttons to give them a solid background */
+ .detail-actions button {
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+ }
+ 
+ .detail-actions button:hover {
+    background-color: #f8f9fa; /* A slightly off-white for hover */
+    border-color: #007bff;
+    color: #007bff;
+ }
+ 
  #add-to-calendar-btn {
      display: inline-flex;
      align-items: center;
@@ -777,23 +829,26 @@
      color: white;
  }
 
- #detail-panel {
-     height: 80vh;
-     /* Changed from 100vh */
-     z-index: 3;
-     transform: translateY(100%);
-     /* Move completely out of view */
-     visibility: hidden;
-     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-     border-start-start-radius: 16px;
-     border-start-end-radius: 16px;
-     transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s;
- }
+  /* Detail panel: same pill style as list panel — no slide transition */
+  #detail-panel {
+      height: 75vh;
+      z-index: 1001; /* above list panel */
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      /* Hidden by default — shown via morph-open animation */
+      display: none;
+      overflow: hidden;
+      margin: 10px;
+      margin-bottom: calc(10px + var(--safe-area-inset-bottom, 0px));
+      border-radius: 20px;
+      box-shadow: 0 5px 30px rgba(0, 0, 0, 0.25);
+  }
 
  #detail-panel.open {
-     transform: translateY(0);
-     visibility: visible;
-     /* Show when open */
+     display: flex;
+     flex-direction: column;
  }
 
  #detail-back-button {
@@ -826,7 +881,100 @@
  #detail-content {
      padding: 20px;
      overflow-y: scroll;
+     /* Add padding to the bottom to account for the nav bar's height and safe area */
+     padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-inset-bottom, 0px) + 20px);
      padding-top: 0px;
+ }
+
+ /* A container for the text content within the detail panel to improve legibility on glass backgrounds. */
+ .detail-text-content {
+    background-color: rgba(255, 255, 255, 0.85); /* A more opaque white */
+    padding: 15px;
+    margin: 15px 0; /* Remove horizontal margin to match photo width */
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+ }
+ 
+ /* When using the standard theme, this box should just blend in. */
+ .standard-theme .detail-text-content {
+    background-color: transparent;
+    border-color: transparent;
+ }
+
+ /* --- Comment Section Styles --- */
+ .comments-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+ }
+
+ .comments-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+ }
+
+ .comment {
+    margin-bottom: 15px;
+ }
+
+ .comment .comment-text {
+    margin-top: 0;
+    margin-bottom: 2px; /* Reduce space below the comment text */
+ }
+
+ .comment-meta {
+    font-size: 0.75rem; /* Make the font smaller */
+    color: #6c757d; /* Make the text color lighter */
+    margin-top: 0; /* Remove space above the date */
+ }
+
+ .user-owned-comment {
+    background-color: #e7f3ff; /* A light blue highlight */
+    border-left: 3px solid #007bff;
+    padding: 10px;
+    margin-left: -10px;
+    margin-right: -10px;
+    border-radius: 4px;
+ }
+
+ .add-comment-link {
+    display: block;
+    margin-top: 15px;
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 600;
+ }
+
+ .add-comment-link:hover {
+    text-decoration: underline;
+ }
+
+ .comment-form-container {
+    margin-top: 15px;
+ }
+
+ .comment-input-wrapper textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    resize: vertical;
+ }
+
+ .comment-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+ }
+
+ #comment-word-counter {
+    font-size: 0.8rem;
+    color: #6c757d;
  }
 
  #qr-code-container {
@@ -853,7 +1001,7 @@
      width: 100%;
      height: 100%;
      background-color: rgba(0, 0, 0, 0.6);
-     z-index: 11;
+     z-index: 2000;
      display: none;
      /* Hidden by default */
      justify-content: center;
@@ -971,6 +1119,7 @@
      background-size: cover;
      background-position: center;
      background-repeat: no-repeat;
+     padding-top: 15px;
  }
 
  .slider-btn {
@@ -1037,17 +1186,6 @@
      background-color: #ffffff;
  }
 
- .user-location-dot {
-     width: 12px;
-     height: 12px;
-     border-radius: 50%;
-     background-color: #007aff;
-     border: 3px solid #fff;
-     box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
-     transform: translate(-50%, -50%);
-     animation: pulse 2s infinite;
- }
-
  @keyframes spin {
      0% {
          transform: rotate(0deg);
@@ -1072,20 +1210,52 @@
      }
  }
 
- /* --- Bottom Navigation Bar --- */
+ /* --- Bottom Navigation Bar (floating rounded pill) --- */
+
+ /*
+  * When any sliding panel is visible, animate the pill downward and fade it out.
+  * The body gets .list-panel-visible or .detail-panel-visible from client.js.
+  */
+ body.list-panel-visible #bottom-nav,
+ body.detail-panel-visible #bottom-nav,
+ body.submission-modal-visible #bottom-nav,
+ body.settings-modal-visible #bottom-nav {
+    transform: translateX(-50%) translateY(30px);
+    opacity: 0;
+    pointer-events: none;
+ }
+
  #bottom-nav {
     position: fixed;
-    inset-block-end: 0;
-    inset-inline-start: 0;
-    inset-inline-end: 0;
-    height: 60px;
-    background-color: #ffffff;
-    border-top: 1px solid #e0e0e0;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.08); 
+    /* Float above the bottom edge with a gap */
+    inset-block-end: 16px;
+    /* Centre horizontally and constrain width so it looks like a pill */
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    /* Smooth animation for show/hide when panels open/close */
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
+                opacity 0.35s ease;
+    width: max-content;
+    min-width: 260px;
+    max-width: calc(100% - 40px); /* 20px margin each side */
+    height: var(--bottom-nav-height);
     justify-content: space-around;
-    display: flex; /* Display by default for mobile-first. */
-    align-items: stretch; /* Make buttons fill the height */
+    display: flex;
+    align-items: stretch;
     z-index: 999;
+    /* Pill shape */
+    border-radius: 999px;
+    /* Subtle shadow so it floats above the map */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18), 0 1px 6px rgba(0, 0, 0, 0.10);
+    /* Clip children to the rounded corners */
+    overflow: hidden;
+    /* Remove the flat border-top that the themes add */
+    border-top: none !important;
+    /* Extra inset padding so the first/last buttons don't butt up against the pill edges */
+    padding-inline: 12px;
+    /* Safe-area-aware bottom offset */
+    bottom: calc(40px + var(--safe-area-inset-bottom, 0px));
+    inset-block-end: unset;
  }
 
  .nav-btn {
@@ -1097,10 +1267,13 @@
     gap: 2px;
     background: none;
     border: none;
-    padding: 5px 0;
+    /* Horizontal padding widens each button tap target; extra top padding lifts content */
+    padding: 10px 28px 5px;
     cursor: pointer;
     color: #666;
     transition: color 0.2s, transform 0.1s ease-out;
+    /* Prevent buttons from shrinking below their content */
+    white-space: nowrap;
  }
 
  /* Add a subtle "tap" animation when a nav button is pressed. */
@@ -1196,11 +1369,61 @@
  .gm-style-iw-c:has(.cluster-info-window) button[aria-label="Close"] {
     display: none !important;
  }
- #center-location-button {
-     position: fixed;
-     inset-block-start: 16px;
-     inset-inline-end: 10px;
-     z-index: 10;
+  #center-location-button {
+      position: fixed;
+      inset-block-start: 16px;
+      inset-inline-end: 10px;
+      z-index: 10;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s, box-shadow 0.2s;
+  }
+
+ /* State 2: location known, not following — blue icon on white bg */
+ #center-location-button.location-known svg {
+     stroke: #007bff;
+     fill: rgba(0, 123, 255, 0.1);
+ }
+
+ /* State 3: following — white icon on blue bg */
+ #center-location-button.following {
+     background-color: #007bff;
+     box-shadow: 0 2px 8px rgba(0, 123, 255, 0.5);
+ }
+ #center-location-button.following svg {
+     stroke: #fff;
+     fill: rgba(255, 255, 255, 0.15);
+ }
+
+ /* Google Maps-style blue location dot */
+ .user-location-dot {
+     width: 18px;
+     height: 18px;
+     background-color: #4285F4;
+     border: 3px solid #fff;
+     border-radius: 50%;
+     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+     position: relative;
+ }
+ .user-location-dot::after {
+     content: '';
+     position: absolute;
+     top: 50%;
+     left: 50%;
+     transform: translate(-50%, -50%) scale(1);
+     width: 36px;
+     height: 36px;
+     background: rgba(66, 133, 244, 0.2);
+     border-radius: 50%;
+     animation: location-pulse 2s ease-out infinite;
+ }
+ @keyframes location-pulse {
+     0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+     100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
  }
 
  /* Desktop Layout */
@@ -1271,13 +1494,22 @@
      }
  
      #list-panel {
+         /* Desktop: restore to full-height side panel */
+         display: flex;
+         flex-direction: column;
          position: fixed;
          height: 100%;
+         width: var(--list-panel-width, 25%);
+         top: 0;
+         left: 0;
+         bottom: 0;
+         right: auto;
+         margin: 0;
+         border-radius: 0;
+         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
          transform: translateX(0);
          transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease;
          visibility: visible;
-         border-start-start-radius: 0px;
-         border-start-end-radius: 0px;
      }
  
      #list-panel.closed {
@@ -1291,14 +1523,24 @@
      }
  
      #detail-panel {
+         /* Desktop: restore to full-height side panel */
+         display: flex;
+         flex-direction: column;
          height: 100%;
-         inline-size: 25%;
+         width: var(--list-panel-width, 25%);
+         top: 0;
+         left: 0;
+         bottom: 0;
+         right: auto;
+         margin: 0;
+         border-radius: 0;
+         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
          transform: translateX(-100%);
          z-index: 4;
-         /* Ensure detail is on top */
      }
  
      #detail-panel.open {
+         display: flex;
          transform: translateX(0);
      }
  
@@ -1504,7 +1746,6 @@
         max-height: 100%;
         margin: 0;
         box-shadow: none;
-        border-bottom-left-radius: 20px;
-        border-bottom-right-radius: 20px;
+        border-radius: 20px;
     }
 }

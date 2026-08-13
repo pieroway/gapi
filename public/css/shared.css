@@ -4,14 +4,78 @@
 
 /* Modal Overlay & Content
    -------------------------------------------------------------------------- */
+/* ============================================================
+   Morph-from-pill animation
+   ============================================================
+   Usage:
+     1. Set CSS custom properties on the element before adding
+        the class:
+          el.style.setProperty('--morph-x', rect.left + 'px');
+          el.style.setProperty('--morph-y', rect.top  + 'px');
+          el.style.setProperty('--morph-w', rect.width  + 'px');
+          el.style.setProperty('--morph-h', rect.height + 'px');
+     2. Add class 'morph-open'  to open  (plays forward).
+     3. Add class 'morph-close' to close (plays reverse).
+   ============================================================ */
+
+/* The pill origin is expressed as a clip-path inset from each edge. */
+@keyframes morph-in {
+    from {
+        clip-path: inset(
+            var(--morph-y)
+            calc(100% - var(--morph-x) - var(--morph-w))
+            calc(100% - var(--morph-y) - var(--morph-h))
+            var(--morph-x)
+            round 999px
+        );
+        opacity: 0.6;
+    }
+    to {
+        clip-path: inset(0 0 0 0 round 0px);
+        opacity: 1;
+    }
+}
+
+@keyframes morph-out {
+    from {
+        clip-path: inset(0 0 0 0 round 0px);
+        opacity: 1;
+    }
+    to {
+        clip-path: inset(
+            var(--morph-y)
+            calc(100% - var(--morph-x) - var(--morph-w))
+            calc(100% - var(--morph-y) - var(--morph-h))
+            var(--morph-x)
+            round 999px
+        );
+        opacity: 0;
+    }
+}
+
+/* Applied by JS when opening */
+.morph-open {
+    animation: morph-in 0.38s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Applied by JS when closing */
+.morph-close {
+    animation: morph-out 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Google Places autocomplete dropdown must appear above all modals */
+.pac-container {
+    z-index: 3000 !important;
+}
+
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.2);
+    z-index: 2000;
     display: none;
     justify-content: center;
     align-items: center;

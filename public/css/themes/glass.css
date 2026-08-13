@@ -1,0 +1,35 @@
+/* --- iOS Glass Effect Theme --- */
+
+:root {
+    /* Define variables for the glass theme for consistency */
+    --theme-panel-bg: rgba(255, 255, 255, 0.6); /* Reduced opacity to make blur more visible */
+    --theme-panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+    --theme-nav-bg: var(--theme-panel-bg);
+    --theme-nav-border: rgba(255, 255, 255, 0.5);
+    --theme-panel-radius: 20px;
+    --theme-blur-radius: 2px;
+}
+
+/* Apply the glass effect to panels and modals */
+.panel,
+.modal-content {
+    background-color: var(--theme-panel-bg);
+    backdrop-filter: blur(var(--theme-blur-radius));
+    -webkit-backdrop-filter: blur(var(--theme-blur-radius));
+    border: 1px solid var(--theme-nav-border);
+    box-shadow: var(--theme-panel-shadow);
+}
+
+/* Style the floating pill navigation bar */
+#bottom-nav {
+    background-color: var(--theme-nav-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    /* border-top is removed — the pill has no flat edge */
+    border: 1px solid var(--theme-nav-border);
+}
+
+/* Override the default panel radius for a more modern look */
+.panel {
+    border-radius: var(--theme-panel-radius) var(--theme-panel-radius) 0 0;
+}
