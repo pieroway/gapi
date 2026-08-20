@@ -64,6 +64,9 @@ jobs:
           printf '%s\n' "$SFTP_PRIVATE_KEY" > "$HOME/.ssh/gapi_actions"
           printf '%s\n' "$SFTP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/gapi_actions" "$HOME/.ssh/known_hosts"
+          # Start SSH agent and add the key
+          eval "$(ssh-agent -s)"
+          ssh-add "$HOME/.ssh/gapi_actions"
 
       - name: Upload staging files over SFTP
         shell: bash
