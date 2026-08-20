@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Check out staging
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Assemble PHP web root
         shell: bash
@@ -58,6 +58,8 @@ jobs:
           SFTP_KNOWN_HOSTS: ${{ secrets.SFTP_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
+          test -n "$SFTP_PRIVATE_KEY" || { echo 'SFTP_PRIVATE_KEY is empty'; exit 1; }
+          test -n "$SFTP_KNOWN_HOSTS" || { echo 'SFTP_KNOWN_HOSTS is empty'; exit 1; }
           mkdir -p "$HOME/.ssh"
           printf '%s\n' "$SFTP_PRIVATE_KEY" > "$HOME/.ssh/gapi_actions"
           printf '%s\n' "$SFTP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
@@ -72,6 +74,10 @@ jobs:
           SFTP_STAGING_DIR: ${{ secrets.SFTP_STAGING_DIR }}
         run: |
           set -euo pipefail
+          test -n "$SFTP_USERNAME" || { echo 'SFTP_USERNAME is empty'; exit 1; }
+          test -n "$SFTP_HOST" || { echo 'SFTP_HOST is empty'; exit 1; }
+          test -n "$SFTP_PORT" || { echo 'SFTP_PORT is empty'; exit 1; }
+          test -n "$SFTP_STAGING_DIR" || { echo 'SFTP_STAGING_DIR is empty'; exit 1; }
           batch_file="$RUNNER_TEMP/sftp_batch"
           : > "$batch_file"
           printf 'cd "%s"\n' "$SFTP_STAGING_DIR" >> "$batch_file"
@@ -92,5 +98,8 @@ jobs:
             -P "$SFTP_PORT" \
             -o BatchMode=yes \
             -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o IdentitiesOnly=yes \
             -i "$HOME/.ssh/gapi_actions" \
             "$SFTP_USERNAME@$SFTP_HOST"
