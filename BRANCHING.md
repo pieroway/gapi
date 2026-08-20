@@ -10,7 +10,7 @@ feature/* or fix/* -> staging -> main
                            +--> staging.garagesailing.today
 
 main --------------------------> garagesailing.today
-```
+```   
 
 - `feature/*`: individual changes and experiments.
 - `fix/*`: focused bug fixes.
