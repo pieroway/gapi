@@ -56,6 +56,7 @@ jobs:
         env:
           SFTP_PRIVATE_KEY: ${{ secrets.SFTP_PRIVATE_KEY }}
           SFTP_KNOWN_HOSTS: ${{ secrets.SFTP_KNOWN_HOSTS }}
+          SSH_PASSPHRASE: ${{ secrets.SSH_PASSPHRASE }}
         run: |
           set -euo pipefail
           test -n "$SFTP_PRIVATE_KEY" || { echo 'SFTP_PRIVATE_KEY is empty'; exit 1; }
@@ -64,9 +65,9 @@ jobs:
           printf '%s\n' "$SFTP_PRIVATE_KEY" > "$HOME/.ssh/gapi_actions"
           printf '%s\n' "$SFTP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/gapi_actions" "$HOME/.ssh/known_hosts"
-          # Start SSH agent and add the key
+          # Start SSH agent and add the key with passphrase
           eval "$(ssh-agent -s)"
-          ssh-add "$HOME/.ssh/gapi_actions"
+          printf '%s\n' "$SSH_PASSPHRASE" | ssh-add "$HOME/.ssh/gapi_actions"
 
       - name: Upload staging files over SFTP
         shell: bash
