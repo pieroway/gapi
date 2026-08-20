@@ -1,4 +1,5 @@
-const CACHE_NAME = 'events-map-cache-v2'; // Bump version to trigger update
+const CACHE_NAME = 'events-map-cache-v3';
+const hasCacheStorage = typeof caches !== 'undefined';
 const urlsToCache = [
   // '/', // Cache the root to allow offline start
   // '/client.html',
@@ -10,6 +11,8 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  if (!hasCacheStorage) return;
+
   // Perform install steps
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -30,6 +33,8 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('activate', event => {
+  if (!hasCacheStorage) return;
+
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
@@ -47,6 +52,8 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  if (!hasCacheStorage) return;
+
     const { request } = event;
     const url = new URL(request.url);
 

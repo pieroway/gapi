@@ -7,7 +7,7 @@ The frontend (HTML/CSS/JS) is **unchanged** — only the server-side code is dif
 
 ## File Structure
 
-```
+```text
 php/
 ├── .htaccess              ← Apache URL routing (replaces Express router)
 ├── initializedb.sql       ← Database schema + seed data (run this once)
@@ -30,7 +30,8 @@ Upload the **contents** of this `php/` folder to your hosting web root (usually 
 Also upload the existing `public/` folder contents (HTML, CSS, JS, images, uploads).
 
 Your final web root should look like:
-```
+
+```text
 public_html/
 ├── .htaccess
 ├── index.html
@@ -96,7 +97,7 @@ is set for your directory.
 ## What Changed vs. Node.js Version
 
 | Feature | Node.js | PHP |
-|---|---|---|
+| --- | --- | --- |
 | Server | Node.js + Express | PHP 7.4+ (Apache) |
 | DB connection | `mysql2` npm package | PDO (built into PHP) |
 | Routing | Express Router | `.htaccess` + manual URL parsing |
@@ -113,6 +114,7 @@ is set for your directory.
 You can spin up the PHP version locally using Docker — no need to install PHP or MySQL on your machine.
 
 ### Prerequisites
+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
 
 ### Start the containers
@@ -124,16 +126,17 @@ docker compose -f php/docker-compose.yml up --build
 ```
 
 This will:
+
 1. Build the PHP/Apache image with your code baked in
 2. Start a MySQL 8.0 container and auto-run `initializedb.sql` to create all tables and seed data
 3. Wait for MySQL to be healthy before starting Apache
-4. Serve the app at **http://localhost:8080**
+4. Serve the app at [http://localhost:8080](http://localhost:8080)
 
 ### First run note
 
 On the very first `up`, MySQL needs ~15–30 seconds to initialize the database. The `app` container will wait automatically (via `depends_on: condition: service_healthy`). You'll see the app become available once you see:
 
-```
+```text
 gapi-php  | AH00558: apache2: Could not reliably determine the server's fully qualified domain name
 gapi-php  | AH00557: apache2: apr_sockaddr_info_get() failed
 ```
@@ -160,6 +163,7 @@ The `-v` flag removes the named volumes, which forces MySQL to re-run `initializ
 The `api/` folder is mounted as a volume in `docker-compose.yml`, so any changes you make to PHP files in `php/api/` are reflected immediately — no rebuild needed.
 
 To also live-edit frontend files, add this to the `app` volumes in `docker-compose.yml`:
+
 ```yaml
 - ../public:/var/www/html
 ```
@@ -168,7 +172,7 @@ To also live-edit frontend files, add this to the `app` volumes in `docker-compo
 
 MySQL is exposed on port **3307** (to avoid conflicts with any local MySQL on 3306):
 
-```
+```text
 Host:     localhost
 Port:     3307
 User:     gapi_user
