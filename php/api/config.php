@@ -23,10 +23,8 @@ function getDb(): PDO {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASSWORD, $options);
         } catch (PDOException $e) {
-            http_response_code(500);
-            header('Content-Type: application/json');
-            echo json_encode(['message' => 'Database connection failed. Please check your config.php settings.']);
-            exit;
+            apiLog('Database connection failed.', $e);
+            apiErrorResponse('Database connection failed. Please check the staging database configuration.', 500, $e);
         }
     }
     return $pdo;
