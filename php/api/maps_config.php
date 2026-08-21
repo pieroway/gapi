@@ -19,4 +19,14 @@ header('Cache-Control: no-store');
 
 $key = getenv('GOOGLE_MAPS_API_KEY') ?: ini_get('GOOGLE_MAPS_API_KEY') ?: '';
 
+if (!$key) {
+	$userIniPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.user.ini';
+	if (is_readable($userIniPath)) {
+		$userIni = parse_ini_file($userIniPath, false, INI_SCANNER_RAW);
+		if (is_array($userIni) && !empty($userIni['GOOGLE_MAPS_API_KEY'])) {
+			$key = trim($userIni['GOOGLE_MAPS_API_KEY']);
+		}
+	}
+}
+
 echo json_encode(['googleMapsApiKey' => $key]);
