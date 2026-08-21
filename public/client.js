@@ -2492,6 +2492,7 @@ async function initializeMap() {
     fetch(config.eventsApiUrl).then((res) => res.json()),
   ])
     .then(([saleTypes, categories, events]) => {
+      listPanel.classList.remove("events-load-error");
       allSaleTypes = saleTypes;
       allCategories = categories;
       allEvents = events;
@@ -2603,6 +2604,7 @@ async function initializeMap() {
     })
     .catch((error) => {
       console.error("Error fetching data:", error);
+      listPanel.classList.add("events-load-error");
       eventsContainer.innerHTML = `<p class="error-message">Could not load events.</p>`;
       loadingOverlay.classList.add("hidden");
     });

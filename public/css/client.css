@@ -226,6 +226,33 @@
      margin-bottom: 10px;
  }
 
+ #list-panel.events-load-error #search-container,
+ #list-panel.events-load-error .pills-wrapper {
+     display: none;
+ }
+
+ #list-panel.events-load-error #events-container {
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     margin-top: 0;
+     padding: 24px 20px calc(var(--bottom-nav-height) + var(--safe-area-inset-bottom, 0px) + 20px);
+ }
+
+ #list-panel.events-load-error .error-message {
+     max-width: 280px;
+     margin: 0 auto;
+     padding: 18px 20px;
+     border: 1px solid rgba(255, 87, 51, 0.28);
+     border-radius: 12px;
+     background: rgba(255, 247, 243, 0.96);
+     color: #8f3d2b;
+     font-size: 1rem;
+     line-height: 1.45;
+     text-align: center;
+     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+ }
+
  #search-input {
      flex-grow: 1;
      min-width: 0; /* Prevents input from overflowing flex container */
