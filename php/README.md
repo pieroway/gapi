@@ -13,7 +13,8 @@ php/
 ├── initializedb.sql       ← Database schema + seed data (run this once)
 ├── README.md              ← This file
 └── api/
-    ├── config.php         ← DB credentials + shared helpers (replaces .env + db.js)
+    ├── config.php         ← DB connection helpers (credentials come from .user.ini)
+    ├── runtime_settings.php← Environment and .user.ini settings helper
     ├── events.php         ← All /api/events/* routes
     ├── sale_types.php     ← GET /api/sale_types
     ├── item_categories.php← GET /api/item_categories
@@ -65,15 +66,27 @@ public_html/
 
 ### 3. Configure Database Credentials
 
-Edit `api/config.php` and fill in your host's MySQL credentials:
+Keep `api/config.php` unchanged. It contains the database helper functions but
+no credentials. On the hosting server, create `.user.ini` in the document root
+and add the staging or production values:
 
-```php
-define('DB_HOST', 'localhost');       // Usually 'localhost' on shared hosting
-define('DB_PORT', '3306');
-define('DB_USER', 'your_db_user');    // From your hosting control panel
-define('DB_PASSWORD', 'your_pass');   // From your hosting control panel
-define('DB_NAME', 'gapi');            // The database name you created
+```ini
+DB_HOST="localhost"
+DB_PORT="3306"
+DB_USER="your_db_user"
+DB_PASSWORD="your_pass"
+DB_NAME="gapi"
+GOOGLE_MAPS_API_KEY="your-google-maps-api-key"
+APP_DEBUG="0"
 ```
+
+Never commit `.user.ini` or real credentials to Git.
+
+The application reads settings in this order: environment variable, PHP
+configuration, then the document-root `.user.ini` file.
+
+For a local Docker run, the `DB_*` values in `docker-compose.yml` continue to
+provide the database settings.
 
 ### 4. Set Uploads Folder Permissions
 

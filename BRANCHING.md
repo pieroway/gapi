@@ -10,7 +10,7 @@ feature/* or fix/* -> staging -> main
                            +--> staging.garagesailing.today
 
 main --------------------------> garagesailing.today
-```   
+```
 
 - `feature/*`: individual changes and experiments.
 - `fix/*`: focused bug fixes.
@@ -77,7 +77,7 @@ SFTP_KNOWN_HOSTS=<the verified SSH host-key line for sh073.asoshared.com>
 
 The staging document root must already exist because the workflow uses SFTP only. Create `/home1/alan/staging.garagesailing.today/` in cPanel or through SFTP before the first run.
 
-The workflow intentionally does not upload `api/config.php` or the `uploads/` directory. Put staging database credentials in the server's `api/config.php` and preserve uploaded files on the host.
+The workflow uploads the shared `api/config.php` code, which contains no credentials. Put staging database credentials and API settings in the server document-root `.user.ini`, and preserve uploaded files on the host.
 
 ## Deployment Layout
 

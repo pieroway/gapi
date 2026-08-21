@@ -33,9 +33,6 @@ jobs:
           cp php/.htaccess deploy/.htaccess
           cp -a php/api/. deploy/api/
 
-          # Keep database credentials on the server, never in the deployment artifact.
-          rm -f deploy/api/config.php
-
           # The upload directory belongs to the server and must not be replaced or deleted.
           rm -rf deploy/uploads
 
@@ -47,7 +44,7 @@ jobs:
           test -f deploy/.htaccess
           test -f deploy/client.js
           test -f deploy/api/events.php
-          test ! -e deploy/api/config.php
+          test -f deploy/api/config.php
           test ! -e deploy/uploads
           find deploy -maxdepth 3 -type f -print | sort
 
