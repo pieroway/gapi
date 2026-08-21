@@ -5,9 +5,10 @@
  */
 
 $requestId = bin2hex(random_bytes(8));
+require_once __DIR__ . '/runtime_settings.php';
 
 function apiDebugEnabled(): bool {
-    return getenv('APP_DEBUG') === '1' || ini_get('APP_DEBUG') === '1';
+    return getRuntimeSetting('APP_DEBUG') === '1';
 }
 
 function apiLog(string $message, ?Throwable $error = null): void {
