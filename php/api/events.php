@@ -641,6 +641,7 @@ function handleAddComment(string $publicId): void {
  */
 function saveUploadedPhoto(array $file): ?string {
     if ($file['error'] !== UPLOAD_ERR_OK) {
+        apiLog('Photo upload rejected by PHP.', new RuntimeException('Upload error code: ' . $file['error']));
         return null;
     }
 
@@ -651,23 +652,30 @@ function saveUploadedPhoto(array $file): ?string {
     $mime = mime_content_type($file['tmp_name']);
 
     if (!in_array($mime, $allowedMimes) || !in_array($ext, $allowedExts)) {
+        apiLog('Photo upload rejected due to file type.', new RuntimeException('MIME: ' . $mime . ', extension: ' . $ext));
         return null;
     }
 
     // 10 MB limit
     if ($file['size'] > 10 * 1024 * 1024) {
+        apiLog('Photo upload rejected because it exceeds the size limit.', new RuntimeException('Bytes: ' . $file['size']));
         return null;
     }
 
-    $uploadDir = __DIR__ . '/../../public/uploads/';
+    $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
+    $uploadDir = rtrim($documentRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
     if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
+        if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+            apiLog('Photo upload directory could not be created.', new RuntimeException($uploadDir));
+            return null;
+        }
     }
 
     $filename = 'photos-' . round(microtime(true) * 1000) . '.' . $ext;
     $dest = $uploadDir . $filename;
 
     if (!move_uploaded_file($file['tmp_name'], $dest)) {
+        apiLog('Photo upload could not be moved to the upload directory.', new RuntimeException($dest));
         return null;
     }
 
