@@ -51,33 +51,38 @@ jobs:
           test ! -e deploy/uploads
           find deploy -maxdepth 3 -type f -print | sort
 
-      - name: Configure SFTP authentication
+      - name: Configure SFTP authentication and upload files
         shell: bash
         env:
           SFTP_PRIVATE_KEY: ${{ secrets.SFTP_PRIVATE_KEY }}
           SFTP_KNOWN_HOSTS: ${{ secrets.SFTP_KNOWN_HOSTS }}
-        run: |
-          set -euo pipefail
-          test -n "$SFTP_PRIVATE_KEY" || { echo 'SFTP_PRIVATE_KEY is empty'; exit 1; }
-          test -n "$SFTP_KNOWN_HOSTS" || { echo 'SFTP_KNOWN_HOSTS is empty'; exit 1; }
-          mkdir -p "$HOME/.ssh"
-          printf '%s\n' "$SFTP_PRIVATE_KEY" > "$HOME/.ssh/gapi_actions"
-          printf '%s\n' "$SFTP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-          chmod 600 "$HOME/.ssh/gapi_actions" "$HOME/.ssh/known_hosts"
-
-      - name: Upload staging files over SFTP
-        shell: bash
-        env:
+          SSH_PASSPHRASE: ${{ secrets.SSH_PASSPHRASE }}
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_STAGING_DIR: ${{ secrets.SFTP_STAGING_DIR }}
         run: |
           set -euo pipefail
+
+          # Validate all required secrets
+          test -n "$SFTP_PRIVATE_KEY" || { echo 'SFTP_PRIVATE_KEY is empty'; exit 1; }
+          test -n "$SFTP_KNOWN_HOSTS" || { echo 'SFTP_KNOWN_HOSTS is empty'; exit 1; }
           test -n "$SFTP_USERNAME" || { echo 'SFTP_USERNAME is empty'; exit 1; }
           test -n "$SFTP_HOST" || { echo 'SFTP_HOST is empty'; exit 1; }
           test -n "$SFTP_PORT" || { echo 'SFTP_PORT is empty'; exit 1; }
           test -n "$SFTP_STAGING_DIR" || { echo 'SFTP_STAGING_DIR is empty'; exit 1; }
+
+          # Setup SSH
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$SFTP_PRIVATE_KEY" > "$HOME/.ssh/gapi_actions"
+          printf '%s\n' "$SFTP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/gapi_actions" "$HOME/.ssh/known_hosts"
+
+          # Start SSH agent and add key in the same step
+          eval "$(ssh-agent -s)"
+          printf '%s\n' "$SSH_PASSPHRASE" | ssh-add "$HOME/.ssh/gapi_actions"
+
+          # Create SFTP batch file
           batch_file="$RUNNER_TEMP/sftp_batch"
           : > "$batch_file"
           printf 'cd "%s"\n' "$SFTP_STAGING_DIR" >> "$batch_file"
@@ -94,6 +99,7 @@ jobs:
             printf 'put "%s" "%s"\n' "$file" "$relative" >> "$batch_file"
           done < <(find deploy -type f -print | sort)
 
+          # Upload files
           sftp -b "$batch_file" \
             -P "$SFTP_PORT" \
             -o BatchMode=yes \
