@@ -17,6 +17,6 @@
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
 
-$key = getenv('GOOGLE_MAPS_API_KEY') ?: '';
+$key = getenv('GOOGLE_MAPS_API_KEY') ?: ini_get('GOOGLE_MAPS_API_KEY') ?: '';
 
 echo json_encode(['googleMapsApiKey' => $key]);
