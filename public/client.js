@@ -1447,6 +1447,9 @@ async function openDetailPanel(eventId) {
   detailTitle.textContent = "Loading...";
   detailContent.innerHTML = '<div class="spinner-large"></div>';
   detailPanel.classList.add("open");
+  if (!isDesktop()) {
+    listPanel.classList.add("detail-open");
+  }
   document.body.classList.add("detail-panel-visible");
 
   // Morph the detail panel in from the nav events button (or the active card)
@@ -1670,9 +1673,6 @@ async function openDetailPanel(eventId) {
     .getElementById("share-event-btn")
     .addEventListener("click", () => shareEvent(event));
 
-  if (!isDesktop()) {
-    listPanel.classList.add("detail-open");
-  }
   detailPanel.setAttribute("aria-hidden", "false");
   listPanel.setAttribute("aria-hidden", "true");
 
