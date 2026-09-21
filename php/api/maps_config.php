@@ -17,6 +17,8 @@
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
 
-$key = getenv('GOOGLE_MAPS_API_KEY') ?: '';
+require_once __DIR__ . '/runtime_settings.php';
+
+$key = getRuntimeSetting('GOOGLE_MAPS_API_KEY');
 
 echo json_encode(['googleMapsApiKey' => $key]);

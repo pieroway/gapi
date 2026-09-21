@@ -8,7 +8,7 @@
  * =================================================================
  */
 
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/bootstrap.php';
 
 $requestMethod = $_SERVER['REQUEST_METHOD'];
 

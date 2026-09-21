@@ -1,4 +1,4 @@
-const CACHE_NAME = 'events-map-cache-v3';
+const CACHE_NAME = 'events-map-cache-v4';
 const hasCacheStorage = typeof caches !== 'undefined';
 const urlsToCache = [
   // '/', // Cache the root to allow offline start
