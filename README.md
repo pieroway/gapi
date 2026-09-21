@@ -1,145 +1,472 @@
-# Garage Sale Finder
+# GAPI — React/PWA Modernization Architecture
 
-A garage sale mapping app with a PHP/MySQL backend served via Apache. The original Node.js/Express backend is retained in the repository but is not the active stack.
+## Purpose
 
----
+GAPI is a mobile-first garage-sale discovery application. This modernization preserves proven behavior while moving the frontend to a maintainable React/PWA architecture with strong automated quality gates.
 
-## Active Stack: PHP / Apache / MySQL
+## Production Platform
 
-The primary backend is PHP running on Apache, deployed via Docker. See [`php/README.md`](php/README.md) for full setup and deployment instructions.
+Production must remain compatible with A Small Orange shared hosting:
 
-### Quick Start (Docker)
+- Apache
+- PHP
+- MySQL
+- Static HTML/CSS/JavaScript/assets
 
-Run from the **project root**:
+Node.js is **not** required in production. Node/npm/Vite/Playwright may be used on developer machines and in CI. React is compiled to static assets before deployment.
 
-```bash
-docker compose -f php/docker-compose.yml up --build
+Target architecture:
+
+```text
+React / TypeScript / Vite / PWA
+              ↓
+          Static build
+              ↓
+          PHP REST API
+              ↓
+             MySQL
 ```
 
-The app will be available at **http://localhost:8080**.
+## Migration Strategy
 
-### Environment Variables
+This is not a wholesale rewrite.
 
-Copy `.env.example` to `.env` and fill in your values:
+Current architecture:
 
-```bash
-cp .env.example .env
+- Frontend: HTML/CSS/vanilla JavaScript in `public/`
+- Active backend: PHP REST API
+- Database: MySQL
+- Legacy backend: Node/Express retained only as reference
+
+The old Node/Express implementation was not a React frontend. It is not the migration target and must not be restored merely for compatibility.
+
+### Legacy Code Reuse Policy
+
+Inspect the current frontend, current PHP backend, and legacy Node code where relevant. Reuse proven behavior and useful logic such as:
+
+- validation rules
+- API contracts
+- data transformations
+- geographic/map behavior
+- filtering
+- error handling
+- rate limiting
+- database/security behavior
+- comments, ratings and reporting logic
+- tests and known edge cases
+
+If useful legacy Node behavior is missing from PHP, implement it in the active PHP architecture rather than restoring a Node production backend.
+
+> Reuse proven behaviour and good logic; do not preserve obsolete architecture merely for compatibility with old code.
+
+## Frontend Direction
+
+The new frontend will use React + TypeScript + Vite and be organized by feature. Expected areas include:
+
+- app shell/navigation
+- map
+- sales/listings
+- favourites
+- filters
+- comments
+- ratings
+- reporting
+- notifications
+- settings
+- themes
+- shared components
+- API/services
+- hooks/models/styles
+
+## Mobile-First UX
+
+Primary application surfaces:
+
+- Map
+- List
+- Add/Edit Sale
+- Favourites
+- Settings
+
+Google Maps functionality should include current location, markers, clustering where useful, sale-type markers, search-this-area behavior, preview cards, map/list switching, filtering, distance and directions.
+
+Sale types and categories should be data-driven rather than hard-coded into page structure.
+
+## Listings
+
+Listings may include:
+
+- title
+- sale type
+- address
+- coordinates
+- date/time
+- description
+- categories
+- photos
+- rating
+- comments
+- favourite state
+- status
+
+Server-managed uploads must remain protected during deployment.
+
+## Comments, Ratings and Reporting
+
+Listings may support comments/reviews and ratings.
+
+Reporting flow:
+
+```text
+Sale Details
+   ↓
+⋯ More
+   ↓
+Report / Flag Listing
+   ↓
+Select reason
+   ↓
+Optional details
+   ↓
+Submit
+   ↓
+Confirmation
 ```
 
-Key variables:
+Reasons may include fake listing, inappropriate content, offensive content, incorrect location, duplicate, ended sale, spam, and other. Reports are stored server-side for administrative review.
 
-| Variable | Description |
-|---|---|
-| `GOOGLE_MAPS_API_KEY` | Your Google Maps API key |
-| `DB_HOST` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | MySQL credentials |
-| `ADMIN_TOKEN` | Password for the admin panel |
+## Filtering
 
-When running via Docker, `GOOGLE_MAPS_API_KEY` and `ADMIN_TOKEN` are read from your `.env` file automatically via `docker-compose.yml`.
+Filters may include:
 
-### Build (optional — for shared hosting deployment)
+- sale type
+- date / today / weekend / next 7 days / custom range
+- distance
+- photos
+- favourites
+- open now
+- rating
+- categories
 
-To produce a minified distributable in `dist-php/`:
+## Notifications
 
-```bash
-bash php/build.sh
+The architecture should support notification preferences such as:
+
+- nearby sales
+- favourite updates
+- reminders
+- new comments
+- nearby sales today
+- weekly digest
+- saved-search alerts
+
+## PWA
+
+The React frontend should support Progressive Web App capabilities where practical:
+
+- installability / Add to Home Screen
+- manifest
+- icons
+- service worker
+- caching
+- useful offline behavior
+- push notifications where supported
+
+Features must degrade gracefully when browser/OS capabilities are unavailable.
+
+## Themes
+
+Theme implementation must use semantic design tokens/CSS custom properties so appearance can change without restructuring the application.
+
+Potential themes:
+
+- GAPI Green
+- Clean / Cupertino-inspired
+- Material-inspired
+- High Contrast
+
+Theme selection is separate from display mode:
+
+- Light
+- Dark
+- System
+
+Themes may alter colors, typography, radii, shadows, markers and navigation treatment, but should not radically relocate primary controls.
+
+## Accessibility
+
+The application should support:
+
+- semantic HTML
+- keyboard navigation
+- screen readers
+- useful labels
+- appropriate touch targets
+- sufficient contrast
+- reduced motion
+- text scaling
+- visible focus states
+
+## Primary Reference Device
+
+The **iPhone 12 Pro** is the primary design, development and automated-test reference device, but not the only supported device.
+
+Primary Playwright target:
+
+```text
+Device: iPhone 12 Pro
+CSS viewport: approximately 390 × 844
+Orientation: Portrait
+Engine: WebKit
+Input: Touch
 ```
 
-See `php/build.sh --help` for options including `--reset-db`.
+New mobile mockups should default to a 390 × 844 CSS-pixel portrait canvas.
 
----
+Where appropriate, layouts should respect safe areas:
 
-## Features
-
-- **Event Management** — Create, edit, soft-delete, and restore garage sale events
-- **Map View** — Google Maps integration with marker clustering
-- **Image Uploads** — Photo uploads per event
-- **Ratings & Comments** — Visitor ratings and comments on events
-- **Reports** — Flag inappropriate events
-- **Admin Panel** — Protected admin interface at `/admin.html`
-- **Rate Limiting** — Database-backed rate limiting on all write operations
-
----
-
-## API Endpoints
-
-### Events (`/api/events`)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/events` | Get all active events |
-| `POST` | `/api/events` | Create a new event |
-| `GET` | `/api/events/:id` | Get a single event |
-| `GET` | `/api/events/edit/:guid` | Get event for editing |
-| `PUT` | `/api/events/edit/:guid` | Update an event |
-| `DELETE` | `/api/events/edit/:guid` | Soft-delete an event |
-| `POST` | `/api/events/edit/:guid/undelete` | Restore a soft-deleted event |
-| `POST` | `/api/events/edit/:guid/photos` | Upload a photo |
-| `POST` | `/api/events/:id/flag-ended` | Flag event as ended early |
-| `POST` | `/api/events/:id/ratings` | Submit a rating |
-| `POST` | `/api/events/:id/comments` | Add a comment |
-
-### Other
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/config` | Returns Google Maps API key |
-| `GET` | `/api/sale_types` | List sale types |
-| `GET` | `/api/item_categories` | List item categories |
-| `GET` | `/api/reports` | List reports *(admin only)* |
-| `POST` | `/api/reports` | Submit a report |
-| `DELETE` | `/api/reports/:id` | Delete a report *(admin only)* |
-
----
-
-## Project Structure
-
-```
-gapi/
-├── php/                    ← Active PHP backend
-│   ├── api/                ← PHP API endpoints
-│   ├── .htaccess           ← Apache URL routing
-│   ├── docker-compose.yml  ← Docker stack definition
-│   ├── Dockerfile          ← PHP/Apache image
-│   ├── docker-entrypoint.sh
-│   ├── initializedb.sql    ← DB schema + seed data
-│   ├── build.sh            ← Build script → dist-php/
-│   └── README.md           ← PHP-specific docs
-├── public/                 ← Shared frontend (HTML, CSS, JS)
-├── routes/                 ← Node.js route handlers (retained)
-├── data/                   ← Reference/seed data
-├── migrations/             ← DB migration scripts
-├── index.js                ← Node.js/Express server (retained)
-├── db.js                   ← Node.js DB connection (retained)
-├── admin.js                ← Node.js admin middleware (retained)
-├── build.js                ← Node.js build script → dist/
-├── package.json
-└── .env.example
+```css
+padding-top: env(safe-area-inset-top);
+padding-bottom: env(safe-area-inset-bottom);
 ```
 
----
+Fixed navigation, bottom sheets, dialogs, floating buttons and map controls must not conflict with safe areas.
 
-## Node.js Version (Retained)
+> Design first for the iPhone 12 Pro, then prove that the design adapts correctly everywhere else.
 
-The original Node.js/Express backend is still present and functional. It is not the active deployment target but is kept for reference.
+## Device and Browser Testing
 
-To run the Node stack locally:
+Representative responsive targets include:
 
-```bash
-npm install
-npm run dev     # development (nodemon)
-npm start       # production
+- small phone: 320–375 CSS px
+- iPhone 12 Pro: ~390 CSS px
+- large iPhone: ~430 CSS px
+- standard Android: ~360–412 CSS px
+- large Android: ~430–480 CSS px
+- tablet: ~768+ CSS px
+- desktop: ~1280+ CSS px
+
+Browser engines:
+
+- WebKit
+- Chromium
+- Firefox
+
+WebKit testing is mandatory for iPhone/iPad/Safari behavior.
+
+CI should run the comprehensive functional suite on the primary configuration and a carefully selected cross-device/browser smoke suite on secondary configurations. Do not multiply every test by every screen, browser and theme unless the risk justifies it.
+
+Major UI changes should run visual regression across the defined device matrix. Important production releases should include physical-device smoke testing where practical, especially for:
+
+- PWA installation and standalone mode
+- location
+- push notifications
+- camera/photo upload
+- touch/map gestures
+- safe areas/notches
+- virtual keyboard
+- file/photo picker
+- back navigation
+- orientation
+
+## Mandatory Testing
+
+Every meaningful behavioral change must have an appropriate automated test.
+
+Required layers include:
+
+- unit tests for business logic
+- React component tests
+- PHP/API tests
+- integration tests
+- Playwright end-to-end tests
+- responsive/device tests
+- accessibility tests
+- visual regression where appropriate
+- load/performance tests
+
+Existing code is not exempt. Before replacing legacy UI behavior, capture important current behavior with tests where practical, then require the React implementation to satisfy the equivalent behavior.
+
+Legacy Node code itself does not need new coverage unless code or behavior from it is reused.
+
+### API Testing
+
+API tests should cover success and failure paths including validation, authentication/authorization where applicable, database errors, not-found cases, duplicates, rate limiting, CRUD, photos, sale types, categories, comments, ratings and reporting.
+
+### Integration Testing
+
+Integration coverage should include important boundaries such as:
+
+- React → PHP
+- PHP → MySQL
+- create listing → database → search/map
+- comments
+- ratings
+- reporting
+
+## Load and Performance Testing
+
+Load testing is a release quality-gate requirement. Important targets include listing/search/map/geographic endpoints, filters, details, comments, ratings, reports and listing creation.
+
+Measure and document:
+
+- response-time degradation
+- error rates
+- throughput
+- database bottlenecks
+- PHP resource behavior
+- query count where useful
+- payload size
+- memory/resource pressure
+- failure behavior under load
+
+Load tests must use an explicitly safe target and must never accidentally run against production.
+
+## Quality Gate
+
+Deployment requires all mandatory quality gates to pass.
+
+Conceptually:
+
+```text
+Static checks
+   ↓
+Unit tests
+   ↓
+Component/UI tests
+   ↓
+API tests
+   ↓
+Integration tests
+   ↓
+Primary iPhone 12 Pro Playwright suite
+   ↓
+Cross-device/browser suite
+   ↓
+Accessibility / required visual regression
+   ↓
+Load/performance tests
+   ↓
+Production build
+   ↓
+Package verification
+   ↓
+Deploy
 ```
 
-To build a Node distributable:
+There is no normal "tests failed but deploy anyway" path.
 
-```bash
-npm run build   # → dist/
+## Developer Automation
+
+All common development, testing, build, quality-gate and deployment-preparation operations must be available through simple repository scripts.
+
+Windows development is first-class. Convenient `.bat` entry points should be supplied where appropriate, with portable underlying implementations where CI requires them.
+
+Expected developer-facing commands include:
+
+```text
+setup
+build
+test
+test-unit
+test-components
+test-api
+test-integration
+test-e2e
+test-iphone
+test-devices
+test-visual
+test-accessibility
+test-load
+quality-gate
+package
+verify-deploy
 ```
 
-The Node server runs on `http://localhost:61571` by default.
+A developer should not need to remember long npm, PHP, Playwright or load-test command lines.
 
----
+The authoritative full local gate should be available through a command such as:
 
-## PHP Version Requirement
+```text
+quality-gate
+```
 
-PHP **7.4+** required; PHP 8.x recommended.
+It must return a non-zero exit code if any mandatory gate fails.
+
+## GitHub Actions
+
+> GitHub Actions orchestrates. Repository scripts do the work.
+
+The existing automated staging deployment should be preserved while being simplified.
+
+GitHub Actions should remain responsible for infrastructure-specific concerns such as:
+
+- checkout
+- runtime setup
+- dependency caching
+- secrets
+- test artifact retention
+- SFTP authentication
+- trigger rules
+- environment protection
+
+Application-specific build/test/package logic should live in repository scripts so it can be reproduced locally.
+
+A target workflow is conceptually:
+
+```text
+Push to staging
+      ↓
+Checkout / runtime setup
+      ↓
+Repository setup
+      ↓
+quality-gate
+      ↓
+package
+      ↓
+verify-deploy
+      ↓
+SFTP deploy artifact
+      ↓
+A Small Orange staging
+```
+
+The existing secure SFTP approach and protection of server-owned uploads should remain unless there is a compelling reason to change them.
+
+## CI Debuggability
+
+When useful, failed CI runs should retain artifacts such as:
+
+- Playwright traces
+- failure screenshots
+- failure videos
+- test reports
+- coverage reports
+- load-test reports
+- build logs
+- deployment artifact manifest
+
+## Definition of Done
+
+A change is not complete merely because it works on one machine.
+
+As applicable, Definition of Done includes:
+
+- implementation complete
+- code reviewed
+- relevant automated tests added/updated
+- primary iPhone 12 Pro behavior verified
+- required secondary-device/browser coverage passes
+- accessibility requirements satisfied
+- regression coverage passes
+- documentation updated
+- performance impact acceptable
+- quality gate passes
+- production build/package succeeds
+
+## Development Principle
+
+> Anything CI can build or test, a developer should be able to build or test with a simple repository command.
+
+The README is the authoritative high-level architecture and engineering-rules reference. The changing sequence of work is maintained in `docs/IMPLEMENTATION_PLAN.md`.
