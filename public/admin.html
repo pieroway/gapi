@@ -319,7 +319,7 @@
                 if (res.ok) {
                     saveToken(password, rememberMeCheckbox.checked);
                     hideLogin();
-                    fetchInitialData();
+                    document.dispatchEvent(new Event('admin-authenticated'));
                 } else {
                     loginError.style.display = 'block';
                     loginPassword.classList.add('error');
@@ -412,6 +412,10 @@
                 filterAndRenderReports();
             });
 
+            function escapeHtml(value) {
+                return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+            }
+
             function updateDashboardStats() {
                 document.getElementById('stat-total-events').textContent = totalActiveEvents;
                 document.getElementById('stat-open-reports').textContent = allReports.length;
@@ -419,7 +423,7 @@
                 const reasonCounts = allReports.reduce((acc, report) => {
                     acc[report.reason] = (acc[report.reason] || 0) + 1;
                     return acc;
-                }, {});
+                }, Object.create(null));
 
                 const reasonChartContainer = document.getElementById('stat-reason-chart');
                 reasonChartContainer.innerHTML = '';
@@ -438,7 +442,7 @@
                         const row = document.createElement('div');
                         row.className = 'chart-row';
                         row.innerHTML = `
-                            <div class="chart-label" title="${reason.replace(/_/g, ' ')}">${reason.replace(/_/g, ' ')}</div>
+                            <div class="chart-label" title="${escapeHtml(reason.replace(/_/g, ' '))}">${escapeHtml(reason.replace(/_/g, ' '))}</div>
                             <div class="chart-bar-wrapper">
                                 <div class="chart-bar" style="width: ${barPercentage}%;">
                                     <span>${count}</span>
@@ -506,20 +510,20 @@
                     card.innerHTML = `
                         <div>
                             <h2>
-                                <span>${report.event.title}</span>
-                                <a href="/client.html?event=${report.event.id}" target="_blank" class="view-on-map-link" title="View on Map">
+                                <span>${escapeHtml(report.event.title)}</span>
+                                <a href="/client.html?event=${encodeURIComponent(report.event.id)}" target="_blank" class="view-on-map-link" title="View on Map">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                                 </a>
                             </h2>
-                            <p><strong>Event ID:</strong> ${report.event.id}</p>
+                            <p><strong>Event ID:</strong> ${escapeHtml(report.event.id)}</p>
                         </div>
                         <div class="event-details">
-                            <p><strong>Address:</strong> ${report.event.address}</p>
-                            <p><strong>Description:</strong> ${report.event.description}</p>
+                            <p><strong>Address:</strong> ${escapeHtml(report.event.address)}</p>
+                            <p><strong>Description:</strong> ${escapeHtml(report.event.description)}</p>
                         </div>
                         <div class="report-details">
-                            <p><strong>Report Reason:</strong> ${report.reason}</p>
-                            <p><strong>Details:</strong> ${report.details || 'N/A'}</p>
+                            <p><strong>Report Reason:</strong> ${escapeHtml(report.reason)}</p>
+                            <p><strong>Details:</strong> ${escapeHtml(report.details || 'N/A')}</p>
                             <p><strong>Reported At:</strong> ${new Date(report.created_at).toLocaleString()}</p>
                         </div>
                         <div class="actions">
@@ -687,7 +691,7 @@
                             wrapper.style.cssText = 'position:relative;display:inline-block;';
                             wrapper.dataset.photo = photoPath;
                             wrapper.innerHTML = `
-                                <img src="/${photoPath}" alt="Event photo" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
+                                <img src="/${escapeHtml(photoPath)}" alt="Event photo" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
                                 <button type="button" title="Remove photo" style="position:absolute;top:-6px;right:-6px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;padding:0;">✕</button>
                             `;
                             wrapper.querySelector('button').addEventListener('click', () => {
@@ -766,6 +770,8 @@
                     alert('Could not update the event.');
                 }
             });
+
+            document.addEventListener('admin-authenticated', fetchInitialData);
 
             // --- Boot sequence ---
             // Check if we already have a stored token; if so, skip the login overlay.

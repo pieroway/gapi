@@ -8,7 +8,7 @@
 FROM php:8.2-apache
 
 # Enable Apache mod_rewrite (required for .htaccess routing)
-RUN a2enmod rewrite
+RUN a2enmod rewrite headers
 
 # Install the PDO MySQL extension (required for database access)
 RUN docker-php-ext-install pdo pdo_mysql

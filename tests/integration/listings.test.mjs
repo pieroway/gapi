@@ -20,13 +20,13 @@ test('HTTP listing lifecycle persists in MySQL and drives public visibility',asy
 });
 test('duplicate categories roll back creation without partial database rows',async()=>{
   const before=sql('SELECT COUNT(*) FROM gapi_events; SELECT COUNT(*) FROM gapi_event_item_categories;');
-  // Current PHP maps duplicate category constraints to 500; validation improvement is tracked separately.
-  await request('/api/events',500,create({...payload,item_categories:[1,1]}));
+  // Duplicate categories are rejected before mutation.
+  await request('/api/events',400,create({...payload,item_categories:[1,1]}));
   assert.equal(sql('SELECT COUNT(*) FROM gapi_events; SELECT COUNT(*) FROM gapi_event_item_categories;'),before);
 });
 test('failed update rolls back fields and category replacement',async()=>{
   const created=await request('/api/events',201,create());
-  await request(`/api/events/edit/${created.edit_guid}`,500,json('PUT',{...payload,title:'Must roll back',item_categories:[2,2],existingPhotos:[]}));
+  await request(`/api/events/edit/${created.edit_guid}`,400,json('PUT',{...payload,title:'Must roll back',item_categories:[2,2],existingPhotos:[]}));
   const detail=await request(`/api/events/${created.public_id}`,200);
   assert.equal(detail.title,payload.title);
   assert.deepEqual(detail.item_category_details.map(c=>Number(c.id)).sort(),[1,2]);

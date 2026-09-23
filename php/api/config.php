@@ -41,22 +41,33 @@ function jsonResponse($data, int $status = 200): void {
 }
 
 function getJsonBody(): array {
-    $raw = file_get_contents('php://input');
-    if (empty($raw)) return [];
+    if (stripos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== 0) jsonResponse(['message'=>'JSON content type required.'],415);
+    $raw = file_get_contents('php://input', false, null, 0, 65537);
+    if (strlen($raw)>65536) jsonResponse(['message'=>'Request body too large.'],413);
     $decoded = json_decode($raw, true);
-    return is_array($decoded) ? $decoded : [];
+    if (!is_array($decoded) || !str_starts_with(ltrim($raw), '{') || json_last_error() !== JSON_ERROR_NONE) jsonResponse(['message'=>'Invalid JSON object.'],400);
+    return $decoded;
 }
 
 function checkRateLimit(string $action, int $maxRequests, int $windowSecs): void {
     $db = getDb();
     $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $windowStart = date('Y-m-d H:i:s', time() - $windowSecs);
-    $db->prepare('DELETE FROM gapi_rate_limits WHERE created_at < ?')->execute([$windowStart]);
-    $stmt = $db->prepare('SELECT COUNT(*) as cnt FROM gapi_rate_limits WHERE ip_address = ? AND action = ? AND created_at >= ?');
-    $stmt->execute([$ip, $action, $windowStart]);
-    $row = $stmt->fetch();
-    if ((int)$row['cnt'] >= $maxRequests) {
-        jsonResponse(['message' => 'Too many requests from this IP, please try again later.'], 429);
+    $lock = hash('sha256', DB_NAME . ':' . $action . ':' . $ip);
+    $stmt = $db->prepare('SELECT GET_LOCK(?, 5)');$stmt->execute([$lock]);
+    if ((int)$stmt->fetchColumn() !== 1) jsonResponse(['message'=>'Request limiter unavailable.'],503);
+    $limited = false;
+    try {
+        // Cleanup is scoped to this bucket; a short write window cannot erase reports.
+        $db->prepare('DELETE FROM gapi_rate_limits WHERE ip_address=? AND action=? AND created_at < DATE_SUB(NOW(), INTERVAL ? SECOND)')->execute([$ip,$action,$windowSecs]);
+        $stmt=$db->prepare('SELECT COUNT(*) FROM gapi_rate_limits WHERE ip_address=? AND action=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? SECOND)');
+        $stmt->execute([$ip,$action,$windowSecs]);
+        $limited=(int)$stmt->fetchColumn()>=$maxRequests;
+        if (!$limited) $db->prepare('INSERT INTO gapi_rate_limits (ip_address,action) VALUES (?,?)')->execute([$ip,$action]);
+    } finally {
+        $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lock]);
     }
-    $db->prepare('INSERT INTO gapi_rate_limits (ip_address, action) VALUES (?, ?)')->execute([$ip, $action]);
+    if ($limited) {
+        header('Retry-After: ' . $windowSecs);
+        jsonResponse(['message'=>'Too many requests from this IP, please try again later.'],429);
+    }
 }

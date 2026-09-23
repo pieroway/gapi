@@ -33,6 +33,8 @@ services:
       ADMIN_TOKEN: ""
   db:
     image: mysql:8.0
+    # Disposable database: no replication; permit rollback fault-injection triggers.
+    command: ["--skip-log-bin"]
     environment:
       MYSQL_ROOT_PASSWORD: local_test_root_only
       MYSQL_DATABASE: gapi_test

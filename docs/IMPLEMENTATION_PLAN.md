@@ -44,6 +44,10 @@ Source audit: [BASELINE_AUDIT.md](BASELINE_AUDIT.md) (2026-09-21). Checked items
 - [x] Capture important behavior before replacing it with React.
 - [ ] Confirm existing staging application still passes the baseline suite.
 
+Staging verification is blocked by a self-signed HTTPS certificate. See
+[STAGING_VERIFICATION.md](STAGING_VERIFICATION.md) for evidence and the read-only
+`test-staging` preflight command.
+
 Initial API/integration coverage is limited to lookups and listing CRUD, public visibility, persistence and transaction rollback. See [tests/README.md](../tests/README.md). Report authorization has regression coverage. The [browser baseline](BROWSER_BASELINE.md) captures initial migration journeys; uploads, comments/ratings UI, broader validation/rate limits, live Maps and staging still need coverage.
 
 ### 0.3 Developer-Friendly Automation
@@ -416,3 +420,7 @@ Do not proceed to the next task unless requested.
 - See [BROWSER_BASELINE.md](BROWSER_BASELINE.md) for scope, artifacts, dependency
   audit findings and remaining release work. Live Maps, PWA/device, CI and staging
   verification remain pending; no deployment was performed.
+
+Local security hardening: [SECURITY_HARDENING.md](SECURITY_HARDENING.md)
+records validation, upload, rate-limit, browser-cache and admin-rendering changes,
+regression coverage and remaining release checks. Staging remains blocked.

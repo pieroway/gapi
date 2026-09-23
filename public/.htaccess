@@ -7,7 +7,18 @@
 # =================================================================
 
 Options -Indexes
+
+# Server configuration must never be downloadable, even when it exists on the host.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "no-referrer"
+</IfModule>
 RewriteEngine On
+# Uploaded content must not execute as server-side code.
+RewriteRule ^uploads/.*\.(php[0-9]?|phtml|phar|cgi|pl|shtml)(\.|$) - [F,END,NC]
 
 # Forward bearer authorization to PHP on CGI/FastCGI hosting.
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -32,6 +43,9 @@ RewriteRule ^api/item_categories(/.*)?$ api/item_categories.php [QSA,L]
 
 # Route /api/reports* to api/reports.php
 RewriteRule ^api/reports(/.*)?$ api/reports.php [QSA,L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^uploads/ - [R=404,END]
 
 # --- SPA Fallback ---
 # For any request that is NOT a real file or directory,

@@ -1,112 +1,34 @@
-const CACHE_NAME = 'events-map-cache-v6';
-const hasCacheStorage = typeof caches !== 'undefined';
-const urlsToCache = [
-  // '/', // Cache the root to allow offline start
-  // '/client.html',
-  // '/css/shared.css',
-  // '/css/client.css',
-  // '/client.js',
-  '/markercluster.js',
-  '/manifest.json'
-];
-
+const CACHE_NAME = 'events-map-cache-v7';
+const urlsToCache = ['/markercluster.js', '/manifest.json'];
 self.addEventListener('install', event => {
-  if (!hasCacheStorage) return;
-
-  // Perform install steps
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
-  // We don't call skipWaiting() here because we want to give the user
-  // the choice to update when they are ready.
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
 });
-
-// Listen for a message from the client to skip waiting.
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
-
 self.addEventListener('activate', event => {
-  if (!hasCacheStorage) return;
-
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            // If this cache name is not in our whitelist, delete it.
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim()) // Take control of all open clients immediately.
-  );
+  event.waitUntil(caches.keys().then(names => Promise.all(names
+    .filter(name => name.startsWith('events-map-cache-') && name !== CACHE_NAME)
+    .map(name => caches.delete(name)))).then(() => self.clients.claim()));
 });
-
 self.addEventListener('fetch', event => {
-  if (!hasCacheStorage) return;
-
-    const { request } = event;
-    const url = new URL(request.url);
-
-    // Report responses are authorization-sensitive: never read or write their cache.
-    if (/^\/api\/reports(?:\/|\.php|$)/.test(url.pathname)) {
-        event.respondWith(fetch(request, { cache: 'no-store' }));
-        return;
+  const {request} = event;
+  const url = new URL(request.url);
+  // Only explicitly public assets may enter Cache Storage. API capabilities,
+  // admin pages, authorization headers and query strings always use the network.
+  const cacheable = request.method === 'GET' && url.origin === self.location.origin
+    && !url.search && !request.headers?.has('Authorization') && urlsToCache.includes(url.pathname);
+  if (!cacheable) {
+    event.respondWith(fetch(request, {cache: 'no-store'}));
+    return;
+  }
+  event.respondWith(caches.open(CACHE_NAME).then(async cache => {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    const response = await fetch(request);
+    if (response.status === 200 && !/no-store|private/i.test(response.headers.get('Cache-Control') || '')) {
+      await cache.put(request, response.clone());
     }
-
-    // For API calls, use a "stale-while-revalidate" strategy.
-    // This serves a cached response immediately for speed, then fetches
-    // a fresh version in the background to update the cache for next time.
-    if (url.pathname.startsWith('/api/')) {
-        // The Cache API only supports GET requests. For POST, PUT, etc.,
-        // we must bypass the cache and fetch directly from the network.
-        if (request.method !== 'GET') {
-            // Simply fetch the request and return the network response,
-            // without trying to cache it.
-            event.respondWith(fetch(request));
-            return;
-        }
-        event.respondWith(
-            caches.open(CACHE_NAME).then(cache => {
-                return cache.match(request).then(cachedResponse => {
-                    const fetchPromise = fetch(request).then(networkResponse => {
-                        // If the fetch is successful, update the cache.
-                        cache.put(request, networkResponse.clone());
-                        return networkResponse;
-                    });
-
-                    // Return the cached response immediately if available,
-                    // otherwise wait for the network response.
-                    return cachedResponse || fetchPromise;
-                });
-            })
-        );
-    } else {
-        // For static assets (CSS, JS, etc.), use a "cache-first" strategy.
-        // If it's in the cache, serve it. If not, go to the network.
-        event.respondWith(
-            caches.match(request).then(response => {
-                return response || fetch(request).then(networkResponse => {
-                    // Optionally, cache newly fetched static assets as well.
-                    return caches.open(CACHE_NAME).then(cache => {
-                        // IMPORTANT: Only cache GET requests. POST/PUT/etc. are not cacheable.
-                        if (request.method === 'GET') {
-                            // Be careful not to cache everything, only known assets.
-                            cache.put(request, networkResponse.clone());
-                        }
-                        return networkResponse;
-                    });
-                });
-            })
-        );
-    }
+    return response;
+  }));
 });

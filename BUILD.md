@@ -20,6 +20,7 @@ Run from the repository root, or invoke a .bat wrapper from any directory:
 | scripts\test.bat | npm test | Tooling and service-worker security regression tests |
 | scripts\test-api.bat | npm run test-api | Isolated HTTP lookup/listing CRUD baseline |
 | scripts\setup-browsers.bat | npm run setup-browsers | Install pinned Playwright browser binaries |
+| scripts\test-staging.bat | npm run test-staging | Read-only HTTPS/API preflight of the fixed staging site |
 | scripts\test-e2e.bat | npm run test-e2e | Full initial browser baseline and secondary smoke |
 | scripts\test-iphone.bat | npm run test-iphone | Primary iPhone 12 Pro WebKit baseline |
 | scripts\test-devices.bat | npm run test-devices | Android/tablet and desktop handoff smoke |

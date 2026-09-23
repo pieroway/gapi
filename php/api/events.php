@@ -23,6 +23,7 @@ $path = trim($path, '/');
 
 // Split remaining path into segments
 $segments = $path !== '' ? explode('/', $path) : [];
+if ($segments) requireUuid($segments[0] === 'edit' ? ($segments[1] ?? null) : $segments[0]);
 
 // ---------------------------------------------------------------
 // Route dispatcher
@@ -245,11 +246,13 @@ function handleCreateEvent(): void {
     if (empty($eventDataRaw)) {
         jsonResponse(['message' => 'Missing eventData field.'], 400);
     }
+    if (!is_string($eventDataRaw) || strlen($eventDataRaw)>65536) jsonResponse(['message'=>'Invalid eventData.'],400);
     $eventData = json_decode($eventDataRaw, true);
     if (!is_array($eventData)) {
         jsonResponse(['message' => 'Invalid eventData JSON.'], 400);
     }
 
+    $eventData = validateEvent($eventData);
     $title           = $eventData['title'] ?? null;
     $description     = $eventData['description'] ?? null;
     $address         = $eventData['address'] ?? null;
@@ -260,27 +263,17 @@ function handleCreateEvent(): void {
     $sale_type_id    = $eventData['sale_type_id'] ?? null;
     $item_categories = $eventData['item_categories'] ?? null;
 
-    // Validation
-    $missingFields = [];
-    if (!$title)           $missingFields[] = 'title';
-    if (!$description)     $missingFields[] = 'description';
-    if (!$address)         $missingFields[] = 'address';
-    if ($latitude === null)  $missingFields[] = 'latitude';
-    if ($longitude === null) $missingFields[] = 'longitude';
-    if (!$start_datetime)  $missingFields[] = 'start_datetime';
-    if (!$end_datetime)    $missingFields[] = 'end_datetime';
-    if (!$sale_type_id)    $missingFields[] = 'sale_type_id';
-    if (empty($item_categories) || !is_array($item_categories)) $missingFields[] = 'item_categories';
-
-    if (!empty($missingFields)) {
-        jsonResponse(['message' => 'Missing or invalid required fields: ' . implode(', ', $missingFields) . '.', 'fields' => $missingFields], 400);
-    }
-
     // Convert ISO 8601 to MySQL DATETIME
     $mysqlStart = date('Y-m-d H:i:s', strtotime($start_datetime));
     $mysqlEnd   = date('Y-m-d H:i:s', strtotime($end_datetime));
 
     $db = getDb();
+    $files = empty($_FILES['photos']) ? [] : normalizeFilesArray($_FILES['photos']);
+    try {
+        if (count($files)>10) throw new InvalidArgumentException('At most 10 photos allowed.');
+        foreach ($files as $file) validateUploadedPhoto($file);
+    } catch (InvalidArgumentException $error) { jsonResponse(['message'=>'Invalid photo upload.'],400); }
+    $uploadedPhotoPaths = [];
     $db->beginTransaction();
 
     try {
@@ -307,14 +300,12 @@ function handleCreateEvent(): void {
             $photoStmt = $db->prepare('INSERT INTO gapi_event_photos (event_id, file_path) VALUES (?, ?)');
             foreach ($files as $file) {
                 $photoPath = saveUploadedPhoto($file);
-                if ($photoPath) {
-                    $photoStmt->execute([$newEventId, $photoPath]);
-                    $uploadedPhotoPaths[] = $photoPath;
-                }
+                $uploadedPhotoPaths[] = $photoPath;
+                $photoStmt->execute([$newEventId, $photoPath]);
             }
         }
 
-        $db->commit();
+
 
         // Fetch sale type and category details for the response
         $stStmt = $db->prepare('SELECT id, name FROM gapi_sale_types WHERE id = ?');
@@ -325,6 +316,7 @@ function handleCreateEvent(): void {
         $catDetailStmt = $db->prepare("SELECT id, name FROM gapi_item_categories WHERE id IN ($catIds)");
         $catDetailStmt->execute(array_map('intval', $item_categories));
         $categoryDetails = $catDetailStmt->fetchAll();
+        $db->commit();
 
         jsonResponse([
             'public_id'             => $publicId,
@@ -342,8 +334,9 @@ function handleCreateEvent(): void {
             'average_rating'        => 0,
         ], 201);
 
-    } catch (PDOException $e) {
-        $db->rollBack();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        foreach ($uploadedPhotoPaths as $photoPath) removeUploadedPhoto($photoPath);
         if (strpos($e->getMessage(), 'ER_NO_REFERENCED_ROW') !== false) {
             jsonResponse(['message' => 'Invalid data provided. One of the selected categories or the sale type does not exist.'], 400);
         }
@@ -386,15 +379,7 @@ function handleGetEventForEdit(string $guid): void {
 function handleUpdateEvent(string $guid): void {
     checkRateLimit('write', 20, 900);
 
-    // Support both multipart/form-data (with photos) and application/json
-    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-
-    if (strpos($contentType, 'multipart/form-data') !== false) {
-        $eventDataRaw = $_POST['eventData'] ?? '';
-        $eventData = json_decode($eventDataRaw, true) ?: [];
-    } else {
-        $eventData = getJsonBody();
-    }
+    $eventData = validateEvent(getJsonBody());
 
     $title           = $eventData['title'] ?? null;
     $description     = $eventData['description'] ?? null;
@@ -406,6 +391,7 @@ function handleUpdateEvent(string $guid): void {
     $sale_type_id    = $eventData['sale_type_id'] ?? null;
     $item_categories = $eventData['item_categories'] ?? [];
     $existingPhotos  = $eventData['existingPhotos'] ?? [];
+    $photosToDelete = [];
 
     if (!$title || !$description || !$address || $latitude === null || $longitude === null ||
         !$start_datetime || !$end_datetime || !$sale_type_id || empty($item_categories)) {
@@ -416,7 +402,7 @@ function handleUpdateEvent(string $guid): void {
     $db->beginTransaction();
 
     try {
-        $eventStmt = $db->prepare('SELECT id FROM gapi_events WHERE edit_guid = ? AND is_deleted = FALSE');
+        $eventStmt = $db->prepare('SELECT id FROM gapi_events WHERE edit_guid = ? AND is_deleted = FALSE FOR UPDATE');
         $eventStmt->execute([$guid]);
         $eventRow = $eventStmt->fetch();
 
@@ -445,33 +431,19 @@ function handleUpdateEvent(string $guid): void {
         $currentPhotoStmt->execute([$eventId]);
         $currentPhotos = array_column($currentPhotoStmt->fetchAll(), 'file_path');
 
+        if (array_diff($existingPhotos, $currentPhotos)) {
+            $db->rollBack();jsonResponse(['message'=>'Photo does not belong to this event.'],400);
+        }
         $photosToDelete = array_diff($currentPhotos, $existingPhotos);
         if (!empty($photosToDelete)) {
             $delPlaceholders = implode(',', array_fill(0, count($photosToDelete), '?'));
             $delParams = array_merge([$eventId], array_values($photosToDelete));
             $db->prepare("DELETE FROM gapi_event_photos WHERE event_id = ? AND file_path IN ($delPlaceholders)")->execute($delParams);
-            foreach ($photosToDelete as $photoPath) {
-                $fullPath = __DIR__ . '/../../public/' . $photoPath;
-                if (file_exists($fullPath)) {
-                    @unlink($fullPath);
-                }
-            }
-        }
 
-        // Photos: add new uploads
-        if (!empty($_FILES['photos'])) {
-            checkRateLimit('upload', 10, 3600);
-            $files = normalizeFilesArray($_FILES['photos']);
-            $photoStmt = $db->prepare('INSERT INTO gapi_event_photos (event_id, file_path) VALUES (?, ?)');
-            foreach ($files as $file) {
-                $photoPath = saveUploadedPhoto($file);
-                if ($photoPath) {
-                    $photoStmt->execute([$eventId, $photoPath]);
-                }
-            }
         }
 
         $db->commit();
+        foreach ($photosToDelete as $photoPath) removeUploadedPhoto($photoPath);
         jsonResponse(['message' => 'Event updated successfully.']);
 
     } catch (PDOException $e) {
@@ -522,29 +494,26 @@ function handleUndeleteEvent(string $guid): void {
  * Adds a single photo to an event.
  */
 function handleAddPhoto(string $guid): void {
-    checkRateLimit('write', 20, 900);
-    checkRateLimit('upload', 10, 3600);
-
-    if (empty($_FILES['photo'])) {
-        jsonResponse(['message' => 'Error: No file selected or invalid file type.'], 400);
+    checkRateLimit('write',20,900);
+    checkRateLimit('upload',10,3600);
+    $db=getDb();$path=null;
+    $db->beginTransaction();
+    try {
+        $stmt=$db->prepare('SELECT id FROM gapi_events WHERE edit_guid=? AND is_deleted=FALSE FOR UPDATE');
+        $stmt->execute([$guid]);$event=$stmt->fetch();
+        if (!$event) { $db->rollBack();jsonResponse(['message'=>'Event not found.'],404); }
+        $stmt=$db->prepare('SELECT COUNT(*) FROM gapi_event_photos WHERE event_id=?');$stmt->execute([$event['id']]);
+        if ((int)$stmt->fetchColumn()>=10) { $db->rollBack();jsonResponse(['message'=>'At most 10 photos allowed.'],400); }
+        if (!isset($_FILES['photo']) || is_array($_FILES['photo']['name'])) throw new InvalidArgumentException('Invalid photo.');
+        $path=saveUploadedPhoto($_FILES['photo']);
+        $db->prepare('INSERT INTO gapi_event_photos (event_id,file_path) VALUES (?,?)')->execute([$event['id'],$path]);
+        $db->commit();
+        jsonResponse(['message'=>'Photo added successfully.','filePath'=>$path],201);
+    } catch (Throwable $error) {
+        if ($db->inTransaction()) $db->rollBack();
+        if ($path) removeUploadedPhoto($path);
+        jsonResponse(['message'=>'Photo upload failed.'], $error instanceof InvalidArgumentException ? 400 : 500);
     }
-
-    $db = getDb();
-    $eventStmt = $db->prepare('SELECT id FROM gapi_events WHERE edit_guid = ?');
-    $eventStmt->execute([$guid]);
-    $eventRow = $eventStmt->fetch();
-
-    if (!$eventRow) {
-        jsonResponse(['message' => 'Event not found.'], 404);
-    }
-
-    $photoPath = saveUploadedPhoto($_FILES['photo']);
-    if (!$photoPath) {
-        jsonResponse(['message' => 'Error: jpeg|jpg|png|gif images only!'], 400);
-    }
-
-    $db->prepare('INSERT INTO gapi_event_photos (event_id, file_path) VALUES (?, ?)')->execute([$eventRow['id'], $photoPath]);
-    jsonResponse(['message' => 'Photo added successfully.', 'filePath' => $photoPath], 201);
 }
 
 /**
@@ -555,7 +524,7 @@ function handleFlagEnded(string $publicId): void {
     checkRateLimit('write', 20, 900);
     $db = getDb();
 
-    $stmt = $db->prepare('UPDATE gapi_events SET ended_early_flags = ended_early_flags + 1 WHERE public_id = ?');
+    $stmt = $db->prepare('UPDATE gapi_events SET ended_early_flags = ended_early_flags + 1, is_deleted = (ended_early_flags >= 3) WHERE public_id = ? AND is_deleted = FALSE');
     $stmt->execute([$publicId]);
 
     if ($stmt->rowCount() === 0) {
@@ -584,12 +553,12 @@ function handleAddRating(string $publicId): void {
     $body = getJsonBody();
     $rating = $body['rating'] ?? null;
 
-    if (!is_numeric($rating) || (int)$rating < 1 || (int)$rating > 5) {
+    if (!is_int($rating) || $rating < 1 || $rating > 5) {
         jsonResponse(['message' => 'Rating must be a number between 1 and 5.'], 400);
     }
 
     $db = getDb();
-    $eventStmt = $db->prepare('SELECT id FROM gapi_events WHERE public_id = ?');
+    $eventStmt = $db->prepare('SELECT id FROM gapi_events WHERE public_id = ? AND is_deleted = FALSE');
     $eventStmt->execute([$publicId]);
     $eventRow = $eventStmt->fetch();
 
@@ -611,12 +580,12 @@ function handleAddComment(string $publicId): void {
     $commentText = $body['comment_text'] ?? null;
     $userId      = $body['user_id'] ?? null;
 
-    if (empty($commentText) || !is_string($commentText) || trim($commentText) === '') {
+    if (!validText($commentText, 2000) || ($userId !== null && !validText($userId, 100, false))) {
         jsonResponse(['message' => 'Comment must be a non-empty string.'], 400);
     }
 
     $db = getDb();
-    $eventStmt = $db->prepare('SELECT id FROM gapi_events WHERE public_id = ?');
+    $eventStmt = $db->prepare('SELECT id FROM gapi_events WHERE public_id = ? AND is_deleted = FALSE');
     $eventStmt->execute([$publicId]);
     $eventRow = $eventStmt->fetch();
 
@@ -639,47 +608,33 @@ function handleAddComment(string $publicId): void {
  * Validates and saves an uploaded photo to public/uploads/.
  * Returns the relative path (e.g. "uploads/photos-12345.jpg") or null on failure.
  */
-function saveUploadedPhoto(array $file): ?string {
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        apiLog('Photo upload rejected by PHP.', new RuntimeException('Upload error code: ' . $file['error']));
-        return null;
+function validateUploadedPhoto(array $file): string {
+    if (($file['error'] ?? -1)!==UPLOAD_ERR_OK || !is_string($file['tmp_name'] ?? null) || !is_uploaded_file($file['tmp_name'])) throw new InvalidArgumentException('Invalid upload.');
+    if ($file['size']<1 || $file['size']>10*1024*1024) throw new InvalidArgumentException('Invalid photo size.');
+    $mime=mime_content_type($file['tmp_name']);
+    $extensions=['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif'];
+    $image=@getimagesize($file['tmp_name']);
+    if (!isset($extensions[$mime]) || !$image || $image[0]*$image[1]>40000000) throw new InvalidArgumentException('Invalid image.');
+    if (!is_string($file['name'] ?? null) || !in_array(strtolower(pathinfo($file['name'],PATHINFO_EXTENSION)),['jpg','jpeg','png','gif'],true)) throw new InvalidArgumentException('Invalid extension.');
+    return $extensions[$mime];
+}
+function uploadDirectory(): string {
+    return rtrim($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__),DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'uploads';
+}
+function removeUploadedPhoto(string $path): void {
+    if (!preg_match('#^uploads/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif)$#D',$path)) return;
+    $file=uploadDirectory().DIRECTORY_SEPARATOR.basename($path);
+    if (!is_link($file) && is_file($file) && dirname(realpath($file))===realpath(uploadDirectory())) {
+        if (!unlink($file)) apiLog('Photo cleanup failed.');
     }
-
-    // Validate file type
-    $allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-    $allowedExts  = ['jpg', 'jpeg', 'png', 'gif'];
-    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $mime = mime_content_type($file['tmp_name']);
-
-    if (!in_array($mime, $allowedMimes) || !in_array($ext, $allowedExts)) {
-        apiLog('Photo upload rejected due to file type.', new RuntimeException('MIME: ' . $mime . ', extension: ' . $ext));
-        return null;
-    }
-
-    // 10 MB limit
-    if ($file['size'] > 10 * 1024 * 1024) {
-        apiLog('Photo upload rejected because it exceeds the size limit.', new RuntimeException('Bytes: ' . $file['size']));
-        return null;
-    }
-
-    $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
-    $uploadDir = rtrim($documentRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
-    if (!is_dir($uploadDir)) {
-        if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
-            apiLog('Photo upload directory could not be created.', new RuntimeException($uploadDir));
-            return null;
-        }
-    }
-
-    $filename = 'photos-' . round(microtime(true) * 1000) . '.' . $ext;
-    $dest = $uploadDir . $filename;
-
-    if (!move_uploaded_file($file['tmp_name'], $dest)) {
-        apiLog('Photo upload could not be moved to the upload directory.', new RuntimeException($dest));
-        return null;
-    }
-
-    return 'uploads/' . $filename;
+}
+function saveUploadedPhoto(array $file): string {
+    $ext=validateUploadedPhoto($file);
+    $dir=uploadDirectory();
+    if (!is_dir($dir) && !mkdir($dir,0755,true) && !is_dir($dir)) throw new RuntimeException('Upload storage unavailable.');
+    $filename='photos-'.bin2hex(random_bytes(16)).'.'.$ext;
+    if (!move_uploaded_file($file['tmp_name'],$dir.DIRECTORY_SEPARATOR.$filename)) throw new RuntimeException('Upload failed.');
+    return 'uploads/'.$filename;
 }
 
 /**

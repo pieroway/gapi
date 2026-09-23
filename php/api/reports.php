@@ -110,14 +110,15 @@ function handleCreateReport(): void {
     $reason        = $body['reason'] ?? null;
     $details       = $body['details'] ?? '';
 
-    if (!$eventPublicId || !$reason) {
+    requireUuid($eventPublicId);
+    if (!is_string($reason) || !in_array($reason, ['inaccurate','spam','inappropriate','cancelled','other'],true) || !validText($details,2000,false)) {
         jsonResponse(['message' => 'Event ID and reason are required.'], 400);
     }
 
     $db = getDb();
 
     // Verify the event exists
-    $eventStmt = $db->prepare('SELECT public_id FROM gapi_events WHERE public_id = ?');
+    $eventStmt = $db->prepare('SELECT public_id FROM gapi_events WHERE public_id = ? AND is_deleted = FALSE');
     $eventStmt->execute([$eventPublicId]);
     if (!$eventStmt->fetch()) {
         jsonResponse(['message' => 'Event not found.'], 404);
@@ -141,6 +142,7 @@ function handleCreateReport(): void {
  * Dismisses (deletes) a report by its UUID.
  */
 function handleDeleteReport(string $id): void {
+    requireUuid($id);
     checkRateLimit('write', 20, 900);
 
     $db = getDb();
