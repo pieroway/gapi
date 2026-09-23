@@ -704,6 +704,7 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js').then(registration => {
+                    if (!registration) return; // Registration may be blocked by browser policy.
                     console.log('ServiceWorker registration successful with scope: ', registration.scope);
 
                     // --- PWA Update Notification Logic ---

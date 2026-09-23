@@ -1,4 +1,4 @@
-const CACHE_NAME = 'events-map-cache-v4';
+const CACHE_NAME = 'events-map-cache-v6';
 const hasCacheStorage = typeof caches !== 'undefined';
 const urlsToCache = [
   // '/', // Cache the root to allow offline start
@@ -56,6 +56,12 @@ self.addEventListener('fetch', event => {
 
     const { request } = event;
     const url = new URL(request.url);
+
+    // Report responses are authorization-sensitive: never read or write their cache.
+    if (/^\/api\/reports(?:\/|\.php|$)/.test(url.pathname)) {
+        event.respondWith(fetch(request, { cache: 'no-store' }));
+        return;
+    }
 
     // For API calls, use a "stale-while-revalidate" strategy.
     // This serves a cached response immediately for speed, then fetches

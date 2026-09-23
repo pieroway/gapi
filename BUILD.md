@@ -1,304 +1,100 @@
-# Build Process Documentation
-
-## Overview
-
-This project has a complete build process that creates optimized distributable packages with minified frontend assets and organized backend files.
-
-There are **two separate build targets**:
-
-| Target | Script | Output | Stack |
-|---|---|---|---|
-| Node.js/Express | `npm run build` | `dist/` | Node.js + MySQL |
-| **PHP/Apache** | `npm run build:php` | `dist-php/` | PHP + MySQL + Apache |
-
----
-
-## PHP Build (Recommended for Shared Hosting)
-
-### Quick Start
-
-```bash
-# Normal build — creates dist-php/
-npm run build:php
-
-# Build AND reset the database (wipe all data, re-seed from initializedb.sql)
-npm run build:php:reset
-
-# Bash version (Linux/Mac/Git Bash) — same options
-bash php/build.sh
-bash php/build.sh --reset-db
-```
-
-### Database Reset Option
-
-The `--reset-db` flag is the key feature of the PHP build script. It:
-
-1. Builds the `dist-php/` distributable (same as a normal build)
-2. Stops all PHP Docker containers (`docker compose down`)
-3. **Deletes the `db_data` and `uploads_data` Docker volumes** — this wipes all data
-4. Rebuilds the Docker images and restarts the containers
-5. MySQL automatically re-runs `php/initializedb.sql` on first boot, restoring the seed data
-
-> ⚠️ **Warning:** `--reset-db` permanently deletes all database records and uploaded photos stored in Docker volumes. Use it only when you want a clean slate.
-
-```bash
-# Via npm
-npm run build:php:reset
-
-# Via Node.js directly
-node build-php.js --reset-db
-node build-php.js -r          # shorthand
-
-# Via bash (Linux/Mac/Git Bash)
-bash php/build.sh --reset-db
-bash php/build.sh -r
-
-# Manual Docker commands (equivalent)
-docker compose -f php/docker-compose.yml down -v
-docker compose -f php/docker-compose.yml up --build
-```
-
-### PHP Distributable Structure
-
-```
-dist-php/
-├── .gitignore                 # Excludes credentials & uploads
-├── .htaccess                  # Apache URL routing (mod_rewrite)
-├── initializedb.sql           # Database schema + seed data
-├── Dockerfile                 # PHP/Apache Docker image
-├── docker-compose.yml         # Docker Compose config
-├── docker-entrypoint.sh       # Injects DB env vars at container start
-├── README.md                  # PHP deployment guide
-├── LICENSE
-├── api/
-│   ├── config.php             # DB credentials + shared helpers
-│   ├── events.php             # All /api/events/* routes
-│   ├── sale_types.php         # GET /api/sale_types
-│   ├── item_categories.php    # GET /api/item_categories
-│   └── reports.php            # All /api/reports/* routes
-└── public/                    # Optimised frontend assets
-    ├── index.html             # Minified main page
-    ├── admin.html             # Minified admin page
-    ├── client.js              # Minified client code
-    ├── service-worker.js      # Minified service worker
-    ├── markercluster.js       # Minified marker clustering
-    ├── manifest.json          # PWA manifest
-    ├── css/                   # Minified stylesheets
-    │   └── themes/            # Minified theme files
-    ├── images/                # Images (logo, etc.)
-    └── uploads/               # Upload directory structure
-```
-
-### PHP Deployment
-
-#### Option A — Docker (local development)
-
-```bash
-# Start (from project root)
-docker compose -f php/docker-compose.yml up --build
-
-# Stop
-docker compose -f php/docker-compose.yml down
-
-# Reset database (wipe all data and re-seed)
-npm run build:php:reset
-# — or manually —
-docker compose -f php/docker-compose.yml down -v
-docker compose -f php/docker-compose.yml up --build
-```
-
-Visit **http://localhost:8080** once the containers are healthy.
-
-#### Option B — Shared Hosting (cPanel / Plesk)
-
-1. Upload the contents of `dist-php/` to your web root (`public_html/`)
-2. Edit `api/config.php` with your MySQL credentials
-3. Import `initializedb.sql` via phpMyAdmin
-4. Ensure `uploads/` is writable: `chmod 755 public_html/uploads`
-
----
-
-## Node.js Build
-
-### Quick Start
-
-To build the distributable files:
-
-```bash
-npm run build
-```
-
-The distributable files will be created in the `dist/` directory.
-
-## What Gets Built
-
-### Frontend Assets (Optimized)
-- **JavaScript Files**: Minified using Terser
-  - `public/client.js` → `dist/public/client.js` (56 KB minified)
-  - `public/service-worker.js` → `dist/public/service-worker.js` (985 bytes)
-  - `public/markercluster.js` → `dist/public/markercluster.js` (48 KB)
-
-- **CSS Files**: Minified using clean-css
-  - All CSS files in `public/css/`
-  - Theme files in `public/css/themes/`
-
-- **HTML Files**: Minified using html-minifier-terser
-  - `public/index.html`
-  - `public/admin.html`
-
-### Backend Files (Copied)
-- Server files: `index.js`, `db.js`, `polyfills.js`, `admin.js`
-- Configuration: `package.json`, `package-lock.json`
-- Database: `initializedb.sql`
-- Routes: `routes/*.js`
-- Data: `data/*.js`
-- Migrations: `migrations/*.sql`
-- Documentation: `README.md`, `LICENSE`
-
-### Assets (Copied)
-- Images from `public/images/`
-- PWA manifest: `public/manifest.json`
-- Upload directory structure
-
-## Build Scripts
-
-### `npm run build`
-Runs the complete build process using `build.js` (Node.js script, works on Windows/Mac/Linux)
-- Creates production-ready distributable without `.env` file (recommended for deployment)
-
-### `npm run build:local`
-Builds and copies your local `.env` file to `dist/` for local testing
-- ⚠️ **For local testing only** - Do not deploy this build with your credentials!
-
-### `npm run clean`
-Removes the `dist/` directory
-
-### `build.sh` (Optional)
-Bash script version for Unix-like systems (Linux/Mac)
-
-## Distribution Directory Structure
-
-```
-dist/
-├── .gitignore              # Git ignore for dist
-├── index.js                # Main server file
-├── db.js                   # Database connection
-├── package.json            # Dependencies (for production install)
-├── package-lock.json       # Lock file
-├── README.md              # Documentation
-├── LICENSE                # License file
-├── initializedb.sql       # Database initialization
-├── routes/                # API route handlers
-├── data/                  # Data files
-├── migrations/            # Database migrations
-└── public/                # Optimized frontend assets
-    ├── index.html         # Minified main page
-    ├── admin.html         # Minified admin page
-    ├── client.js          # Minified client code (56 KB)
-    ├── service-worker.js  # Minified service worker
-    ├── markercluster.js   # Minified marker clustering
-    ├── manifest.json      # PWA manifest
-    ├── css/               # Minified stylesheets
-    │   └── themes/        # Minified theme files
-    ├── images/            # Images (logo, etc.)
-    └── uploads/           # Upload directory structure
-```
-
-## Deployment
-
-1. **Copy the dist directory to your server**
-   ```bash
-   # Using scp
-   scp -r dist/ user@server:/path/to/deployment/
-   
-   # Or using rsync
-   rsync -avz dist/ user@server:/path/to/deployment/
-   ```
-
-2. **Install production dependencies**
-   ```bash
-   cd /path/to/deployment/
-   npm install --production
-   ```
-
-3. **Configure environment variables**
-   - Create a `.env` file in the dist directory
-   - Add your database credentials and configuration:
-     ```
-     DB_HOST=localhost
-     DB_USER=your_user
-     DB_PASSWORD=your_password
-     DB_NAME=garage_sale_db
-     PORT=61571
-     ```
-
-4. **Initialize database** (first time only)
-   ```bash
-   # Import the database schema
-   mysql -u your_user -p garage_sale_db < initializedb.sql
-   ```
-
-5. **Start the application**
-   ```bash
-   npm start
-   ```
-
-   For production, consider using a process manager like PM2:
-   ```bash
-   npm install -g pm2
-   pm2 start index.js --name garage-sale-api
-   pm2 save
-   pm2 startup
-   ```
-
-## Size Optimization Results
-
-The build process significantly reduces file sizes:
-- **Client.js**: ~2,654 lines → 56 KB minified
-- **Total dist size**: ~1 MB (including all files)
-- **CSS files**: Minified and optimized
-- **HTML files**: Whitespace removed, inline JS/CSS minified
-
-## Development vs Production
-
-- **Development**: Use `npm run dev` to run with nodemon (auto-restart on changes)
-- **Production**: Build with `npm run build`, deploy the `dist/` directory
-
-## Build Dependencies
-
-The following dev dependencies are used for building:
-- `terser`: JavaScript minification
-- `clean-css-cli`: CSS minification
-- `html-minifier-terser`: HTML minification
-- `rimraf`: Cross-platform directory removal
-- `copyfiles`: File copying utility
-
-These are only needed for building and are not required in production.
-
-## Troubleshooting
-
-### Build fails on Windows
-The `build.js` script uses Node.js and should work on Windows. If you're using Git Bash and `build.sh` fails, use `npm run build` instead.
-
-### Missing files in dist
-Check the console output during build to see which files were skipped. The build script gracefully handles missing optional files.
-
-### Size concerns
-The `dist/` directory is excluded from git (via `.gitignore`). Each build creates a fresh copy.
-
-## Continuous Integration
-
-You can integrate this build process into your CI/CD pipeline:
-
-```yaml
-# Example GitHub Actions workflow
-- name: Install dependencies
-  run: npm ci
-
-- name: Build
-  run: npm run build
-
-- name: Deploy
-  run: |
-    # Your deployment commands here
-```
+# Development, packaging and deployment
+
+Production is Apache/PHP/MySQL plus static frontend assets. Node is a developer
+and CI tool only. The legacy Node backend remains reference material.
+
+## Commands
+
+Install Node 20 or newer and Docker Desktop with Linux containers. Start Docker
+Desktop before setup/dev. The packaging/API/load scripts use Node built-ins. Browser tests additionally
+require `npm ci` and `scripts\setup-browsers.bat`. Existing application dependencies
+remain for legacy reference until the React foundation is introduced.
+
+Run from the repository root, or invoke a .bat wrapper from any directory:
+
+| Windows command | Portable equivalent | Purpose |
+| --- | --- | --- |
+| scripts\setup.bat | npm run setup | Check Docker, validate Compose, build PHP image |
+| scripts\dev.bat | npm run dev | Start local Apache/PHP/MySQL and wait for readiness |
+| scripts\stop.bat | npm run stop | Stop development services, retain data |
+| scripts\test.bat | npm test | Tooling and service-worker security regression tests |
+| scripts\test-api.bat | npm run test-api | Isolated HTTP lookup/listing CRUD baseline |
+| scripts\setup-browsers.bat | npm run setup-browsers | Install pinned Playwright browser binaries |
+| scripts\test-e2e.bat | npm run test-e2e | Full initial browser baseline and secondary smoke |
+| scripts\test-iphone.bat | npm run test-iphone | Primary iPhone 12 Pro WebKit baseline |
+| scripts\test-devices.bat | npm run test-devices | Android/tablet and desktop handoff smoke |
+| scripts\test-load.bat | npm run test-load | Isolated 500-listing performance baseline |
+| scripts\test-integration.bat | npm run test-integration | HTTP/MySQL persistence and rollback baseline |
+| scripts\test-docker.bat | npm run test-docker | Packaged Apache/PHP smoke check after setup/package |
+| scripts\build.bat | npm run build | Assemble and verify current PHP/static application |
+| scripts\package.bat | npm run package | Same build, producing deploy/ and deploy-manifest.json |
+| scripts\verify-deploy.bat | npm run verify-deploy | Verify exact file set and content against source |
+| scripts\help.bat | npm run help | List available commands |
+
+Direct portable invocation: node scripts/gapi.mjs <command>. Commands fail with a
+nonzero exit code on errors. Build/package does not start Docker or reset data.
+The current frontend is copied unchanged; Vite compilation will be added when
+React exists. There are no placeholder passing application test commands.
+
+## Docker Desktop
+
+The development project is gapi-dev, with project-scoped containers and persistent
+DB/uploads volumes. This is a new project name: previous php-project volumes are
+not imported or deleted. Existing data should be migrated separately if needed.
+
+Visit http://localhost:8080. Bindings are loopback-only; use GAPI_HTTP_PORT and
+GAPI_DB_PORT to override defaults 8080 and 3308 if another stack uses them.
+GOOGLE_MAPS_API_KEY may be set in your shell or php/.env (Compose's project env
+file). Do not commit it. Frontend entries and the API are mounted separately and read-only to avoid
+Docker Desktop nested-mount failures; uploads use a writable
+volume. PHP reads DB_* from the environment without rewriting source files.
+The image uses the official PHP entrypoint. Do not run the destructive seed SQL
+against any existing host database. No reset command is provided in this change.
+
+API and integration tests use their own disposable Compose projects and fixtures;
+they never reuse gapi-dev volumes. See [tests/README.md](tests/README.md).
+Production-like artifact smoke checks also use isolated resources.
+
+## Deployment artifact
+
+Only deploy/ is uploaded. deploy-manifest.json is a local/CI review artifact with
+SHA-256 hashes; it is not uploaded. public/.htaccess is the canonical routing file
+for Docker and packaging. Explicit public entry points, CSS/images and PHP API
+files are included. Uploads, .user.ini, .env, SQL, Docker files, Node modules and
+legacy backend files are excluded. Verification rejects extra, missing or changed
+files. Never put credentials directly in tracked source.
+
+The staging workflow retains its trigger, secrets, verified SSH host, SFTP upload
+and protection of remote uploads. It invokes tooling tests, package and verify
+commands rather than duplicating assembly in YAML. No remote files are deleted.
+
+Tooling checks and the initial API/integration baseline are NOT the mandatory
+full application quality gate. Broader API, WebKit/device/accessibility and full release load coverage remain outstanding in
+Phase 0; this change does not establish deployment readiness or verify staging.
+The full gate will be wired before substantial React migration. Do not deploy
+when any required gate fails.
+
+Obsolete build.js, php/build.sh and source-rewriting docker-entrypoint.sh have
+been retired. merge-to-master.bat is replaced by the PR process in BRANCHING.md.
+
+After setup and package, run `npm run test-docker` for an isolated
+Apache/PHP artifact smoke check (no database). It removes its temporary container
+on completion and does not touch development volumes. This is not an API suite.
+
+## Admin report authorization
+
+Set ADMIN_TOKEN to a unique, high-entropy secret in php/.env for Docker development,
+or in the hosting environment/document-root .user.ini. Use HTTPS on staging and
+production. Enter that token into the existing admin login form; the browser sends
+an Authorization: Bearer header. Do not put the token in URLs, source or artifacts.
+Missing server configuration returns 503; missing/incorrect bearer credentials
+return 401. Report listing and dismissal require authorization; submission remains
+public and rate-limited. Rotate the token in server configuration when necessary
+and restart/recreate the Docker app for environment changes to take effect.
+
+Report responses use private/no-store headers, and service-worker version 6 bypasses
+the report cache and removes old caches on activation. Existing installed clients
+must accept the service-worker update/reload before relying on the cache fix;
+validate that update on staging before release. Admin event editing/deletion API
+compatibility remains a separate task. This change does not claim a full security
+audit or production readiness.

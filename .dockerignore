@@ -1,0 +1,11 @@
+# Build context contains only the active application and image definition.
+**
+!php/
+!php/Dockerfile
+!php/api/
+!php/api/*.php
+!public/
+!public/**
+public/uploads/**
+**/.env*
+**/.user.ini

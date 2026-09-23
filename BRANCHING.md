@@ -85,7 +85,7 @@ The repository stores the frontend and PHP backend separately. Each deployment m
 
 ```text
 public/*       -> document root
-php/.htaccess  -> document root/.htaccess
+public/.htaccess -> document root/.htaccess
 php/api/*      -> document root/api/
 ```
 

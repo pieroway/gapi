@@ -8,12 +8,11 @@ services:
       context: ..          # Build context is the project root so we can
                            # access both php/ and public/ folders
       dockerfile: php/Dockerfile
-    container_name: gapi-php
     ports:
-      - "8080:80"          # Visit http://localhost:8080 in your browser
+      - "127.0.0.1:${GAPI_HTTP_PORT:-8080}:80"          # Visit http://localhost:8080 in your browser
     environment:
-      # These override the hardcoded values in api/config.php at runtime.
-      # The entrypoint script (below) writes them into config.php on startup.
+      # Read directly by api/config.php; source files are never rewritten.
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: gapi_user
@@ -26,11 +25,23 @@ services:
       - uploads_data:/var/www/html/uploads
       # Mount api/ folder for live editing during development
       # (comment this out for a production-like test)
-      - ./api:/var/www/html/api
-      # Mount public/ folder for live frontend editing — changes show up on
-      # browser refresh without needing to rebuild the Docker image.
-      # Comment this out for a production-like test.
-      - ../public:/var/www/html
+      - ./api:/var/www/html/api:ro
+      # Mount frontend entries individually: a read-only document-root mount
+      # prevents Docker Desktop from creating the sibling api/uploads mounts.
+      - ../public/index.html:/var/www/html/index.html:ro
+      - ../public/admin.html:/var/www/html/admin.html:ro
+      - ../public/client.js:/var/www/html/client.js:ro
+      - ../public/service-worker.js:/var/www/html/service-worker.js:ro
+      - ../public/markercluster.js:/var/www/html/markercluster.js:ro
+      - ../public/manifest.json:/var/www/html/manifest.json:ro
+      - ../public/.htaccess:/var/www/html/.htaccess:ro
+      - ../public/css:/var/www/html/css:ro
+      - ../public/images:/var/www/html/images:ro
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/api/config') === false ? 1 : 0);"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
     depends_on:
       db:
         condition: service_healthy
@@ -41,7 +52,6 @@ services:
   # ---------------------------------------------------------------
   db:
     image: mysql:8.0
-    container_name: gapi-php-db
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: gapi
@@ -53,7 +63,7 @@ services:
       # Auto-run the schema SQL on first startup
       - ./initializedb.sql:/docker-entrypoint-initdb.d/initializedb.sql:ro
     ports:
-      - "3308:3306"        # Exposed on 3308 to avoid conflict with other containers on 3307
+      - "127.0.0.1:${GAPI_DB_PORT:-3308}:3306"        # Exposed on 3308 to avoid conflict with other containers on 3307
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "gapi_user", "-pgapi_password"]
       interval: 10s

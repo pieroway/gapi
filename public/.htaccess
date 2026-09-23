@@ -9,6 +9,9 @@
 Options -Indexes
 RewriteEngine On
 
+# Forward bearer authorization to PHP on CGI/FastCGI hosting.
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # --- Security: Block direct access to PHP files in /api/ ---
 # Users should never hit api/*.php directly; all requests go through
 # the clean /api/... URLs rewritten below.

@@ -1,3 +1,23 @@
+// API text stays text when inserted into HTML templates.
+function escapeHtml(value) {
+  const node = document.createElement('span');
+  node.textContent = String(value ?? '');
+  return node.innerHTML;
+}
+
+// Let the DOM serialize the style attribute; never interpolate URLs into markup.
+function photoSlide(photoUrl) {
+  const slide = document.createElement('div');
+  slide.className = 'slider-slide';
+  try {
+    const url = new URL(photoUrl, window.location.href);
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      slide.style.backgroundImage = 'url(' + JSON.stringify(url.href) + ')';
+    }
+  } catch { /* Invalid photo URLs render an empty slide. */ }
+  return slide.outerHTML;
+}
+
 let map;
 const listPanel = document.getElementById("list-panel");
 const listPanelHeader = listPanel.querySelector(".panel-header");
@@ -908,9 +928,6 @@ submissionForm.addEventListener("submit", async (e) => {
     });
   }
 
-  // Log the payload for debugging purposes before sending.
-  console.log("Submitting event data:", payload);
-
   try {
     // When sending FormData, do not set the Content-Type header.
     const response = await fetch("/api/events", {
@@ -920,13 +937,11 @@ submissionForm.addEventListener("submit", async (e) => {
 
     if (!response.ok) {
       let errorMessage = "Failed to submit event.";
-      // Log the data that was sent, which is helpful for debugging.
-      console.error("Failed submission payload:", payload);
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         // If the server sent a specific JSON error, use it.
         const errorData = await response.json();
-        console.error("Server validation error details:", errorData);
+
         errorMessage = errorData.message || errorMessage;
       } else {
         // Otherwise, it's likely an HTML error page.
@@ -1447,6 +1462,7 @@ async function openDetailPanel(eventId) {
   detailTitle.textContent = "Loading...";
   detailContent.innerHTML = '<div class="spinner-large"></div>';
   detailPanel.classList.add("open");
+  detailPanel.setAttribute("aria-hidden", "false");
   if (!isDesktop()) {
     listPanel.classList.add("detail-open");
   }
@@ -1522,10 +1538,7 @@ async function openDetailPanel(eventId) {
   let imageHtml = "";
   if (event.photos && event.photos.length > 0) {
     const slidesHtml = event.photos
-      .map(
-        (photoUrl) =>
-          `<div class="slider-slide" style="background-image: url('${photoUrl}');"></div>`
-      )
+      .map(photoSlide)
       .join("");
 
     const dotsHtml =
@@ -1579,11 +1592,11 @@ async function openDetailPanel(eventId) {
   // If not comments, user will be prompted to add a comment.
 
   const saleTypePill = event.sale_type_details
-    ? `<span class="mini-pill sale-type-pill-mini">${event.sale_type_details.name}</span>`
+    ? `<span class="mini-pill sale-type-pill-mini">${escapeHtml(event.sale_type_details.name)}</span>`
     : "";
   const categoryPills = (event.item_category_details || [])
     .map((category) => {
-      return category ? `<span class="mini-pill">${category.name}</span>` : "";
+      return category ? `<span class="mini-pill">${escapeHtml(category.name)}</span>` : "";
     })
     .join("");
   const directionsButtonHtml = userLocationMarker
@@ -1605,9 +1618,7 @@ async function openDetailPanel(eventId) {
                             <div>
                                 <p><strong>Where:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
                                   event.address
-                                )}" target="_blank" rel="noopener noreferrer" class="address-link">${
-    event.address
-  }</a></p>
+                                )}" target="_blank" rel="noopener noreferrer" class="address-link">${escapeHtml(event.address)}</a></p>
                                 ${
                                   event.latitude && event.longitude
                                     ? `<p style="font-size: 0.8rem; color: #666; margin-top: 4px;">(${event.latitude.toFixed(
@@ -1618,7 +1629,7 @@ async function openDetailPanel(eventId) {
                             </div>
                             ${directionsButtonHtml}
                         </div>
-                        <p>${event.description}</p>
+                        <p>${escapeHtml(event.description)}</p>
                         <div class="mini-pills-container" style="margin-top: 15px;">${saleTypePill}${categoryPills}</div>
                         ${commentsHtml}
                     </div>
@@ -2206,11 +2217,7 @@ function updateDebugOverlay() {
   if (currentlySelectedEventForDebug) {
     selectedEventHtml = `
                         <strong>Selected Event Details:</strong>
-                        <pre style="white-space: pre-wrap; word-break: break-all; font-size: 11px; margin: 5px 0 0; background-color: rgba(0,0,0,0.2); padding: 5px; border-radius: 3px;">${JSON.stringify(
-                          currentlySelectedEventForDebug,
-                          null,
-                          2
-                        )}</pre>
+                        <pre style="white-space: pre-wrap; word-break: break-all; font-size: 11px; margin: 5px 0 0; background-color: rgba(0,0,0,0.2); padding: 5px; border-radius: 3px;">${escapeHtml(JSON.stringify(currentlySelectedEventForDebug, null, 2))}</pre>
                     `;
   }
 
@@ -2811,10 +2818,7 @@ function createEventCard(event) {
   let imageHtml = "";
   if (event.photos && event.photos.length > 0) {
     const slidesHtml = event.photos
-      .map(
-        (photoUrl) =>
-          `<div class="slider-slide" style="background-image: url('${photoUrl}');"></div>`
-      )
+      .map(photoSlide)
       .join("");
 
     const dotsHtml =
@@ -2839,11 +2843,11 @@ function createEventCard(event) {
   }
 
   const saleTypePill = event.sale_type_details
-    ? `<span class="mini-pill sale-type-pill-mini">${event.sale_type_details.name}</span>`
+    ? `<span class="mini-pill sale-type-pill-mini">${escapeHtml(event.sale_type_details.name)}</span>`
     : "";
   const categoryPills = (event.item_category_details || [])
     .map((category) => {
-      return category ? `<span class="mini-pill">${category.name}</span>` : "";
+      return category ? `<span class="mini-pill">${escapeHtml(category.name)}</span>` : "";
     })
     .join("");
 
@@ -2852,11 +2856,8 @@ function createEventCard(event) {
                     ${imageHtml}
                     <div class="card-body">
                         <div class="card-content">
-                            <h2 class="card-title">${event.title}</h2>
-                            <p class="card-description">${event.description.substring(
-                              0,
-                              100
-                            )}...</p>
+                            <h2 class="card-title">${escapeHtml(event.title)}</h2>
+                            <p class="card-description">${escapeHtml(event.description.substring(0, 100))}...</p>
                             <div class="mini-pills-container">${saleTypePill}${categoryPills}</div>
                         </div>
                         <div class="card-chevron">

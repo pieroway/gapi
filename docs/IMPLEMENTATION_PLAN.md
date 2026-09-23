@@ -21,28 +21,32 @@ feature/react-pwa-modernization
 - GitHub Actions should invoke repository scripts rather than duplicate application-specific commands in YAML.
 - Server-managed uploads must remain protected during deployment.
 
-# Phase 0 — Engineering Foundation
+## Phase 0 — Engineering Foundation
 
 The engineering foundation is established before substantial React migration work.
 
-## 0.1 Document and Baseline the Existing Application
+### 0.1 Document and Baseline the Existing Application
 
-- [ ] Document important existing frontend behavior.
-- [ ] Identify active PHP API endpoints.
-- [ ] Identify important API contracts and validation behavior.
-- [ ] Review legacy Node/Express code for useful behavior or edge cases.
-- [ ] Identify current deployment assumptions.
-- [ ] Establish a load/performance baseline.
+- [x] Document important existing frontend behavior.
+- [x] Identify active PHP API endpoints.
+- [x] Identify important API contracts and validation behavior.
+- [x] Review legacy Node/Express code for useful behavior or edge cases.
+- [x] Identify current deployment assumptions.
+- [x] Establish a load/performance baseline.
 
-## 0.2 Bring Current Code Under Test
+Source audit: [BASELINE_AUDIT.md](BASELINE_AUDIT.md) (2026-09-21). Checked items record source inspection, not runtime or staging verification. An isolated PHP/MySQL harness now supports the [initial performance baseline](PERFORMANCE_BASELINE.md); Docker startup no longer rewrites source configuration.
 
-- [ ] Add baseline PHP/API tests.
-- [ ] Add Playwright tests around critical current vanilla-JS UI behavior.
-- [ ] Add integration tests for important PHP/MySQL flows.
-- [ ] Capture important behavior before replacing it with React.
+### 0.2 Bring Current Code Under Test
+
+- [x] Add baseline PHP/API tests.
+- [x] Add Playwright tests around critical current vanilla-JS UI behavior.
+- [x] Add integration tests for important PHP/MySQL flows.
+- [x] Capture important behavior before replacing it with React.
 - [ ] Confirm existing staging application still passes the baseline suite.
 
-## 0.3 Developer-Friendly Automation
+Initial API/integration coverage is limited to lookups and listing CRUD, public visibility, persistence and transaction rollback. See [tests/README.md](../tests/README.md). Report authorization has regression coverage. The [browser baseline](BROWSER_BASELINE.md) captures initial migration journeys; uploads, comments/ratings UI, broader validation/rate limits, live Maps and staging still need coverage.
+
+### 0.3 Developer-Friendly Automation
 
 Create a repository script framework. Windows-friendly `.bat` wrappers are required where useful.
 
@@ -67,27 +71,29 @@ package
 verify-deploy
 ```
 
-- [ ] Create setup command.
-- [ ] Create build command.
+- [x] Create setup command.
+- [x] Create build command.
 - [ ] Create normal fast development test command.
 - [ ] Create unit-test command.
 - [ ] Create component-test command when React testing is introduced.
-- [ ] Create API-test command.
-- [ ] Create integration-test command.
-- [ ] Create E2E command.
-- [ ] Create primary iPhone 12 Pro test command.
-- [ ] Create cross-device/browser command.
+- [x] Create API-test command.
+- [x] Create integration-test command.
+- [x] Create E2E command.
+- [x] Create primary iPhone 12 Pro test command.
+- [x] Create cross-device/browser command.
 - [ ] Create visual-regression command.
 - [ ] Create accessibility-test command.
-- [ ] Create safe load-test command.
+- [x] Create safe load-test command.
 - [ ] Create authoritative `quality-gate` command.
-- [ ] Create deployment packaging command.
-- [ ] Create deployment verification command.
-- [ ] Provide script help/documentation.
+- [x] Create deployment packaging command.
+- [x] Create deployment verification command.
+- [x] Provide script help/documentation.
+
+Initial commands are documented in [BUILD.md](../BUILD.md). `test` currently covers repository tooling only; broader application suites and the full quality gate remain pending. Initial API/integration commands now cover lookup/listing behavior. Docker startup now reads environment configuration without rewriting source. Staging calls shared packaging scripts, but live staging verification remains pending.
 
 Scripts should be safe to rerun where practical and should provide useful failure messages.
 
-## 0.4 Simplify GitHub Actions
+### 0.4 Simplify GitHub Actions
 
 Principle:
 
@@ -122,7 +128,7 @@ verify-deploy
 SFTP deployment
 ```
 
-## 0.5 Prove the Foundation
+### 0.5 Prove the Foundation
 
 - [ ] Local quality gate passes.
 - [ ] CI quality gate passes.
@@ -132,7 +138,7 @@ SFTP deployment
 
 **Do not begin substantial React migration until this foundation is working.**
 
-# Phase 1 — React Foundation
+## Phase 1 — React Foundation
 
 - [ ] Create `frontend/`.
 - [ ] Configure React + TypeScript + Vite.
@@ -150,7 +156,7 @@ SFTP deployment
 
 Device validation begins here, not in a later hardening phase.
 
-# Phase 2 — Core UI Migration
+## Phase 2 — Core UI Migration
 
 Migrate functionality incrementally rather than replacing everything at once.
 
@@ -176,7 +182,7 @@ For each migrated behavior:
 5. Run required secondary-device smoke coverage.
 6. Remove old implementation only when replacement behavior is proven.
 
-# Phase 3 — User Features
+## Phase 3 — User Features
 
 - [ ] Favourites.
 - [ ] Add sale.
@@ -208,7 +214,7 @@ Submit
 Confirmation
 ```
 
-# Phase 4 — PWA
+## Phase 4 — PWA
 
 - [ ] Web app manifest.
 - [ ] Application icons.
@@ -223,11 +229,11 @@ Confirmation
 
 Physical iPhone 12 Pro testing is especially important here.
 
-# Phase 5 — Cross-Device and UX Hardening
+## Phase 5 — Cross-Device and UX Hardening
 
 Other devices have already been tested throughout earlier phases. This phase is for hardening, not first exposure.
 
-## Automated Matrix
+### Automated Matrix
 
 - [ ] Small iPhone / WebKit.
 - [ ] iPhone 12 Pro / WebKit — primary.
@@ -260,7 +266,7 @@ Desktop            ~1280+
 - [ ] Reduced-motion checks.
 - [ ] Keyboard/accessibility checks.
 
-## Physical-Device Smoke Testing
+### Physical-Device Smoke Testing
 
 For important releases, validate where practical:
 
@@ -287,7 +293,7 @@ Focus on:
 - back navigation
 - orientation
 
-# Phase 6 — Production Readiness
+## Phase 6 — Production Readiness
 
 - [ ] Review API/database performance.
 - [ ] Run required load/performance suite.
@@ -303,7 +309,7 @@ Focus on:
 - [ ] Verify deployment artifact.
 - [ ] Deploy according to the approved production process.
 
-# Testing Strategy
+## Testing Strategy
 
 The full functional suite should run on the primary configuration. Secondary configurations receive a smaller, risk-based cross-device suite covering critical journeys rather than blindly running every test across every permutation.
 
@@ -327,7 +333,7 @@ Critical cross-device journeys include:
 - themes
 - PWA behavior where automatable
 
-# Load Testing
+## Load Testing
 
 The `test-load` command must use a safe, explicit test target. It must not accidentally target production.
 
@@ -344,7 +350,7 @@ Important areas include:
 
 Measure response time, error rate, throughput, database bottlenecks, PHP resource behavior, payload size and failure behavior.
 
-# Definition of Done for an Implementation Task
+## Definition of Done for an Implementation Task
 
 A task is complete when, as applicable:
 
@@ -358,7 +364,7 @@ A task is complete when, as applicable:
 - [ ] Performance impact is acceptable.
 - [ ] Quality gate passes when the change reaches a deployment boundary.
 
-# Developer / Coding-Agent Workflow
+## Developer / Coding-Agent Workflow
 
 Use the repository documentation as the source of truth.
 
@@ -372,12 +378,41 @@ Run the relevant repository test commands before finishing.
 Do not proceed to the next task unless requested.
 ```
 
-# Guiding Principles
+## Guiding Principles
 
 > Reuse proven behavior and good logic; do not preserve obsolete architecture merely for compatibility with old code.
-
+>
 > Anything CI can build or test, a developer should be able to build or test with a simple repository command.
-
+>
 > GitHub Actions should orchestrate GAPI's automation, not contain GAPI's automation.
-
+>
 > Design first for the iPhone 12 Pro, then prove that the design adapts correctly everywhere else.
+
+## Script modernization verification (2026-09-21)
+
+- Packaging regression tests and Windows command wrappers passed.
+- Docker image build and isolated Apache/PHP artifact smoke passed (routing, environment configuration, upload permissions, PHP syntax).
+- Artifact verification passed for 24 deployed files; uploads and hosting configuration excluded.
+- Full PHP/MySQL journeys, device suites, load gate, CI execution and live staging deployment remain unverified.
+
+## Isolated baseline verification (2026-09-21)
+
+- Windows test-api command: four test groups passed against a fresh PHP/MySQL stack.
+- Windows test-integration command: three test groups passed, including failed-write rollback.
+- Existing tooling regression tests: two passed.
+- Containers/networks removed after successful runs and after an initial networking failure; no development data volumes used.
+- The networking issue was corrected by keeping MySQL private and providing PHP a separate loopback HTTP network.
+- No application PHP behavior changed. Duplicate categories still return 500; these tests establish atomic rollback, not the desired validation response.
+- Browser, load/performance, CI and live staging verification remain pending.
+
+## Initial browser baseline verification (2026-09-22)
+
+- Windows `test-e2e` command: 16 passed (eight iPhone WebKit journeys, six
+  Android/tablet Chromium smoke checks, two non-touch desktop handoff checks).
+- Tooling/security suite: eight passed. Package and exact-file verification passed.
+- Disposable PHP/MySQL containers and networks were removed after the run.
+- Fixed unsafe listing/photo rendering, stale detail accessibility state and
+  blocked service-worker registration handling; cache version 6 retires old assets.
+- See [BROWSER_BASELINE.md](BROWSER_BASELINE.md) for scope, artifacts, dependency
+  audit findings and remaining release work. Live Maps, PWA/device, CI and staging
+  verification remain pending; no deployment was performed.

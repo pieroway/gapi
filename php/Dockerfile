@@ -30,10 +30,6 @@ COPY php/api/ /var/www/html/api/
 # present when the folder is deployed directly to cPanel shared hosting.
 COPY public/ /var/www/html/
 
-# Copy and set up the entrypoint script
-COPY php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
 # Create the uploads directory and make it writable
 RUN mkdir -p /var/www/html/uploads && \
     chown -R www-data:www-data /var/www/html/uploads && \
@@ -44,5 +40,4 @@ RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 80
 
-# Use our entrypoint to inject DB env vars before Apache starts
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Use the official PHP image entrypoint; configuration reads the environment.

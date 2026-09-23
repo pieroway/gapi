@@ -1,0 +1,51 @@
+services:
+  app:
+    image: gapi-test-app
+    networks: [default, http]
+    build:
+      context: ..
+      dockerfile: php/Dockerfile
+    ports:
+      - "127.0.0.1::80"
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: gapi_test
+      DB_PASSWORD: local_test_only
+      DB_NAME: gapi_test
+      GOOGLE_MAPS_API_KEY: test_key_not_real
+      APP_DEBUG: "0"
+      ADMIN_TOKEN: local_test_admin_only
+    tmpfs:
+      - /var/www/html/uploads:uid=33,gid=33,mode=0755
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/api/config') === false ? 1 : 0);"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  app_no_admin:
+    extends:
+      service: app
+    environment:
+      ADMIN_TOKEN: ""
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: local_test_root_only
+      MYSQL_DATABASE: gapi_test
+      MYSQL_USER: gapi_test
+      MYSQL_PASSWORD: local_test_only
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysql", "--protocol=TCP", "-h", "127.0.0.1", "-ugapi_test", "-plocal_test_only", "gapi_test", "-e", "SELECT 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+networks:
+  http: {}
+  default:
+    internal: true

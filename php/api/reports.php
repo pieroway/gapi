@@ -6,13 +6,16 @@
  * Handles all /api/reports/* routes.
  * Replaces routes/reports.js from the Node.js version.
  *
- * IMPROVEMENT over Node.js version: Reports are now stored in the
- * MySQL database (gapi_reports table) instead of in-memory, so
- * they persist across server restarts.
+ * Reports are persisted in MySQL. Reads and dismissal require admin authorization.
  * =================================================================
  */
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/admin_auth.php';
+
+// Moderation data and authorization failures must never be cached.
+header('Cache-Control: private, no-store');
+header('Vary: Authorization');
 
 $requestMethod = $_SERVER['REQUEST_METHOD'];
 $requestUri    = $_SERVER['REQUEST_URI'];
@@ -28,6 +31,7 @@ $segments = $path !== '' ? explode('/', $path) : [];
 
 // GET /api/reports  — list all reports with event details
 if ($requestMethod === 'GET' && count($segments) === 0) {
+    requireAdmin();
     handleGetAllReports();
 }
 
@@ -38,6 +42,7 @@ elseif ($requestMethod === 'POST' && count($segments) === 0) {
 
 // DELETE /api/reports/:id  — dismiss (delete) a report
 elseif ($requestMethod === 'DELETE' && count($segments) === 1) {
+    requireAdmin();
     handleDeleteReport($segments[0]);
 }
 

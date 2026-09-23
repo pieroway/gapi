@@ -269,6 +269,17 @@ Major UI changes should run visual regression across the defined device matrix. 
 - back navigation
 - orientation
 
+## Security in Every Phase
+
+Security is a requirement in every coding task, beginning with design and continuing
+through implementation, testing and deployment.
+
+- Assess security implications before implementing a change.
+- Enforce authorization and validation server-side, and deny protected access when configuration is missing.
+- Protect credentials and user data in logs, responses, browser caches and deployment artifacts.
+- Add regression tests for security-sensitive behavior, including denied access and failure paths.
+- Known serious vulnerabilities block deployment; security review is not deferred to the final phase.
+
 ## Mandatory Testing
 
 Every meaningful behavioral change must have an appropriate automated test.
