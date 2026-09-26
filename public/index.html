@@ -242,7 +242,7 @@
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="search" id="search-input" placeholder="Search by title or description...">
+                    <input type="search" id="search-input" aria-label="Search events" placeholder="Search by title or description...">
                     <div id="clear-filters-wrapper" style="display: none;">
                         <button id="clear-all-filters-btn" class="clear-filters-btn">Clear All Filters</button>
                     </div>
@@ -254,7 +254,7 @@
                     <div id="category-pills-container" class="pills-container"></div>
                 </div>
                 <div id="events-container"></div>
-                <button id="scroll-to-top-btn">
+                <button id="scroll-to-top-btn" aria-label="Scroll to top">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="19" x2="12" y2="5"></line>
@@ -319,7 +319,7 @@
             role="dialog" 
             aria-modal="true" 
             aria-labelledby="detail-title"
-            aria-hidden="true">
+            aria-hidden="true" inert>
             <div class="panel-header">
                 <div class="panel-handle"></div>
                 <h1 id="detail-title" class="panel-title"></h1>
@@ -754,6 +754,7 @@
         }
     </script>
     <script src="/markercluster.js" defer></script>
+    <script src="/listing-filters.js" defer></script>
     <script src="/client.js" defer></script>
     <!-- Google Maps API is loaded dynamically by client.js after fetching the key from /api/config -->
 

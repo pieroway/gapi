@@ -1,11 +1,11 @@
-﻿import fs from 'node:fs';
+import fs from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {root} from './gapi.mjs';
 import {runLoadBaseline} from './load-baseline.mjs';
 const suite=process.argv[2];
-if(!['api','integration','load','e2e','iphone','devices'].includes(suite) || process.argv.length!==3) throw Error('Use api, integration, load, e2e, iphone or devices; external test targets are not supported.');
-const browserSuite=['e2e','iphone','devices'].includes(suite);
+if(!['api','integration','load','e2e','iphone','devices','visual','visual-update','accessibility'].includes(suite) || process.argv.length!==3) throw Error('Use api, integration, load, e2e, iphone, devices, visual, visual-update or accessibility; external test targets are not supported.');
+const browserSuite=['e2e','iphone','devices','visual','visual-update','accessibility'].includes(suite);
 const project=`gapi-test-${process.pid}-${Date.now()}`;
 const env={...process.env};
 for(const key of Object.keys(env)) if(key.startsWith('COMPOSE_') || key.startsWith('GAPI_TEST_')) delete env[key];
@@ -33,13 +33,15 @@ try {
   if(!/^127\.0\.0\.1:\d+$/.test(noAdminPort)) throw Error('Unexpected unconfigured-admin test binding');
   if(browserSuite) {
     compose(['exec','-T','db','mysql','-ugapi_test','-plocal_test_only','gapi_test'],{input:fs.readFileSync(path.join(root,'tests/e2e/fixtures.sql'),'utf8')});
+    const config=suite.startsWith('visual')?'visual':suite==='accessibility'?'accessibility':'playwright';
     const selection=suite==='iphone'?['--project=iphone']:suite==='devices'?['--project=android','--project=tablet','--project=desktop-chromium','--project=desktop-firefox']:[];
-    const result=spawnSync(process.execPath,['node_modules/@playwright/test/cli.js','test','--config=tests/e2e/playwright.config.mjs',...selection],{cwd:root,stdio:'inherit',env:{...env,GAPI_TEST_URL:'http://'+port,GAPI_TEST_PROJECT:project}});
+    const result=spawnSync(process.execPath,['node_modules/@playwright/test/cli.js','test','--config=tests/e2e/'+config+'.config.mjs',...selection,...(suite==='visual-update'?['--update-snapshots=all']:[])],{cwd:root,stdio:'inherit',env:{...env,GAPI_TEST_URL:'http://'+port,GAPI_TEST_PROJECT:project}});
     if(result.error) throw result.error;
     if(result.status!==0) throw Error('Browser tests failed ('+result.status+')');
   }
   if(suite==='load') await runLoadBaseline({port,project,compose});
   const testFiles=(suite==='load'||browserSuite) ? [] : fs.readdirSync(path.join(root,'tests',suite)).filter(f=>f.endsWith('.test.mjs')).sort().map(f=>`tests/${suite}/${f}`);
+  if(['api','integration'].includes(suite) && testFiles.length===0) throw Error('No tests found for '+suite);
   // Run files sequentially for compatibility with early Node 20 and shared fixtures.
   for (const file of testFiles) {
     const result=spawnSync(process.execPath,['--test',file],{cwd:root,stdio:'inherit',env:{...env,GAPI_TEST_URL:`http://${port}`,GAPI_TEST_NO_ADMIN_URL:`http://${noAdminPort}`,GAPI_TEST_PROJECT:project}});

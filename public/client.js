@@ -1461,6 +1461,9 @@ async function openDetailPanel(eventId) {
   // Show loading state immediately
   detailTitle.textContent = "Loading...";
   detailContent.innerHTML = '<div class="spinner-large"></div>';
+  detailPanel.inert = false;
+  listPanel.inert = true;
+  listPanel.setAttribute("aria-hidden", "true");
   detailPanel.classList.add("open");
   detailPanel.setAttribute("aria-hidden", "false");
   if (!isDesktop()) {
@@ -1917,7 +1920,9 @@ function populateSubmissionForm() {
   // Populate sale types
   eventSaleTypePillsContainer.innerHTML = "";
   allSaleTypes.forEach((type) => {
-    const pill = document.createElement("div");
+    const pill = document.createElement("button");
+
+    pill.type = "button";
     pill.className = "filter-pill"; // Reuse existing pill style
     pill.textContent = type.name;
     pill.dataset.saleTypeId = type.id;
@@ -1950,6 +1955,8 @@ function closeDetailPanel() {
   if (!isDesktop()) {
     listPanel.classList.remove("detail-open");
   }
+  detailPanel.inert = true;
+  listPanel.inert = false;
   detailPanel.classList.remove("open");
   detailPanel.setAttribute("aria-hidden", "true");
   listPanel.setAttribute("aria-hidden", "false");
@@ -2146,37 +2153,9 @@ function getFilteredEvents() {
     document.querySelector(".category-pill.active")?.dataset.category || "all";
   const searchTerm = searchInput.value.toLowerCase().trim();
 
-  let filtered = allEvents;
-
-  // 1. Apply primary filter (Sale Type or Favorites)
-  if (selectedSaleType === "favorites") {
-    const favoriteIds = getFavorites();
-    filtered = filtered.filter((event) =>
-      favoriteIds.includes(event.public_id)
-    );
-  } else if (selectedSaleType !== "all") {
-    filtered = filtered.filter(
-      (event) => event.sale_type_details?.id === parseInt(selectedSaleType)
-    );
-  }
-
-  // 2. Apply secondary filters (Category and Search) on the result
-  if (selectedCategory !== "all") {
-    filtered = filtered.filter(
-      (event) =>
-        event.item_category_details &&
-        event.item_category_details.some(cat => cat.id === parseInt(selectedCategory))
-    );
-  }
-  if (searchTerm) {
-    filtered = filtered.filter(
-      (event) =>
-        (event.title && event.title.toLowerCase().includes(searchTerm)) ||
-        (event.description &&
-          event.description.toLowerCase().includes(searchTerm))
-    );
-  }
-  return filtered;
+  return GapiFilters.filterListings(allEvents, {
+    selectedSaleType, selectedCategory, search: searchTerm, favoriteIds: getFavorites()
+  });
 }
 
 function getActiveFilterCount() {
@@ -2256,9 +2235,11 @@ function filterAndDisplayEvents() {
   // Update active pills
   document.querySelectorAll(".sale-type-pill").forEach((pill) => {
     pill.classList.toggle("active", pill.dataset.saleType === selectedSaleType);
+    pill.setAttribute("aria-pressed", String(pill.classList.contains("active")));
   });
   document.querySelectorAll(".category-pill").forEach((pill) => {
     pill.classList.toggle("active", pill.dataset.category === selectedCategory);
+    pill.setAttribute("aria-pressed", String(pill.classList.contains("active")));
   });
 
   // Clear existing markers from the map
@@ -2508,7 +2489,9 @@ async function initializeMap() {
       populateSubmissionForm();
 
       // "All" sale type pill
-      const allSaleTypePill = document.createElement("div");
+      const allSaleTypePill = document.createElement("button");
+
+      allSaleTypePill.type = "button";
       allSaleTypePill.className = "filter-pill sale-type-pill active";
       allSaleTypePill.textContent = "All Sale Types";
       allSaleTypePill.dataset.saleType = "all";
@@ -2522,7 +2505,9 @@ async function initializeMap() {
       saleTypePillsContainer.appendChild(allSaleTypePill);
 
       // "Favorites" pill
-      const favoritesPill = document.createElement("div");
+      const favoritesPill = document.createElement("button");
+
+      favoritesPill.type = "button";
       favoritesPill.className = "filter-pill sale-type-pill";
       favoritesPill.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 5px;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>Favorites`;
       favoritesPill.dataset.saleType = "favorites";
@@ -2537,7 +2522,9 @@ async function initializeMap() {
 
       // Sale type pills
       saleTypes.forEach((saleType) => {
-        const pill = document.createElement("div");
+        const pill = document.createElement("button");
+
+        pill.type = "button";
         pill.className = "filter-pill sale-type-pill";
         pill.textContent = saleType.name;
         pill.dataset.saleType = saleType.id;
@@ -2552,7 +2539,9 @@ async function initializeMap() {
       });
 
       // "All" category pill
-      const allCategoryPill = document.createElement("div");
+      const allCategoryPill = document.createElement("button");
+
+      allCategoryPill.type = "button";
       allCategoryPill.className = "filter-pill category-pill active";
       allCategoryPill.textContent = "All Categories";
       allCategoryPill.dataset.category = "all";
@@ -2567,7 +2556,9 @@ async function initializeMap() {
 
       // Category pills
       categories.forEach((category) => {
-        const pill = document.createElement("div");
+        const pill = document.createElement("button");
+
+        pill.type = "button";
         pill.className = "filter-pill category-pill";
         pill.textContent = category.name;
         pill.dataset.category = category.id;
@@ -2803,9 +2794,6 @@ function createEventCard(event) {
   const card = document.createElement("div");
   card.className = "card";
   card.setAttribute("data-event-id", event.public_id);
-  card.setAttribute("role", "button");
-  card.setAttribute("tabindex", "0");
-  card.setAttribute("aria-label", `View details for ${event.title}`);
 
   const favoriteButtonHtml = `
                     <button class="favorite-btn ${
@@ -2866,6 +2854,11 @@ function createEventCard(event) {
                     </div>
                 `;
 
+  const detailsButton = card.querySelector(".card-body");
+  detailsButton.setAttribute("role", "button");
+  detailsButton.tabIndex = 0;
+  detailsButton.setAttribute("aria-label", `View details for ${event.title}`);
+
   // Set up the slider after the HTML is in the DOM
   setupImageSlider(card.querySelector(".card-slider"));
 
@@ -2878,7 +2871,7 @@ function createEventCard(event) {
   }
 
   card.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
+    if (e.target === detailsButton && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault(); // Prevent spacebar from scrolling
       openDetailPanel(event.public_id);
     }

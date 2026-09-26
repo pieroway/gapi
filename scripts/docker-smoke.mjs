@@ -11,13 +11,14 @@ function docker(args) {
   return r.stdout.trim();
 }
 verify();
+docker(['build','--tag','gapi-artifact-smoke','--file',path.join(root,'php/Dockerfile'),root]);
 const name=`gapi-tooling-smoke-${process.pid}`;
 const before=fs.readFileSync(path.join(root,'php/api/config.php'));
 let started=false;
 try {
   docker(['create','--name',name,'--publish','127.0.0.1::80',
     '--env','GOOGLE_MAPS_API_KEY=tooling-smoke-key',
-    '--tmpfs','/var/www/html/uploads:rw,uid=33,gid=33,mode=0755','gapi-dev-app']);
+    '--tmpfs','/var/www/html/uploads:rw,uid=33,gid=33,mode=0755','gapi-artifact-smoke']);
   started=true;
   docker(['cp',path.join(root,'deploy') + '/.',`${name}:/var/www/html`]);
   docker(['start',name]);

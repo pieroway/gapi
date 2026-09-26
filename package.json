@@ -20,12 +20,20 @@
     "test-e2e": "node scripts/gapi.mjs test-e2e",
     "test-iphone": "node scripts/gapi.mjs test-iphone",
     "test-devices": "node scripts/gapi.mjs test-devices",
-    "test-staging": "node scripts/gapi.mjs test-staging"
+    "test-staging": "node scripts/gapi.mjs test-staging",
+    "test-unit": "node scripts/gapi.mjs test-unit",
+    "test-visual": "node scripts/gapi.mjs test-visual",
+    "test-visual-update": "node scripts/gapi.mjs test-visual-update",
+    "test-accessibility": "node scripts/gapi.mjs test-accessibility",
+    "quality-gate": "node scripts/gapi.mjs quality-gate",
+    "test-static": "node scripts/gapi.mjs test-static",
+    "test-audit": "node scripts/gapi.mjs test-audit"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.63.0"
   }
 }

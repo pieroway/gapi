@@ -3,8 +3,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import {qualityGate} from './quality-gate.mjs';
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const entries = ['index.html', 'admin.html', 'client.js', 'service-worker.js', 'markercluster.js', 'manifest.json', 'css', 'images', '.htaccess'];
+const entries = ['index.html', 'admin.html', 'client.js', 'listing-filters.js', 'service-worker.js', 'markercluster.js', 'manifest.json', 'css', 'images', '.htaccess'];
 function files(dir, prefix = '') {
   return fs.readdirSync(dir, {withFileTypes:true}).flatMap(e => {
     const name = prefix + e.name;
@@ -71,22 +72,30 @@ function run(program,args) {
 function compose(args) { run('docker',['compose','--project-name','gapi-dev','--file','php/docker-compose.yml',...args]); }
 export function main(command) {
   switch(command) {
+    case 'quality-gate': qualityGate(main); break;
+    case 'test-audit':
+      if(process.platform==='win32') run('cmd.exe',['/d','/s','/c','npm audit --audit-level=high']);
+      else run('npm',['audit','--audit-level=high']);
+      break;
+    case 'test-static': run(process.execPath,['scripts/static-check.mjs']); break;
     case 'build': case 'package': build(); break;
     case 'verify-deploy': console.log(`Verified ${verify().length} deployment files.`); break;
     case 'setup': run('docker',['info','--format','{{.ServerVersion}}']); compose(['config','--quiet']); compose(['build']); break;
     case 'dev': compose(['up','--detach','--build','--wait']); break;
     case 'stop': compose(['stop']); break;
-    case 'test-e2e': case 'test-iphone': case 'test-devices': case 'test-api': case 'test-integration': case 'test-load': run(process.execPath,['scripts/test-stack.mjs',command.slice(5)]); break;
+    case 'test-visual': case 'test-visual-update': case 'test-accessibility': case 'test-e2e': case 'test-iphone': case 'test-devices': case 'test-api': case 'test-integration': case 'test-load': run(process.execPath,['scripts/test-stack.mjs',command.slice(5)]); break;
     case 'setup-browsers': run(process.execPath,['node_modules/@playwright/test/cli.js','install','webkit','chromium','firefox']); break;
     case 'test-staging': run(process.execPath,['scripts/staging-preflight.mjs']); break;
     case 'test-docker': run(process.execPath,['scripts/docker-smoke.mjs']); break;
     case 'test':
-      console.log('Fast development checks: tooling, then isolated PHP/API tests (Docker required).');
+      console.log('Fast development checks: tooling, unit, then isolated PHP/API tests (Docker required).');
       main('test-tooling');
+      main('test-unit');
       main('test-api');
       break;
-    case 'test-tooling': run(process.execPath,['--test','scripts/tooling.test.mjs','scripts/security.test.mjs','scripts/load.test.mjs','scripts/staging.test.mjs']); break;
-    case 'help': console.log('Commands: setup, dev, stop, build, package, verify-deploy, test, test-tooling, test-docker, test-api, test-integration, test-load, setup-browsers, test-e2e, test-iphone, test-devices, test-staging\nRun: node scripts/gapi.mjs <command> or scripts\\<command>.bat\nDefault test runs tooling and isolated PHP/API checks (Docker required). test-tooling needs only Node. Integration, browser and load suites run separately; the full application quality gate is not implemented.'); break;
+    case 'test-unit': run(process.execPath,['--test','tests/unit/listing-filters.test.mjs']); break;
+    case 'test-tooling': run(process.execPath,['--test','scripts/tooling.test.mjs','scripts/security.test.mjs','scripts/load.test.mjs','scripts/staging.test.mjs','scripts/quality-gate.test.mjs']); break;
+    case 'help': console.log('Commands: quality-gate, test-audit, test-static, setup, dev, stop, build, package, verify-deploy, test, test-unit, test-visual, test-visual-update, test-accessibility, test-tooling, test-docker, test-api, test-integration, test-load, setup-browsers, test-e2e, test-iphone, test-devices, test-staging\nRun: node scripts/gapi.mjs <command> or scripts\\<command>.bat\nDefault test runs tooling, unit and isolated PHP/API checks (Docker required). test-tooling needs only Node. Integration, browser and load suites run separately; quality-gate runs all mandatory local suites and verifies the deployment artifact. React component tests will be added with React.'); break;
     default: throw Error(`Unknown command: ${command}. Use help.`);
   }
 }
