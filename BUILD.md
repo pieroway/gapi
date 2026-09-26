@@ -17,7 +17,14 @@ Run from the repository root, or invoke a .bat wrapper from any directory:
 | scripts\setup.bat | npm run setup | Check Docker, validate Compose, build PHP image |
 | scripts\dev.bat | npm run dev | Start local Apache/PHP/MySQL and wait for readiness |
 | scripts\stop.bat | npm run stop | Stop development services, retain data |
-| scripts\test.bat | npm test | Fast development checks: tooling, then isolated PHP/API tests |
+| scripts\test.bat | npm test | Fast development checks: tooling, unit, then isolated PHP/API tests |
+| scripts\test-unit.bat | npm run test-unit | Application listing-filter unit tests |
+| scripts\test-static.bat | npm run test-static | JavaScript and inline-script syntax |
+| scripts\test-audit.bat | npm run test-audit | npm vulnerability audit; high/critical findings fail |
+| scripts\test-visual.bat | npm run test-visual | Compare reviewed device screenshots |
+| scripts\test-visual-update.bat | npm run test-visual-update | Explicitly regenerate screenshots for review |
+| scripts\test-accessibility.bat | npm run test-accessibility | Axe WCAG A/AA scans and keyboard navigation |
+| scripts\quality-gate.bat | npm run quality-gate | All mandatory local suites, build and artifact verification |
 | scripts\test-tooling.bat | npm run test-tooling | Node-only tooling and service-worker security regression tests |
 | scripts\test-api.bat | npm run test-api | Isolated HTTP lookup/listing CRUD baseline |
 | scripts\setup-browsers.bat | npm run setup-browsers | Install pinned Playwright browser binaries |
@@ -70,16 +77,16 @@ The staging workflow retains its trigger, secrets, verified SSH host, SFTP uploa
 and protection of remote uploads. It invokes tooling tests, package and verify
 commands rather than duplicating assembly in YAML. No remote files are deleted.
 
-Tooling checks and the initial API/integration baseline are NOT the mandatory
-full application quality gate. Broader API, WebKit/device/accessibility and full release load coverage remain outstanding in
-Phase 0; this change does not establish deployment readiness or verify staging.
-The full gate will be wired before substantial React migration. Do not deploy
-when any required gate fails.
+Run quality-gate for the complete automated local sequence; individual suites
+do not establish release readiness. Broader functional/load coverage, live Maps,
+physical-device checks and shared-host verification remain documented gaps.
+CI wiring and staging proof remain pending. Do not deploy when a required gate
+fails.
 
 Obsolete build.js, php/build.sh and source-rewriting docker-entrypoint.sh have
 been retired. merge-to-master.bat is replaced by the PR process in BRANCHING.md.
 
-After setup and package, run `npm run test-docker` for an isolated
+After package, run `npm run test-docker` for an isolated
 Apache/PHP artifact smoke check (no database). It removes its temporary container
 on completion and does not touch development volumes. This is not an API suite.
 
@@ -103,7 +110,7 @@ audit or production readiness.
 
 ## Fast development checks
 
-Run scripts\test.bat or npm test. Tooling/security checks run first, followed by
+Run scripts\test.bat or npm test. Tooling/security and unit checks run first, followed by
 the isolated PHP/API suite, including listing CRUD and report authorization.
 The command stops on failure and requires Docker Desktop/Engine running.
 The first run may download images and build PHP; later runs reuse the image cache.
@@ -117,3 +124,6 @@ With GNU Make installed, use make test, make test-tooling, make test-api or
 make help. Every command in the table above has a matching Make target that
 calls the same Node entry point. Bare make displays help. Make is optional;
 npm commands and Windows wrappers remain supported.
+
+See [Local quality gate](docs/QUALITY_GATE.md) for ordered stages, browser setup,
+platform-specific screenshot baselines, failure artifacts and release boundaries.

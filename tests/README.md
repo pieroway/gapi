@@ -130,3 +130,9 @@ isolated API suite. A failed suite stops the command with a nonzero exit code.
 Docker is required; the first image build may be slow. scripts\test-tooling.bat
 or npm run test-tooling runs only the Node checks. Integration, browser and load
 tests remain separate commands.
+## Local quality gate
+
+See [QUALITY_GATE.md](../docs/QUALITY_GATE.md) for unit, visual, accessibility,
+static and dependency checks, plus the authoritative local gate. The gate runs
+the existing API, integration, iPhone, secondary-device and load suites in order.
+React component coverage is deferred until React exists.

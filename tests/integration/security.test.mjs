@@ -49,6 +49,8 @@ test('uploads validate content and enforce photo ownership',async()=>{
 });
 test('concurrent writes cannot exceed the IP limit or spoof forwarded addresses',async()=>{
   reset();const results=await Promise.all(Array.from({length:25},(_,i)=>fetch(process.env.GAPI_TEST_URL+`/api/events/${fixtureId}/comments`,{...json('POST',{comment_text:'rate test'}),headers:{'Content-Type':'application/json','X-Forwarded-For':`192.0.2.${i}`}})));
+  // Fully consume concurrent responses before synchronous database checks block the event loop.
+  await Promise.all(results.map(response=>response.arrayBuffer()));
   assert.equal(results.filter(r=>r.status===201).length,20);assert.equal(results.filter(r=>r.status===429).length,5);
   assert.equal(sql("SELECT COUNT(*) FROM gapi_rate_limits WHERE action='write'"),'20');reset();
 });

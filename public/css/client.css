@@ -269,7 +269,7 @@
 
  #search-input:focus {
      outline: none;
-     border-color: #007bff;
+     border-color: #0066cc;
      background-color: #fff;
  }
 
@@ -375,7 +375,7 @@
  }
 
  .filter-pill.active {
-     background-color: #007bff;
+     background-color: #0066cc;
      color: #ffffff;
  }
 
@@ -472,8 +472,8 @@
 
  .clear-filters-btn {
      padding: 10px 20px;
-     border: 1px solid #007bff;
-     color: #007bff;
+     border: 1px solid #0066cc;
+     color: #0066cc;
      background-color: transparent;
      border-radius: 20px;
      cursor: pointer;
@@ -483,12 +483,12 @@
  }
 
  .clear-filters-btn:hover {
-     background-color: #007bff;
+     background-color: #0066cc;
      color: #fff;
  }
 
  .address-link {
-     color: #007bff;
+     color: #0066cc;
      text-decoration: none;
  }
 
@@ -513,8 +513,8 @@
  
  .detail-actions button:hover {
     background-color: #f8f9fa; /* A slightly off-white for hover */
-    border-color: #007bff;
-    color: #007bff;
+    border-color: #0066cc;
+    color: #0066cc;
  }
  
  #add-to-calendar-btn {
@@ -522,8 +522,8 @@
      align-items: center;
      gap: 8px;
      padding: 10px 20px;
-     border: 1px solid #28a745;
-     color: #28a745;
+     border: 1px solid #187d32;
+     color: #187d32;
      background-color: transparent;
      border-radius: 20px;
      cursor: pointer;
@@ -533,7 +533,7 @@
  }
 
  #add-to-calendar-btn:hover {
-     background-color: #28a745;
+     background-color: #187d32;
      color: #fff;
  }
 
@@ -542,8 +542,8 @@
      align-items: center;
      gap: 8px;
      padding: 10px 20px;
-     border: 1px solid #007bff;
-     color: #007bff;
+     border: 1px solid #0066cc;
+     color: #0066cc;
      background-color: transparent;
      border-radius: 20px;
      cursor: pointer;
@@ -553,13 +553,13 @@
  }
 
  #share-event-btn:hover {
-     background-color: #007bff;
+     background-color: #0066cc;
      color: #fff;
  }
 
  #share-event-btn:disabled {
-     background-color: #28a745;
-     border-color: #28a745;
+     background-color: #187d32;
+     border-color: #187d32;
      color: #fff;
      cursor: default;
  }
@@ -607,7 +607,7 @@
 
 .segmented-control {
     display: flex;
-    border: 1px solid #007bff;
+    border: 1px solid #0066cc;
     border-radius: 8px;
     overflow: hidden;
 }
@@ -620,19 +620,19 @@
     padding: 6px 16px;
     cursor: pointer;
     background-color: #fff;
-    color: #007bff;
+    color: #0066cc;
     transition: background-color 0.2s, color 0.2s;
     font-weight: 500;
     font-size: 0.9rem;
 }
 
 .segmented-control input[type="radio"]:checked + label {
-    background-color: #007bff;
+    background-color: #0066cc;
     color: #fff;
 }
 
 .segmented-control label:not(:last-of-type) {
-    border-right: 1px solid #007bff;
+    border-right: 1px solid #0066cc;
 }
 
 .zoom-control {
@@ -657,7 +657,7 @@
     appearance: none;
     width: 20px;
     height: 20px;
-    background: #007bff;
+    background: #0066cc;
     cursor: pointer;
     border-radius: 50%;
 }
@@ -665,7 +665,7 @@
 .zoom-control input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: #007bff;
+    background: #0066cc;
     cursor: pointer;
     border-radius: 50%;
     border: none;
@@ -716,7 +716,7 @@
  }
 
  .toggle-switch-checkbox:checked + .toggle-switch-label {
-    background-color: #007bff;
+    background-color: #0066cc;
  }
 
  .toggle-switch-checkbox:checked + .toggle-switch-label:before {
@@ -777,7 +777,7 @@
      inset-inline-end: 30px;
      width: 44px;
      height: 44px;
-     background-color: #007bff;
+     background-color: #0066cc;
      color: white;
      border: none;
      border-radius: 50%;
@@ -851,7 +851,7 @@
  }
 
  .sale-type-pill-mini {
-     background-color: #28a745;
+     background-color: #187d32;
      /* A green color for sale type */
      color: white;
  }
@@ -957,7 +957,7 @@
 
  .user-owned-comment {
     background-color: #e7f3ff; /* A light blue highlight */
-    border-left: 3px solid #007bff;
+    border-left: 3px solid #0066cc;
     padding: 10px;
     margin-left: -10px;
     margin-right: -10px;
@@ -967,7 +967,7 @@
  .add-comment-link {
     display: block;
     margin-top: 15px;
-    color: #007bff;
+    color: #0066cc;
     text-decoration: none;
     font-weight: 600;
  }
@@ -1109,7 +1109,7 @@
      width: 50px;
      height: 50px;
      border: 5px solid #f3f3f3;
-     border-top: 5px solid #007bff;
+     border-top: 5px solid #0066cc;
      border-radius: 50%;
      animation: spin 1s linear infinite;
  }
@@ -1324,7 +1324,7 @@
  }
 
  .nav-btn.active {
-    color: #007bff;
+    color: #0066cc;
     transform: translateY(-2px); /* Pop the active icon up slightly */
  }
 
@@ -1412,13 +1412,13 @@
 
  /* State 2: location known, not following — blue icon on white bg */
  #center-location-button.location-known svg {
-     stroke: #007bff;
+     stroke: #0066cc;
      fill: rgba(0, 123, 255, 0.1);
  }
 
  /* State 3: following — white icon on blue bg */
  #center-location-button.following {
-     background-color: #007bff;
+     background-color: #0066cc;
      box-shadow: 0 2px 8px rgba(0, 123, 255, 0.5);
  }
  #center-location-button.following svg {
@@ -1480,7 +1480,7 @@
      }
  
      #center-location-button.following svg {
-         stroke: #007bff;
+         stroke: #0066cc;
          /* Active blue */
          fill: #e6f2ff;
      }
@@ -1785,4 +1785,24 @@
         box-shadow: none;
         border-radius: 20px;
     }
+}
+
+/* Native keyboard controls retain the existing pill layout. */
+button.filter-pill { border: 0; font-family: inherit; }
+.card-body[role="button"]:focus-visible, .filter-pill:focus-visible {
+    outline: 3px solid #0066cc;
+    outline-offset: -3px;
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Hidden panels must not cover the active panel on wider touch screens. */
+#list-panel[aria-hidden="true"], #detail-panel[aria-hidden="true"] {
+    visibility: hidden;
 }
