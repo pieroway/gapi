@@ -424,3 +424,7 @@ Do not proceed to the next task unless requested.
 Local security hardening: [SECURITY_HARDENING.md](SECURITY_HARDENING.md)
 records validation, upload, rate-limit, browser-cache and admin-rendering changes,
 regression coverage and remaining release checks. Staging remains blocked.
+
+Owner credential transport now uses bearer headers and fixed API URLs, with the
+old credential-in-URL routes denied. See [OWNER_API.md](OWNER_API.md) for migration,
+regressions and staging/historical-log verification still required before release.

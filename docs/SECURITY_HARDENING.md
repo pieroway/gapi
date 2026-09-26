@@ -41,16 +41,16 @@ server authorization is checked separately against PHP.
 
 - Staging TLS and staging baseline checks remain blocked. Do not bypass certificate
   validation. Re-run the staging preflight after certificate installation.
-- Edit links remain bearer capabilities embedded in URLs. Web-server/proxy access
-  logs can retain these URLs; host log redaction or a credential transport redesign
-  must be resolved before release. API diagnostic redaction does not redact Apache
-  access logs. Verify hosting log controls and retention explicitly.
+- Owner API credentials now use bearer headers on fixed URLs; old URL routes
+  return 410. See [OWNER_API.md](OWNER_API.md) for the breaking contract change.
+  Historical log exposure, credential rotation/recovery and host header/body log
+  settings still need review before release.
 - Verify shared-host Apache header/rewrite rules and upload execution protection,
   PHP upload limits and MySQL advisory-lock support on staging.
 - Existing admin event edit/delete calls lack a matching authorized admin API;
   this pass does not expose edit capabilities to make those controls work.
-- Admin token storage and owner edit-link storage retain their existing browser
-  storage design. A session/authentication redesign, read-request abuse controls,
+- Admin token storage retains its existing browser storage design. The active
+  public app does not yet provide an owner edit-link UI. A session/authentication redesign, read-request abuse controls,
   flag/vote abuse resistance and broader image decoder testing remain future work.
 - The npm audit covers installed JavaScript packages, not PHP/Apache/MySQL image
   vulnerabilities or the shared-host platform. Load and live Google Maps tests

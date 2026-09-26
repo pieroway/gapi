@@ -61,6 +61,7 @@ test('empty collection has a usable no-results state',async({page})=>{
 });
 test('create validates required fields, persists to PHP, and renders hostile text safely',async({page,request})=>{
   const hostile='<img src=x onerror="window.__injected=1">';
+  const requestUrls=[];page.on('request',request=>requestUrls.push(request.url()));
   let created;
   try {
     await start(page);
@@ -79,6 +80,13 @@ test('create validates required fields, persists to PHP, and renders hostile tex
     const responsePromise=page.waitForResponse(response=>response.url().endsWith('/api/events')&&response.request().method()==='POST');
     await page.locator('#submit-event-btn').click();
     const response=await responsePromise;expect(response.status()).toBe(201);created=await response.json();
+    const ownerRead=await page.evaluate(async token=>{
+      const response=await fetch('/api/events/edit',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+      return {status:response.status,cache:response.headers.get('cache-control'),data:await response.json()};
+    },created.edit_guid);
+    expect(ownerRead.status).toBe(200);expect(ownerRead.cache).toContain('no-store');
+    expect(ownerRead.data.public_id).toBe(created.public_id);expect(ownerRead.data.edit_guid).toBeUndefined();
+    expect(requestUrls.every(url=>!url.includes(created.edit_guid))).toBe(true);
     await expect(page.locator('#submission-modal')).not.toHaveClass(/visible/);
     await openList(page);
     const createdCard=page.locator(`.card[data-event-id="${created.public_id}"]`);
@@ -94,7 +102,7 @@ test('create validates required fields, persists to PHP, and renders hostile tex
     const persisted=await request.get(`/api/events/${created.public_id}`);
     expect((await persisted.json()).title).toBe(hostile);
   } finally {
-    if(created) expect((await request.delete(`/api/events/edit/${created.edit_guid}`)).status()).toBe(204);
+    if(created) expect((await request.delete('/api/events/edit',{headers:{Authorization:'Bearer '+created.edit_guid}})).status()).toBe(204);
   }
 });
 test('settings persist and denied geolocation does not prevent browsing',async({page})=>{

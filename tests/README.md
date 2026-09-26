@@ -116,3 +116,9 @@ Remaining: real Maps/Places/clustering/gestures, missing Maps configuration,
 physical iPhone/PWA installation and updates, uploads, comments/report UI,
 full accessibility/visual coverage, CI and staging. These tests establish an
 initial migration baseline, not the full release quality gate.
+
+Owner operations use bearer headers on fixed paths; see
+[OWNER_API.md](../docs/OWNER_API.md). Integration coverage verifies denied access,
+retired-route rejection and absence of a fresh owner credential in local Apache
+logs. Browser creation coverage verifies a header-authenticated owner read without
+putting the credential in outgoing URLs.

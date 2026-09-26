@@ -1,3 +1,6 @@
+> Historical source baseline: owner URL routes below were replaced by
+> [header-authenticated fixed routes](OWNER_API.md) during security hardening.
+
 ﻿# Phase 0.1 baseline audit
 
 Date: 2026-09-21. Inspected revision: `33b7fcf` on

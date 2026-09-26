@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {request,json,create,payload,sql,fixtureId,deletedId,missingId} from '../support/client.mjs';
+import {owner,request,json,create,payload,sql,fixtureId,deletedId,missingId} from '../support/client.mjs';
 const reset=()=>sql('DELETE FROM gapi_rate_limits');
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWZkAAAAASUVORK5CYII=','base64');
 function photo(name='image.png',bytes=png) {const body=new FormData();body.set('photo',new Blob([bytes]),name);return {method:'POST',body};}
@@ -20,7 +20,7 @@ test('JSON, identifiers, deleted listings and filesystem routes deny invalid req
   await request(`/api/events/${fixtureId}/ratings`,400,json('POST',{rating:2.5}));
   await request(`/api/events/${deletedId}/comments`,404,json('POST',{comment_text:'denied'}));
   for(const route of ['/.env','/.user.ini','/.htaccess','/api/config.php','/uploads/evil.php']) assert.equal((await fetch(process.env.GAPI_TEST_URL+route)).status,403,route);
-  const response=await fetch(process.env.GAPI_TEST_URL+'/api/events/edit/'+missingId);
+  const response=await fetch(process.env.GAPI_TEST_URL+'/api/events/edit',{headers:{Authorization:'Bearer '+missingId}});
   assert.equal(response.status,404);assert.match(response.headers.get('cache-control'),/no-store/);
 });
 test('database failure rolls back creation and update',async()=>{
@@ -29,22 +29,22 @@ test('database failure rolls back creation and update',async()=>{
   sql("CREATE TRIGGER security_failure BEFORE INSERT ON gapi_event_item_categories FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='private diagnostic'");
   try {
     const failure=await request('/api/events',500,create());assert.ok(!JSON.stringify(failure).includes('private diagnostic'));
-    await request('/api/events/edit/'+event.edit_guid,500,json('PUT',{...payload,title:'rollback'}));
+    await owner(event.edit_guid)(500,json('PUT',{...payload,title:'rollback'}));
     assert.equal(sql('SELECT COUNT(*) FROM gapi_events'),before);
     assert.equal((await request('/api/events/'+event.public_id,200)).title,payload.title);
   } finally {sql('DROP TRIGGER security_failure');}
 });
 test('uploads validate content and enforce photo ownership',async()=>{
   reset();const first=await request('/api/events',201,create());const second=await request('/api/events',201,create());
-  const route='/api/events/edit/'+first.edit_guid;
-  await request(route+'/photos',400,photo('evil.php'));
-  await request(route+'/photos',400,photo('fake.png',Buffer.from('not an image')));
-  await request('/api/events/edit/'+missingId+'/photos',404,photo());
-  const uploaded=await request(route+'/photos',201,photo('renamed.jpg'));
-  const detail=await request(route,200);const path=detail.photos[0];assert.match(path,/^uploads\/photos-[a-f0-9]{32}\.png$/);
-  await request('/api/events/edit/'+second.edit_guid,400,json('PUT',{...payload,existingPhotos:[path]}));
+  const edit=owner(first.edit_guid);
+  await edit(400,photo('evil.php'),'/photos');
+  await edit(400,photo('fake.png',Buffer.from('not an image')),'/photos');
+  await owner(missingId)(404,photo(),'/photos');
+  const uploaded=await edit(201,photo('renamed.jpg'),'/photos');
+  const detail=await edit(200);const path=detail.photos[0];assert.match(path,/^uploads\/photos-[a-f0-9]{32}\.png$/);
+  await owner(second.edit_guid)(400,json('PUT',{...payload,existingPhotos:[path]}));
   assert.equal((await fetch(process.env.GAPI_TEST_URL+'/'+path)).status,200);
-  await request(route,200,json('PUT',{...payload,existingPhotos:[]}));
+  await edit(200,json('PUT',{...payload,existingPhotos:[]}));
   assert.equal((await fetch(process.env.GAPI_TEST_URL+'/'+path)).status,404);
 });
 test('concurrent writes cannot exceed the IP limit or spoof forwarded addresses',async()=>{

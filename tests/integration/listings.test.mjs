@@ -1,20 +1,20 @@
 ﻿import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {request,json,create,payload,sql,eventWhere} from '../support/client.mjs';
+import {owner,request,json,create,payload,sql,eventWhere} from '../support/client.mjs';
 test('HTTP listing lifecycle persists in MySQL and drives public visibility',async()=>{
   const created=await request('/api/events',201,create());
   const where=eventWhere(created.public_id);
-  const edit=`/api/events/edit/${created.edit_guid}`;
+  const edit=owner(created.edit_guid);
   assert.equal(sql(`SELECT title FROM gapi_events WHERE ${where}`),payload.title);
   assert.equal(sql(`SELECT COUNT(*) FROM gapi_event_item_categories c JOIN gapi_events e ON c.event_id=e.id WHERE e.${where}`),'2');
-  await request(edit,200,json('PUT',{...payload,title:'Persisted update',item_categories:[3],existingPhotos:[]}));
+  await edit(200,json('PUT',{...payload,title:'Persisted update',item_categories:[3],existingPhotos:[]}));
   assert.equal(sql(`SELECT title FROM gapi_events WHERE ${where}`),'Persisted update');
   assert.equal(sql(`SELECT category_id FROM gapi_event_item_categories c JOIN gapi_events e ON c.event_id=e.id WHERE e.${where}`),'3');
   assert.equal((await request(`/api/events/${created.public_id}`,200)).title,'Persisted update');
-  await request(edit,204,{method:'DELETE'});
+  await edit(204,{method:'DELETE'});
   assert.equal(sql(`SELECT is_deleted FROM gapi_events WHERE ${where}`),'1');
   await request(`/api/events/${created.public_id}`,404);
-  await request(edit+'/undelete',200,{method:'POST'});
+  await edit(200,{method:'POST'},'/undelete');
   assert.equal(sql(`SELECT is_deleted FROM gapi_events WHERE ${where}`),'0');
   assert.ok((await request('/api/events',200)).some(e=>e.public_id===created.public_id));
 });
@@ -26,7 +26,7 @@ test('duplicate categories roll back creation without partial database rows',asy
 });
 test('failed update rolls back fields and category replacement',async()=>{
   const created=await request('/api/events',201,create());
-  await request(`/api/events/edit/${created.edit_guid}`,400,json('PUT',{...payload,title:'Must roll back',item_categories:[2,2],existingPhotos:[]}));
+  await owner(created.edit_guid)(400,json('PUT',{...payload,title:'Must roll back',item_categories:[2,2],existingPhotos:[]}));
   const detail=await request(`/api/events/${created.public_id}`,200);
   assert.equal(detail.title,payload.title);
   assert.deepEqual(detail.item_category_details.map(c=>Number(c.id)).sort(),[1,2]);

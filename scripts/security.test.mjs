@@ -6,7 +6,7 @@ import path from 'node:path';
 import {root} from './gapi.mjs';
 const source=fs.readFileSync(path.join(root,'public/service-worker.js'),'utf8');
 test('service worker never serves or stores cached reports, including failed requests',async()=>{
-  for(const route of ['/api/reports','/api/reports/123','/api/reports.php','/api/events/edit/secret','/api/config','/admin.html','/markercluster.js?token=secret']) {
+  for(const route of ['/api/reports','/api/reports/123','/api/reports.php','/api/events/edit','/api/events/edit/photos','/api/events/edit/undelete','/api/events/edit/retired-secret','/api/config','/admin.html','/markercluster.js?token=secret']) {
     const handlers={};let options;
     const context={URL,console,self:{location:{origin:'https://example.test'},addEventListener:(name,fn)=>handlers[name]=fn},caches:{open(){throw Error('Protected response touched cache');},match(){throw Error('Protected response read cache');}},fetch:async(request,opts)=>{options=opts;return {status:401};}};
     vm.runInNewContext(source,context);

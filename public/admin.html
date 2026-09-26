@@ -535,7 +535,7 @@
 
                     card.querySelector('.btn-dismiss').addEventListener('click', () => handleDismiss(report.id));
                     card.querySelector('.btn-delete').addEventListener('click', () => handleDelete(report.event.id));
-                    card.querySelector('.btn-edit').addEventListener('click', () => openEditModal(report.event.edit_guid));
+                    card.querySelector('.btn-edit').addEventListener('click', () => openEditModal(report.event.id));
 
                     reportsContainer.appendChild(card);
                 });
@@ -608,7 +608,7 @@
                 if (!confirm('Are you sure you want to permanently DELETE this event? This action cannot be undone.')) return;
                 try {
                     // Use the admin-specific endpoint which accepts public_id and requires auth
-                    const response = await fetch(`/api/admin/events/${eventId}`, adminFetchOptions({ method: 'DELETE' }));
+                    const response = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}`, adminFetchOptions({ method: 'DELETE' }));
                     if (response.status === 401) { clearToken(); showLogin(); return; }
                     if (!response.ok) throw new Error('Failed to delete event.');
                     totalActiveEvents--;
@@ -646,7 +646,7 @@
                 });
             }
 
-            async function openEditModal(editGuid) {
+            async function openEditModal(eventId) {
                 const formatDateTimeLocal = (isoString) => {
                     if (!isoString) return '';
                     const date = new Date(isoString);
@@ -655,14 +655,14 @@
                 };
 
                 try {
-                    // Fetch the full event data using the edit_guid — same endpoint the event author uses
-                    const res = await fetch(`/api/events/edit/${editGuid}`, adminFetchOptions());
+                    // Administrative editing uses a public ID and a separate authorized endpoint.
+                    const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}`, adminFetchOptions());
                     if (res.status === 401) { clearToken(); showLogin(); return; }
                     if (!res.ok) throw new Error('Failed to fetch event data.');
                     const event = await res.json();
 
                     // Store the guid on the form so the submit handler can use it
-                    document.getElementById('edit-event-id').value = editGuid;
+                    document.getElementById('edit-event-id').value = eventId;
                     document.getElementById('edit-event-lat').value = event.latitude;
                     document.getElementById('edit-event-lng').value = event.longitude;
                     document.getElementById('edit-event-title').value = event.title;
@@ -739,9 +739,9 @@
                 };
 
                 try {
-                    // eventId holds the edit_guid (set in openEditModal).
+                    // eventId holds the public listing ID.
                     // Send as JSON — the admin edit form has no file uploads.
-                    const response = await fetch(`/api/events/edit/${eventId}`, adminFetchOptions({
+                    const response = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}`, adminFetchOptions({
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
@@ -751,11 +751,11 @@
                     if (!response.ok) throw new Error('Failed to update event.');
 
                     // Update the cached report data async so the card reflects the new title/address/description
-                    const updatedEventRes = await fetch(`/api/events/edit/${eventId}`, adminFetchOptions());
+                    const updatedEventRes = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}`, adminFetchOptions());
                     if (updatedEventRes.ok) {
                         const updatedEvent = await updatedEventRes.json();
                         allReports.forEach(report => {
-                            if (report.event.edit_guid === eventId) {
+                            if (report.event.id === eventId) {
                                 report.event.title = updatedEvent.title;
                                 report.event.address = updatedEvent.address;
                                 report.event.description = updatedEvent.description;

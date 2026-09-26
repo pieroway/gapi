@@ -23,7 +23,21 @@ $path = trim($path, '/');
 
 // Split remaining path into segments
 $segments = $path !== '' ? explode('/', $path) : [];
-if ($segments) requireUuid($segments[0] === 'edit' ? ($segments[1] ?? null) : $segments[0]);
+if ($segments && $segments[0] !== 'edit') requireUuid($segments[0]);
+
+// Owner credentials are accepted only in Authorization, never in request URLs.
+if (($segments[0] ?? '') === 'edit') {
+    header('Vary: Authorization');
+    if (count($segments) > 2 || (isset($segments[1]) && !in_array($segments[1], ['photos', 'undelete'], true))) {
+        jsonResponse(['message' => 'Credential-bearing URLs are no longer supported. Use bearer authorization.'], 410);
+    }
+    $authorization = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if (!preg_match('/^Bearer[ \t]+([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/iD', $authorization, $match)) {
+        header('WWW-Authenticate: Bearer realm="gapi-owner"');
+        jsonResponse(['message' => 'Owner authorization required.'], 401);
+    }
+    $ownerGuid = $match[1];
+}
 
 // ---------------------------------------------------------------
 // Route dispatcher
@@ -39,29 +53,29 @@ elseif ($requestMethod === 'POST' && count($segments) === 0) {
     handleCreateEvent();
 }
 
-// GET /api/events/edit/:guid
-elseif ($requestMethod === 'GET' && count($segments) === 2 && $segments[0] === 'edit') {
-    handleGetEventForEdit($segments[1]);
+// GET /api/events/edit
+elseif ($requestMethod === 'GET' && count($segments) === 1 && $segments[0] === 'edit') {
+    handleGetEventForEdit($ownerGuid);
 }
 
-// PUT /api/events/edit/:guid
-elseif ($requestMethod === 'PUT' && count($segments) === 2 && $segments[0] === 'edit') {
-    handleUpdateEvent($segments[1]);
+// PUT /api/events/edit
+elseif ($requestMethod === 'PUT' && count($segments) === 1 && $segments[0] === 'edit') {
+    handleUpdateEvent($ownerGuid);
 }
 
-// DELETE /api/events/edit/:guid
-elseif ($requestMethod === 'DELETE' && count($segments) === 2 && $segments[0] === 'edit') {
-    handleDeleteEvent($segments[1]);
+// DELETE /api/events/edit
+elseif ($requestMethod === 'DELETE' && count($segments) === 1 && $segments[0] === 'edit') {
+    handleDeleteEvent($ownerGuid);
 }
 
-// POST /api/events/edit/:guid/undelete
-elseif ($requestMethod === 'POST' && count($segments) === 3 && $segments[0] === 'edit' && $segments[2] === 'undelete') {
-    handleUndeleteEvent($segments[1]);
+// POST /api/events/edit/undelete
+elseif ($requestMethod === 'POST' && count($segments) === 2 && $segments[0] === 'edit' && $segments[1] === 'undelete') {
+    handleUndeleteEvent($ownerGuid);
 }
 
-// POST /api/events/edit/:guid/photos
-elseif ($requestMethod === 'POST' && count($segments) === 3 && $segments[0] === 'edit' && $segments[2] === 'photos') {
-    handleAddPhoto($segments[1]);
+// POST /api/events/edit/photos
+elseif ($requestMethod === 'POST' && count($segments) === 2 && $segments[0] === 'edit' && $segments[1] === 'photos') {
+    handleAddPhoto($ownerGuid);
 }
 
 // GET /api/events/:id  — single event by public_id
@@ -345,7 +359,7 @@ function handleCreateEvent(): void {
 }
 
 /**
- * GET /api/events/edit/:guid
+ * GET /api/events/edit
  * Returns full event data for the edit form.
  */
 function handleGetEventForEdit(string $guid): void {
@@ -359,6 +373,7 @@ function handleGetEventForEdit(string $guid): void {
         jsonResponse(['message' => 'Event not found.'], 404);
     }
 
+    unset($event['edit_guid']);
     $eventId = $event['id'];
 
     $photoStmt = $db->prepare('SELECT file_path FROM gapi_event_photos WHERE event_id = ?');
@@ -373,7 +388,7 @@ function handleGetEventForEdit(string $guid): void {
 }
 
 /**
- * PUT /api/events/edit/:guid
+ * PUT /api/events/edit
  * Updates an existing event.
  */
 function handleUpdateEvent(string $guid): void {
@@ -453,7 +468,7 @@ function handleUpdateEvent(string $guid): void {
 }
 
 /**
- * DELETE /api/events/edit/:guid
+ * DELETE /api/events/edit
  * Soft-deletes an event.
  */
 function handleDeleteEvent(string $guid): void {
@@ -472,7 +487,7 @@ function handleDeleteEvent(string $guid): void {
 }
 
 /**
- * POST /api/events/edit/:guid/undelete
+ * POST /api/events/edit/undelete
  * Restores a soft-deleted event.
  */
 function handleUndeleteEvent(string $guid): void {
@@ -490,7 +505,7 @@ function handleUndeleteEvent(string $guid): void {
 }
 
 /**
- * POST /api/events/edit/:guid/photos
+ * POST /api/events/edit/photos
  * Adds a single photo to an event.
  */
 function handleAddPhoto(string $guid): void {

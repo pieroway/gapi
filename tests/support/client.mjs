@@ -32,3 +32,8 @@ export function eventWhere(id) {
   assert.match(id,/^[0-9a-f-]{36}$/i);
   return `public_id = '${id}'`;
 }
+
+// A capability is carried only in an authorization header, never a URL.
+export function owner(guid) {
+  return (status,options={},suffix='')=>request('/api/events/edit'+suffix,status,{...options,headers:{...options.headers,Authorization:'Bearer '+guid}});
+}
