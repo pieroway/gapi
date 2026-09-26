@@ -80,8 +80,13 @@ export function main(command) {
     case 'setup-browsers': run(process.execPath,['node_modules/@playwright/test/cli.js','install','webkit','chromium','firefox']); break;
     case 'test-staging': run(process.execPath,['scripts/staging-preflight.mjs']); break;
     case 'test-docker': run(process.execPath,['scripts/docker-smoke.mjs']); break;
-    case 'test': run(process.execPath,['--test','scripts/tooling.test.mjs','scripts/security.test.mjs','scripts/load.test.mjs','scripts/staging.test.mjs']); break;
-    case 'help': console.log('Commands: setup, dev, stop, build, package, verify-deploy, test, test-docker, test-api, test-integration, test-load, setup-browsers, test-e2e, test-iphone, test-devices, test-staging\nRun: node scripts/gapi.mjs <command> or scripts\\<command>.bat\nDefault test covers tooling; API/integration commands use disposable Docker stacks; the full application quality gate is not implemented.'); break;
+    case 'test':
+      console.log('Fast development checks: tooling, then isolated PHP/API tests (Docker required).');
+      main('test-tooling');
+      main('test-api');
+      break;
+    case 'test-tooling': run(process.execPath,['--test','scripts/tooling.test.mjs','scripts/security.test.mjs','scripts/load.test.mjs','scripts/staging.test.mjs']); break;
+    case 'help': console.log('Commands: setup, dev, stop, build, package, verify-deploy, test, test-tooling, test-docker, test-api, test-integration, test-load, setup-browsers, test-e2e, test-iphone, test-devices, test-staging\nRun: node scripts/gapi.mjs <command> or scripts\\<command>.bat\nDefault test runs tooling and isolated PHP/API checks (Docker required). test-tooling needs only Node. Integration, browser and load suites run separately; the full application quality gate is not implemented.'); break;
     default: throw Error(`Unknown command: ${command}. Use help.`);
   }
 }

@@ -1,4 +1,4 @@
-﻿# PHP API and integration baseline
+# PHP API and integration baseline
 
 Run `scripts\test-api.bat` or `scripts\test-integration.bat` on Windows.
 Portable equivalents: `npm run test-api` and `npm run test-integration`.
@@ -122,3 +122,11 @@ Owner operations use bearer headers on fixed paths; see
 retired-route rejection and absence of a fresh owner credential in local Apache
 logs. Browser creation coverage verifies a header-authenticated owner read without
 putting the credential in outgoing URLs.
+
+## Fast development command
+
+Run scripts\test.bat or npm test for tooling/security checks followed by the
+isolated API suite. A failed suite stops the command with a nonzero exit code.
+Docker is required; the first image build may be slow. scripts\test-tooling.bat
+or npm run test-tooling runs only the Node checks. Integration, browser and load
+tests remain separate commands.

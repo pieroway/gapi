@@ -77,7 +77,7 @@ verify-deploy
 
 - [x] Create setup command.
 - [x] Create build command.
-- [ ] Create normal fast development test command.
+- [x] Create normal fast development test command.
 - [ ] Create unit-test command.
 - [ ] Create component-test command when React testing is introduced.
 - [x] Create API-test command.
@@ -93,7 +93,7 @@ verify-deploy
 - [x] Create deployment verification command.
 - [x] Provide script help/documentation.
 
-Initial commands are documented in [BUILD.md](../BUILD.md). `test` currently covers repository tooling only; broader application suites and the full quality gate remain pending. Initial API/integration commands now cover lookup/listing behavior. Docker startup now reads environment configuration without rewriting source. Staging calls shared packaging scripts, but live staging verification remains pending.
+Initial commands are documented in [BUILD.md](../BUILD.md). `test` runs tooling/security checks followed by the isolated PHP/API suite and stops on failure; `test-tooling` provides Node-only checks; broader application suites and the full quality gate remain pending. Initial API/integration commands now cover lookup/listing behavior. Docker startup now reads environment configuration without rewriting source. Staging calls shared packaging scripts, but live staging verification remains pending.
 
 Scripts should be safe to rerun where practical and should provide useful failure messages.
 
@@ -428,3 +428,14 @@ regression coverage and remaining release checks. Staging remains blocked.
 Owner credential transport now uses bearer headers and fixed API URLs, with the
 old credential-in-URL routes denied. See [OWNER_API.md](OWNER_API.md) for migration,
 regressions and staging/historical-log verification still required before release.
+
+## Fast development command verification (2026-09-25)
+
+- Default test runs tooling/security checks followed by the isolated PHP/API suite.
+- Optional GNU Make aliases call the same entry point; test-tooling also has npm
+  and Windows wrapper entry points.
+- make test passed: 12 tooling/security tests and six API tests. Disposable
+  containers and networks were removed successfully.
+- make help, wrapper argument rejection and git diff --check passed. Docker
+  unavailability propagated a nonzero exit through the Windows and Make commands.
+- CI execution and the full release quality gate remain unverified.

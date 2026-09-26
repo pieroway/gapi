@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Test repository tooling
+      - name: Run fast development checks
         run: node scripts/gapi.mjs test
 
       - name: Package PHP web root

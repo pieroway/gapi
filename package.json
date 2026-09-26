@@ -10,6 +10,7 @@
     "package": "node scripts/gapi.mjs package",
     "verify-deploy": "node scripts/gapi.mjs verify-deploy",
     "test": "node scripts/gapi.mjs test",
+    "test-tooling": "node scripts/gapi.mjs test-tooling",
     "help": "node scripts/gapi.mjs help",
     "test-docker": "node scripts/gapi.mjs test-docker",
     "test-load": "node scripts/gapi.mjs test-load",

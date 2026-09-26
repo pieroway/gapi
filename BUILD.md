@@ -17,7 +17,8 @@ Run from the repository root, or invoke a .bat wrapper from any directory:
 | scripts\setup.bat | npm run setup | Check Docker, validate Compose, build PHP image |
 | scripts\dev.bat | npm run dev | Start local Apache/PHP/MySQL and wait for readiness |
 | scripts\stop.bat | npm run stop | Stop development services, retain data |
-| scripts\test.bat | npm test | Tooling and service-worker security regression tests |
+| scripts\test.bat | npm test | Fast development checks: tooling, then isolated PHP/API tests |
+| scripts\test-tooling.bat | npm run test-tooling | Node-only tooling and service-worker security regression tests |
 | scripts\test-api.bat | npm run test-api | Isolated HTTP lookup/listing CRUD baseline |
 | scripts\setup-browsers.bat | npm run setup-browsers | Install pinned Playwright browser binaries |
 | scripts\test-staging.bat | npm run test-staging | Read-only HTTPS/API preflight of the fixed staging site |
@@ -99,3 +100,20 @@ must accept the service-worker update/reload before relying on the cache fix;
 validate that update on staging before release. Admin event editing/deletion API
 compatibility remains a separate task. This change does not claim a full security
 audit or production readiness.
+
+## Fast development checks
+
+Run scripts\test.bat or npm test. Tooling/security checks run first, followed by
+the isolated PHP/API suite, including listing CRUD and report authorization.
+The command stops on failure and requires Docker Desktop/Engine running.
+The first run may download images and build PHP; later runs reuse the image cache.
+No target arguments are accepted and the development database is never used.
+Use scripts\test-tooling.bat or npm run test-tooling for Node-only feedback.
+Integration, browser/device and load suites remain separate; this is not the
+full release quality gate.
+## Optional Make aliases
+
+With GNU Make installed, use make test, make test-tooling, make test-api or
+make help. Every command in the table above has a matching Make target that
+calls the same Node entry point. Bare make displays help. Make is optional;
+npm commands and Windows wrappers remain supported.
